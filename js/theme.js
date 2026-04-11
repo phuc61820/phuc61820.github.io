@@ -8,7 +8,83 @@
   var STORAGE_KEY = 'gameHubLightMode';
   var isGame = window.location.pathname.includes('/games/');
 
-  // --- Apply theme to document ---
+  function isLightMode() {
+    return localStorage.getItem(STORAGE_KEY) === 'true';
+  }
+
+  // --- Inject all CSS (runs once, in <head>) ---
+  function injectCSS() {
+    if (document.getElementById('theme-style')) return;
+    var style = document.createElement('style');
+    style.id = 'theme-style';
+    style.textContent = [
+      /* Toggle button — always visible, fixed position */
+      '#themeToggle {',
+      '  position: fixed;',
+      '  top: 12px;',
+      '  right: 12px;',
+      '  z-index: 99999;',
+      '  width: 40px;',
+      '  height: 40px;',
+      '  border-radius: 50%;',
+      '  border: 2px solid rgba(255,255,255,0.25);',
+      '  background: rgba(30,30,50,0.7);',
+      '  backdrop-filter: blur(8px);',
+      '  -webkit-backdrop-filter: blur(8px);',
+      '  font-size: 18px;',
+      '  line-height: 1;',
+      '  cursor: pointer;',
+      '  display: flex;',
+      '  align-items: center;',
+      '  justify-content: center;',
+      '  box-shadow: 0 2px 12px rgba(0,0,0,0.4);',
+      '  transition: transform 0.15s, border-color 0.2s;',
+      '  pointer-events: auto;',
+      '}',
+      '#themeToggle:hover { transform: scale(1.12); border-color: rgba(255,255,255,0.6); }',
+      'body.light-mode #themeToggle {',
+      '  border-color: rgba(0,0,0,0.18);',
+      '  background: rgba(255,255,255,0.9);',
+      '  box-shadow: 0 2px 12px rgba(0,0,0,0.15);',
+      '}',
+
+      /* Hub light mode */
+      'body.light-mode {',
+      '  background: linear-gradient(160deg, #f0f4ff, #e8edf8) !important;',
+      '  color: #1e293b !important;',
+      '}',
+
+      /* Game light mode — body background */
+      isGame ? [
+        'body.light-mode [style*="background: #0"],',
+        'body.light-mode [style*="background:#0"],',
+        'body.light-mode [style*="background: rgba(0,0,0"],',
+        'body.light-mode [style*="background:rgba(0,0,0"] {',
+        '  background: rgba(255,255,255,0.75) !important;',
+        '  color: #1e293b !important;',
+        '}',
+        'body.light-mode [style*="color: #fff"],',
+        'body.light-mode [style*="color:#fff"],',
+        'body.light-mode [style*="color: white"],',
+        'body.light-mode [style*="color:white"],',
+        'body.light-mode [style*="color: #e2e8f0"],',
+        'body.light-mode [style*="color: #f1f5f9"],',
+        'body.light-mode [style*="color: #94a3b8"],',
+        'body.light-mode [style*="color: #cbd5e1"] {',
+        '  color: #334155 !important;',
+        '}',
+        'body.light-mode [style*="border: 1px solid rgba(255,255,255"],',
+        'body.light-mode [style*="border:1px solid rgba(255,255,255"] {',
+        '  border-color: rgba(0,0,0,0.15) !important;',
+        '}',
+      ].join('\n') : '',
+    ].join('\n');
+    // Insert as first child of <head> so it can be overridden
+    var head = document.head || document.getElementsByTagName('head')[0];
+    head.insertBefore(style, head.firstChild);
+  }
+
+  // --- Apply theme class + update button label ---
   function applyTheme(light) {
     document.documentElement.classList.toggle('light-mode', light);
     document.body.classList.toggle('light-mode', light);
@@ -22,111 +98,48 @@
   // --- Toggle and save ---
   window.toggleMode = function () {
     var next = !isLightMode();
-    localStorage.setItem(STORAGE_KEY, next);
+    localStorage.setItem(STORAGE_KEY, String(next));
     applyTheme(next);
   };
 
-  function isLightMode() {
-    return localStorage.getItem(STORAGE_KEY) === 'true';
-  }
-
-  // --- Inject CSS for light mode overrides (games only) ---
-  function injectGameLightCSS() {
-    if (!isGame) return;
-    var style = document.createElement('style');
-    style.id = 'theme-override';
-    style.textContent = [
-      /* body background override */
-      'body.light-mode {',
-      '  background: linear-gradient(160deg, #f0f4ff, #e8edf8) !important;',
-      '  color: #1e293b !important;',
-      '}',
-      /* text in game containers */
-      'body.light-mode * {',
-      '  color: inherit;',
-      '}',
-      /* panels / cards with dark inline backgrounds */
-      'body.light-mode [style*="background: #0"],',
-      'body.light-mode [style*="background:#0"],',
-      'body.light-mode [style*="background: rgba(0,0,0"],',
-      'body.light-mode [style*="background:rgba(0,0,0"] {',
-      '  background: rgba(255,255,255,0.75) !important;',
-      '  color: #1e293b !important;',
-      '}',
-      /* white/light text on dark panels → dark text */
-      'body.light-mode [style*="color: #fff"],',
-      'body.light-mode [style*="color:#fff"],',
-      'body.light-mode [style*="color: white"],',
-      'body.light-mode [style*="color:white"],',
-      'body.light-mode [style*="color: #e2e8f0"],',
-      'body.light-mode [style*="color: #f1f5f9"],',
-      'body.light-mode [style*="color: #94a3b8"],',
-      'body.light-mode [style*="color: #cbd5e1"] {',
-      '  color: #334155 !important;',
-      '}',
-      /* borders */
-      'body.light-mode [style*="border: 1px solid rgba(255,255,255"],',
-      'body.light-mode [style*="border:1px solid rgba(255,255,255"] {',
-      '  border-color: rgba(0,0,0,0.15) !important;',
-      '}',
-      /* Back button */
-      'body.light-mode button[onClick*="onBack"],',
-      'body.light-mode .back-btn {',
-      '  background: rgba(0,0,0,0.06) !important;',
-      '  border-color: rgba(0,0,0,0.15) !important;',
-      '  color: #475569 !important;',
-      '}',
-      /* toggle button itself */
-      '#themeToggle {',
-      '  position: fixed;',
-      '  top: 12px;',
-      '  right: 12px;',
-      '  z-index: 9999;',
-      '  width: 40px;',
-      '  height: 40px;',
-      '  border-radius: 50%;',
-      '  border: 2px solid rgba(255,255,255,0.2);',
-      '  background: rgba(255,255,255,0.1);',
-      '  backdrop-filter: blur(8px);',
-      '  font-size: 18px;',
-      '  cursor: pointer;',
-      '  display: flex;',
-      '  align-items: center;',
-      '  justify-content: center;',
-      '  box-shadow: 0 2px 12px rgba(0,0,0,0.3);',
-      '  transition: transform 0.15s, border-color 0.2s;',
-      '}',
-      '#themeToggle:hover { transform: scale(1.1); border-color: rgba(255,255,255,0.5); }',
-      'body.light-mode #themeToggle {',
-      '  border-color: rgba(0,0,0,0.15);',
-      '  background: rgba(255,255,255,0.85);',
-      '  box-shadow: 0 2px 12px rgba(0,0,0,0.15);',
-      '}',
-    ].join('\n');
-    document.head.appendChild(style);
-  }
-
-  // --- Inject toggle button into DOM ---
+  // --- Inject toggle button (appended to <body>, survives innerHTML rewrites of #app) ---
   function injectToggleButton() {
     if (document.getElementById('themeToggle')) return;
     var btn = document.createElement('button');
     btn.id = 'themeToggle';
     btn.onclick = window.toggleMode;
-    btn.textContent = isLightMode() ? '🌙' : '☀️';
-    btn.title = isLightMode() ? 'Chuyển tối' : 'Chuyển sáng';
+    var light = isLightMode();
+    btn.textContent = light ? '🌙' : '☀️';
+    btn.title = light ? 'Chuyển tối' : 'Chuyển sáng';
     document.body.appendChild(btn);
   }
 
-  // --- Run immediately (before paint) ---
-  if (isGame) {
-    injectGameLightCSS();
+  // --- Re-inject if lost (app.js rewrites innerHTML of #app, body stays) ---
+  function ensureButton() {
+    if (!document.getElementById('themeToggle')) {
+      injectToggleButton();
+    }
   }
+
+  // Observe #app mutations so button survives re-renders
+  function watchApp() {
+    var target = document.getElementById('app') || document.body;
+    if (!window.MutationObserver) return;
+    var observer = new MutationObserver(ensureButton);
+    observer.observe(target, { childList: true, subtree: false });
+  }
+
+  // --- Boot sequence ---
+  injectCSS();
   applyTheme(isLightMode());
 
-  // --- After DOM ready: inject button ---
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectToggleButton);
+    document.addEventListener('DOMContentLoaded', function () {
+      injectToggleButton();
+      watchApp();
+    });
   } else {
     injectToggleButton();
+    watchApp();
   }
 })();
