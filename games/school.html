@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏫 Trường Học Vũ Trụ — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #0f172a, #1e3a5f);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #root {
+      min-height: 100vh;
+    }
+    button {
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+    button:hover:not(:disabled) {
+      transform: scale(1.02);
+      filter: brightness(1.1);
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Data Constants
+    const SCHOOL_LEVELS = [
+      { id:'nursery',  name:'Nhà Trẻ',       icon:'🧸', tuition:10,   capacity:10,  cost:0,       desc:'Điểm xuất phát' },
+      { id:'primary',  name:'Tiểu Học',      icon:'📚', tuition:30,   capacity:25,  cost:2000,    desc:'Học ABCs & 123s' },
+      { id:'secondary',name:'Trung Học Cơ Sở',icon:'📐',tuition:80,  capacity:40,  cost:15000,   desc:'Đại số & Khoa học' },
+      { id:'high',     name:'Trung Học Phổ Thông',icon:'🎓',tuition:200,capacity:60,cost:80000,   desc:'Luyện thi Đại Học' },
+      { id:'college',  name:'Cao Đẳng',      icon:'🏛️', tuition:500,  capacity:100, cost:400000,  desc:'Chuyên ngành nghề' },
+      { id:'university',name:'Đại Học',      icon:'🎪', tuition:1500, capacity:200, cost:2000000, desc:'Nghiên cứu & Sáng tạo' },
+      { id:'phd',      name:'Tiến Sĩ',       icon:'🔬', tuition:5000, capacity:50,  cost:15000000,desc:'Đỉnh cao học thuật' },
+      { id:'cosmic',   name:'Trường Vũ Trụ', icon:'🌌', tuition:50000,capacity:999, cost:500000000,desc:'Đào tạo phi hành gia & AI' },
+    ];
+
+    const SCHOOL_TEACHERS = [
+      { id:'assistant', name:'Trợ Giảng',      icon:'👩‍🏫', cost:500,     salary:20,   effect:'+5% học phí',    mult:1.05 },
+      { id:'teacher',   name:'Giáo Viên',       icon:'👨‍🏫', cost:2000,    salary:60,   effect:'+10% học phí',   mult:1.10 },
+      { id:'senior',    name:'Giáo Viên Cao Cấp',icon:'🧑‍🏫',cost:8000,   salary:200,  effect:'+20% học phí',   mult:1.20 },
+      { id:'professor', name:'Giáo Sư',          icon:'👴', cost:30000,   salary:600,  effect:'+35% học phí',   mult:1.35 },
+      { id:'dean',      name:'Hiệu Trưởng',      icon:'🎩', cost:150000,  salary:2000, effect:'+60% học phí',   mult:1.60 },
+      { id:'genius',    name:'Thiên Tài',         icon:'🧠', cost:1000000, salary:10000,effect:'+150% học phí',  mult:2.50 },
+      { id:'ai',        name:'Giáo Viên AI',      icon:'🤖', cost:50000000,salary:100000,effect:'+500% học phí', mult:6.00 },
+    ];
+
+    const SCHOOL_FACILITIES_S = [
+      { id:'library',  name:'Thư Viện',       icon:'📖', cost:5000,      bonus:100,   desc:'+100₫/5s thu nhập thụ động' },
+      { id:'lab',      name:'Phòng Thí Nghiệm',icon:'🔬',cost:20000,     bonus:400,   desc:'+400₫/5s' },
+      { id:'gym',      name:'Sân Thể Thao',   icon:'⚽', cost:15000,     bonus:250,   desc:'+250₫/5s' },
+      { id:'cafeteria',name:'Căng Tin',        icon:'🍱', cost:30000,     bonus:600,   desc:'+600₫/5s' },
+      { id:'computer', name:'Phòng Máy Tính', icon:'💻', cost:80000,     bonus:1500,  desc:'+1500₫/5s' },
+      { id:'auditorium',name:'Hội Trường',    icon:'🎭', cost:200000,    bonus:5000,  desc:'+5000₫/5s' },
+      { id:'pool',     name:'Hồ Bơi Trường',  icon:'🏊', cost:500000,    bonus:15000, desc:'+15000₫/5s' },
+      { id:'rocket_lab',name:'Phòng Lab Tên Lửa',icon:'🚀',cost:10000000,bonus:200000,desc:'+200K₫/5s' },
+    ];
+
+    const SUBJECTS = [
+      { id:'math',    name:'Toán',       icon:'➕', baseScore:10 },
+      { id:'science', name:'Khoa Học',   icon:'🔬', baseScore:10 },
+      { id:'lit',     name:'Văn',        icon:'📝', baseScore:10 },
+      { id:'history', name:'Lịch Sử',   icon:'🏛️', baseScore:10 },
+      { id:'pe',      name:'Thể Dục',    icon:'⚽', baseScore:10 },
+      { id:'art',     name:'Mỹ Thuật',   icon:'🎨', baseScore:10 },
+      { id:'coding',  name:'Lập Trình',  icon:'💻', baseScore:10 },
+      { id:'astro',   name:'Thiên Văn',  icon:'🌌', baseScore:10 },
+    ];
+
+    function fmtS(n){
+      if(n>=1e12)return(n/1e12).toFixed(1)+'T';
+      if(n>=1e9)return(n/1e9).toFixed(1)+'B';
+      if(n>=1e6)return(n/1e6).toFixed(1)+'M';
+      if(n>=1e3)return(n/1e3).toFixed(1)+'K';
+      return Math.floor(n).toLocaleString();
+    }
+
+    function SchoolGame({ onBack }) {
+      const [money, setMoney]         = useState(3e6);
+      const [totalEarned, setTotalEarned] = useState(0);
+      const [schoolLvIdx, setSchoolLvIdx] = useState(0);
+      const [students, setStudents]     = useState(5);
+      const [teachers, setTeachers]     = useState({});
+      const [facilities, setFacilities] = useState({});
+      const [tab, setTab]               = useState('school');
+      const [log, setLog]               = useState([]);
+      const [day, setDay]               = useState(1);
+      const [reputation, setReputation] = useState(1);
+      const [graduates, setGraduates]   = useState(0);
+      const [classTime, setClassTime]   = useState(20);
+      const [inClass, setInClass]       = useState(false);
+      const [scores, setScores]         = useState({});
+      const [activeSubject, setActiveSubject] = useState(null);
+      const [clickPow, setClickPow]     = useState(1);
+      const [pops, setPops]             = useState([]);
+      const popId = useRef(0);
+
+      const schoolLv = SCHOOL_LEVELS[schoolLvIdx];
+      const addLog = (msg) => setLog(p=>[msg,...p].slice(0,15));
+
+      const teacherMult = () => {
+        let mult=1;
+        Object.entries(teachers).forEach(([tid,cnt])=>{
+          const t=SCHOOL_TEACHERS.find(x=>x.id===tid);
+          if(t) mult *= Math.pow(t.mult, cnt);
+        });
+        return Math.min(mult, 100);
+      };
+
+      const facilityBonus = () => Object.keys(facilities).reduce((s,fid)=>{
+        const f=SCHOOL_FACILITIES_S.find(x=>x.id===fid); return s+(f?f.bonus:0);
+      },0);
+
+      const totalSalary = () => Object.entries(teachers).reduce((s,[tid,cnt])=>{
+        const t=SCHOOL_TEACHERS.find(x=>x.id===tid); return s+(t?t.salary*cnt:0);
+      },0);
+
+      const incomePerTick = () => {
+        const tuition = schoolLv.tuition * students * teacherMult() * reputation;
+        const bonus = facilityBonus();
+        const salary = totalSalary();
+        return Math.max(0, Math.floor(tuition + bonus - salary));
+      };
+
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          const inc=incomePerTick();
+          if(inc>0){
+            setMoney(m=>m+inc);
+            setTotalEarned(t=>t+inc);
+            addLog(`💰 Thu học phí ${fmtS(inc)}₫ (${students} học sinh)`);
+          }
+        },5000);
+        return()=>clearInterval(iv);
+      },[students, teachers, facilities, schoolLv, reputation]);
+
+      useEffect(()=>{
+        if(!inClass) return;
+        const iv=setInterval(()=>{
+          setClassTime(t=>{
+            if(t<=1){
+              const bonus = Math.floor(schoolLv.tuition * students * teacherMult() * 3);
+              setMoney(m=>m+bonus);
+              setTotalEarned(t2=>t2+bonus);
+              const newGrads = Math.floor(students * 0.1);
+              setGraduates(g=>g+newGrads);
+              setReputation(r=>Math.min(r+0.1,10));
+              setClickPow(p=>Math.floor(p*1.1+1));
+              addLog(`🎓 Giờ học kết thúc! +${fmtS(bonus)}₫ | ${newGrads} tốt nghiệp | Danh tiếng ${reputation.toFixed(1)}⭐`);
+              setInClass(false);
+              setScores({});
+              setActiveSubject(null);
+              return 20;
+            }
+            return t-1;
+          });
+        },1000);
+        return()=>clearInterval(iv);
+      },[inClass]);
+
+      const startClass = (subject) => {
+        if(inClass){ addLog('⚠️ Đang có giờ học rồi!'); return; }
+        setActiveSubject(subject);
+        setInClass(true);
+        setClassTime(20);
+        addLog(`📢 Bắt đầu giờ ${subject.icon}${subject.name}! Bấm nhanh để học sinh học tốt hơn!`);
+      };
+
+      const clickTeach = (e) => {
+        if(!inClass||!activeSubject) return;
+        const gained = clickPow;
+        setScores(s=>({...s,[activeSubject.id]:(s[activeSubject.id]||0)+gained}));
+        const bonus = Math.floor(schoolLv.tuition * gained * 0.1);
+        setMoney(m=>m+bonus);
+        setTotalEarned(t=>t+bonus);
+        const pid=popId.current++;
+        const rect=e.currentTarget.getBoundingClientRect();
+        setPops(p=>[...p,{id:pid,x:e.clientX-rect.left,y:e.clientY-rect.top,text:`+${fmtS(bonus)}₫`}]);
+        setTimeout(()=>setPops(p=>p.filter(x=>x.id!==pid)),700);
+      };
+
+      const upgradeSchool = () => {
+        if(schoolLvIdx>=SCHOOL_LEVELS.length-1){addLog('🏆 Đã là trường đỉnh nhất rồi!');return;}
+        const next=SCHOOL_LEVELS[schoolLvIdx+1];
+        if(money<next.cost){addLog(`❌ Cần ${fmtS(next.cost)}₫ để nâng cấp lên ${next.name}`);return;}
+        setMoney(m=>m-next.cost);
+        setSchoolLvIdx(i=>i+1);
+        setStudents(Math.min(students+20,next.capacity));
+        setReputation(r=>r+0.5);
+        addLog(`🏫 Nâng cấp thành ${next.icon}${next.name}! Sức chứa ${next.capacity} học sinh!`);
+      };
+
+      const enrollStudents = () => {
+        if(students>=schoolLv.capacity){addLog(`❌ Trường đầy (${schoolLv.capacity} học sinh)`);return;}
+        const cost=Math.floor(100*students*0.1+500);
+        if(money<cost){addLog(`❌ Cần ${fmtS(cost)}₫ để tuyển sinh`);return;}
+        setMoney(m=>m-cost);
+        const newCount=Math.min(students+5,schoolLv.capacity);
+        setStudents(newCount);
+        addLog(`📋 Tuyển thêm ${newCount-students} học sinh! Tổng: ${newCount}/${schoolLv.capacity}`);
+      };
+
+      const hireTeacher = (t) => {
+        if(money<t.cost){addLog(`❌ Cần ${fmtS(t.cost)}₫ để thuê ${t.name}`);return;}
+        setMoney(m=>m-t.cost);
+        setTeachers(p=>({...p,[t.id]:(p[t.id]||0)+1}));
+        addLog(`${t.icon} Thuê ${t.name} thứ ${(teachers[t.id]||0)+1}!`);
+      };
+
+      const buildFacility = (f) => {
+        if(facilities[f.id]){addLog(`❌ Đã có ${f.name}`);return;}
+        if(money<f.cost){addLog(`❌ Cần ${fmtS(f.cost)}₫`);return;}
+        setMoney(m=>m-f.cost);
+        setFacilities(p=>({...p,[f.id]:true}));
+        addLog(`✨ Xây xong ${f.icon}${f.name}!`);
+      };
+
+      const pct = classTime/20;
+      const barColor = pct>0.5?'#3b82f6':pct>0.25?'#f59e0b':'#ef4444';
+
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0f172a,#1e3a5f)',display:'flex',flexDirection:'column',padding:10,gap:8}}>
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <div style={{textAlign:'center'}}>
+              <div style={{color:'#93c5fd',fontWeight:900,fontSize:14}}>{schoolLv.icon} {schoolLv.name}</div>
+              <div style={{fontSize:9,color:'#64748b'}}>Ngày {day} • {'⭐'.repeat(Math.ceil(reputation))} Danh tiếng</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{color:'#fbbf24',fontWeight:900,fontSize:15}}>💰 {fmtS(money)}₫</div>
+              <div style={{fontSize:9,color:'#22c55e'}}>≈+{fmtS(incomePerTick())}/5s</div>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div style={{display:'flex',gap:5}}>
+            {[
+              {v:`${students}/${schoolLv.capacity}`,l:'👨‍🎓 Học Sinh'},
+              {v:Object.values(teachers).reduce((s,c)=>s+c,0),l:'👨‍🏫 Giáo Viên'},
+              {v:graduates,l:'🎓 Tốt Nghiệp'},
+              {v:fmtS(totalEarned),l:'💵 Tổng Thu'},
+            ].map((s,i)=>(
+              <div key={i} style={{flex:1,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(147,197,253,0.1)',borderRadius:8,padding:'4px',textAlign:'center'}}>
+                <div style={{color:'#93c5fd',fontWeight:900,fontSize:12}}>{s.v}</div>
+                <div style={{color:'#64748b',fontSize:8}}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tabs */}
+          <div style={{display:'flex',gap:4}}>
+            {[['school','🏫 Trường'],['class','📚 Giờ Học'],['staff','👨‍🏫 Giáo Viên'],['facility','🏗️ Cơ Sở']].map(([id,label])=>(
+              <button key={id} onClick={()=>setTab(id)} style={{
+                flex:1,background:tab===id?'rgba(147,197,253,0.15)':'rgba(255,255,255,0.04)',
+                border:`1px solid ${tab===id?'rgba(147,197,253,0.4)':'rgba(255,255,255,0.07)'}`,
+                borderRadius:8,padding:'5px 0',color:tab===id?'#93c5fd':'#64748b',
+                fontSize:10,fontWeight:700,cursor:'pointer',
+              }}>{label}</button>
+            ))}
+          </div>
+
+          {/* Class progress bar */}
+          {inClass && (
+            <div style={{background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.25)',borderRadius:10,padding:'8px 12px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                <span style={{color:'#93c5fd',fontSize:12,fontWeight:700}}>📢 {activeSubject?.icon}{activeSubject?.name} — đang học</span>
+                <span style={{color:'#93c5fd',fontSize:11}}>⏱ {classTime}s</span>
+              </div>
+              <div style={{height:8,borderRadius:4,background:'rgba(255,255,255,0.08)'}}>
+                <div style={{height:'100%',borderRadius:4,background:barColor,width:`${pct*100}%`,transition:'width 1s'}}/>
+              </div>
+              <div style={{fontSize:9,color:'#64748b',marginTop:3}}>
+                Điểm môn này: {scores[activeSubject?.id]||0} • Bấm vào bảng đen để dạy nhanh hơn!
+              </div>
+            </div>
+          )}
+
+          {/* School tab */}
+          {tab==='school' && (
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:8}}>
+              {/* Upgrade */}
+              <div style={{background:'rgba(147,197,253,0.06)',border:'1px solid rgba(147,197,253,0.15)',borderRadius:12,padding:'12px'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:800,color:'#93c5fd'}}>{schoolLv.icon} {schoolLv.name}</div>
+                    <div style={{fontSize:9,color:'#64748b'}}>{schoolLv.desc} • Học phí: {fmtS(schoolLv.tuition)}₫/học sinh/5s</div>
+                  </div>
+                  {schoolLvIdx<SCHOOL_LEVELS.length-1 && (
+                    <button onClick={upgradeSchool} disabled={money<SCHOOL_LEVELS[schoolLvIdx+1].cost} style={{
+                      background:money>=SCHOOL_LEVELS[schoolLvIdx+1].cost?'linear-gradient(135deg,#3b82f6,#1d4ed8)':'rgba(255,255,255,0.04)',
+                      border:'none',borderRadius:10,padding:'8px 14px',color:money>=SCHOOL_LEVELS[schoolLvIdx+1].cost?'white':'#475569',
+                      fontSize:11,fontWeight:800,cursor:money>=SCHOOL_LEVELS[schoolLvIdx+1].cost?'pointer':'default',whiteSpace:'nowrap',
+                    }}>
+                      ⬆️ {SCHOOL_LEVELS[schoolLvIdx+1].icon}{SCHOOL_LEVELS[schoolLvIdx+1].name}<br/>
+                      <span style={{fontSize:9}}>{fmtS(SCHOOL_LEVELS[schoolLvIdx+1].cost)}₫</span>
+                    </button>
+                  )}
+                </div>
+                {/* Level progress */}
+                <div style={{display:'flex',gap:2}}>
+                  {SCHOOL_LEVELS.map((_,i)=>(
+                    <div key={i} style={{flex:1,height:5,borderRadius:3,background:i<=schoolLvIdx?'#3b82f6':'rgba(255,255,255,0.08)'}}/>
+                  ))}
+                </div>
+              </div>
+              {/* Enroll */}
+              <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:'10px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:700,color:'#e2e8f0'}}>👨‍🎓 Tuyển Sinh</div>
+                  <div style={{fontSize:9,color:'#64748b'}}>{students}/{schoolLv.capacity} học sinh • +5 mỗi lần</div>
+                </div>
+                <button onClick={enrollStudents} disabled={students>=schoolLv.capacity} style={{
+                  background:students<schoolLv.capacity?'linear-gradient(135deg,#22c55e,#16a34a)':'rgba(255,255,255,0.04)',
+                  border:'none',borderRadius:8,padding:'6px 14px',color:students<schoolLv.capacity?'white':'#475569',
+                  fontSize:11,fontWeight:800,cursor:students<schoolLv.capacity?'pointer':'default',
+                }}>
+                  📋 Tuyển ({fmtS(Math.floor(100*students*0.1+500))}₫)
+                </button>
+              </div>
+              {/* All school levels */}
+              <p style={{margin:'4px 0 2px',fontSize:10,color:'#64748b',fontWeight:700}}>Lộ trình nâng cấp:</p>
+              {SCHOOL_LEVELS.map((lv,i)=>(
+                <div key={lv.id} style={{
+                  background:i===schoolLvIdx?'rgba(59,130,246,0.1)':i<schoolLvIdx?'rgba(34,197,94,0.06)':'rgba(0,0,0,0.15)',
+                  border:`1px solid ${i===schoolLvIdx?'rgba(59,130,246,0.3)':i<schoolLvIdx?'rgba(34,197,94,0.15)':'rgba(255,255,255,0.04)'}`,
+                  borderRadius:10,padding:'6px 12px',display:'flex',alignItems:'center',gap:8,
+                  opacity:i>schoolLvIdx+1?0.4:1,
+                }}>
+                  <span style={{fontSize:22}}>{lv.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,fontWeight:700,color:i<=schoolLvIdx?'#e2e8f0':'#64748b'}}>{lv.name} {i<schoolLvIdx?'✅':i===schoolLvIdx?'← Hiện tại':''}</div>
+                    <div style={{fontSize:9,color:'#64748b'}}>{lv.desc} • {lv.capacity} học sinh • {fmtS(lv.tuition)}₫/5s</div>
+                  </div>
+                  {i>schoolLvIdx&&<span style={{fontSize:10,color:'#fbbf24',fontWeight:700}}>{fmtS(lv.cost)}₫</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Class tab */}
+          {tab==='class' && (
+            <div style={{flex:1,display:'flex',flexDirection:'column',gap:8}}>
+              <p style={{margin:0,fontSize:10,color:'#64748b'}}>Chọn môn học → bấm vào bảng đen để tăng điểm!</p>
+              {/* Blackboard */}
+              <div
+                onClick={clickTeach}
+                style={{
+                  background:inClass?'linear-gradient(135deg,#1e3a5f,#1d4ed8)':'rgba(0,0,0,0.4)',
+                  border:`2px solid ${inClass?'#3b82f6':'rgba(255,255,255,0.08)'}`,
+                  borderRadius:16,padding:'20px',textAlign:'center',cursor:inClass?'pointer':'default',
+                  position:'relative',overflow:'hidden',minHeight:120,
+                  boxShadow:inClass?'0 0 30px rgba(59,130,246,0.3)':'none',
+                }}
+              >
+                {inClass?(
+                  <>
+                    <div style={{fontSize:48}}>{activeSubject?.icon}</div>
+                    <div style={{color:'#93c5fd',fontWeight:800,fontSize:14}}>{activeSubject?.name}</div>
+                    <div style={{color:'#64748b',fontSize:10}}>Bấm vào đây để dạy học!</div>
+                    {pops.map(p=>(
+                      <div key={p.id} style={{position:'absolute',left:p.x,top:p.y,color:'#fbbf24',fontSize:13,fontWeight:900,pointerEvents:'none',transform:'translateY(-30px)',opacity:0.9}}>{p.text}</div>
+                    ))}
+                  </>
+                ):(
+                  <>
+                    <div style={{fontSize:32,opacity:0.3}}>📋</div>
+                    <div style={{color:'#475569',fontSize:12}}>Chọn môn học bên dưới để bắt đầu lớp học</div>
+                  </>
+                )}
+              </div>
+              {/* Subject buttons */}
+              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                {SUBJECTS.map(sub=>{
+                  const score=scores[sub.id]||0;
+                  const active=inClass&&activeSubject?.id===sub.id;
+                  return(
+                    <button key={sub.id} onClick={()=>!inClass&&startClass(sub)} style={{
+                      background:active?'rgba(59,130,246,0.25)':score>0?'rgba(34,197,94,0.1)':'rgba(255,255,255,0.04)',
+                      border:`1px solid ${active?'#3b82f6':score>0?'rgba(34,197,94,0.3)':'rgba(255,255,255,0.08)'}`,
+                      borderRadius:10,padding:'8px 12px',cursor:inClass?'default':'pointer',
+                      display:'flex',flexDirection:'column',alignItems:'center',gap:2,minWidth:70,
+                    }}>
+                      <span style={{fontSize:20}}>{sub.icon}</span>
+                      <span style={{fontSize:9,color:active?'#93c5fd':score>0?'#4ade80':'#64748b',fontWeight:700}}>{sub.name}</span>
+                      {score>0&&<span style={{fontSize:8,color:'#22c55e'}}>+{score}đ</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Staff tab */}
+          {tab==='staff' && (
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              <p style={{margin:'0 0 4px',fontSize:10,color:'#64748b'}}>Lương/5s: -{fmtS(totalSalary()/12)}₫ | Hệ số: ×{teacherMult().toFixed(2)}</p>
+              {SCHOOL_TEACHERS.map(t=>{
+                const count=teachers[t.id]||0;
+                const canBuy=money>=t.cost;
+                return(
+                  <div key={t.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:28}}>{t.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{t.name}</span>
+                        <span style={{fontSize:10,color:'#93c5fd',fontWeight:700}}>×{count}</span>
+                      </div>
+                      <div style={{fontSize:9,color:'#64748b'}}>{t.effect} • lương {fmtS(t.salary)}₫/5s</div>
+                    </div>
+                    <button onClick={()=>hireTeacher(t)} disabled={!canBuy} style={{background:canBuy?'linear-gradient(135deg,#3b82f6,#1d4ed8)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'5px 10px',color:canBuy?'white':'#475569',fontSize:10,fontWeight:800,cursor:canBuy?'pointer':'default',whiteSpace:'nowrap'}}>{fmtS(t.cost)}₫</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Facility tab */}
+          {tab==='facility' && (
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              {SCHOOL_FACILITIES_S.map(f=>{
+                const owned=facilities[f.id];
+                const canBuy=money>=f.cost&&!owned;
+                return(
+                  <div key={f.id} style={{background:owned?'rgba(251,191,36,0.07)':'rgba(0,0,0,0.2)',border:`1px solid ${owned?'rgba(251,191,36,0.2)':'rgba(255,255,255,0.05)'}`,borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:28}}>{f.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:11,fontWeight:700,color:owned?'#fbbf24':'#e2e8f0'}}>{f.name}</span>
+                        {owned&&<span style={{fontSize:10,color:'#22c55e',fontWeight:700}}>✓ Đã xây</span>}
+                      </div>
+                      <div style={{fontSize:9,color:'#64748b'}}>{f.desc}</div>
+                    </div>
+                    {!owned&&<button onClick={()=>buildFacility(f)} disabled={!canBuy} style={{background:canBuy?'linear-gradient(135deg,#f59e0b,#d97706)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'5px 10px',color:canBuy?'white':'#475569',fontSize:10,fontWeight:800,cursor:canBuy?'pointer':'default',whiteSpace:'nowrap'}}>{fmtS(f.cost)}₫</button>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Log */}
+          <div style={{background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'5px 8px',maxHeight:60,overflowY:'auto'}}>
+            {log.slice(0,3).map((l,i)=><div key={i} style={{fontSize:9,color:'#64748b',lineHeight:1.6}}>{l}</div>)}
+            {!log.length&&<div style={{fontSize:9,color:'#475569'}}>Nhật ký trường học...</div>}
+          </div>
+        </div>
+      );
+    }
+
+    // App wrapper
+    function App() {
+      const handleBack = () => {
+        window.location.href = '../index.html';
+      };
+
+      return <SchoolGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

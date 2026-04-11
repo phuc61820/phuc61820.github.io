@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>💎 Bấm Đồ Vật — Game Hub</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #root {
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #050010;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ===================== BẤM ĐỒ VẬT DATA =====================
+    const TAP_ITEMS = [
+      // Thường
+      { id:'coin',     name:'Đồng Xu',        icon:'🪙',  rarity:'thường',    chance:0.30, minVal:1,      maxVal:5,       color:'#94a3b8', glow:'#64748b',  bg:'#0f172a' },
+      { id:'bag',      name:'Túi Tiền',       icon:'👝',  rarity:'thường',    chance:0.25, minVal:5,      maxVal:20,      color:'#a3e635', glow:'#65a30d',  bg:'#0f2000' },
+      { id:'stone',    name:'Đá Quý',         icon:'🪨',  rarity:'thường',    chance:0.15, minVal:20,     maxVal:80,      color:'#94a3b8', glow:'#475569',  bg:'#111827' },
+      // Hiếm
+      { id:'chest',    name:'Hòm Kho Báu',   icon:'📦',  rarity:'hiếm',      chance:0.10, minVal:100,    maxVal:500,     color:'#38bdf8', glow:'#0ea5e9',  bg:'#0c1a2e' },
+      { id:'ruby',     name:'Hồng Ngọc',     icon:'❤️‍🔥', rarity:'hiếm',      chance:0.07, minVal:500,    maxVal:2000,    color:'#f87171', glow:'#ef4444',  bg:'#1f0000' },
+      { id:'crown',    name:'Vương Miện',     icon:'👑',  rarity:'hiếm',      chance:0.05, minVal:1000,   maxVal:5000,    color:'#fbbf24', glow:'#f59e0b',  bg:'#1a0f00' },
+      // Quý
+      { id:'egg_silver',name:'Trứng Bạc',    icon:'🥚',  rarity:'quý',       chance:0.03, minVal:5000,   maxVal:20000,   color:'#e2e8f0', glow:'#cbd5e1',  bg:'#0f0f1a' },
+      { id:'sapphire', name:'Lam Ngọc',      icon:'💙',  rarity:'quý',       chance:0.02, minVal:10000,  maxVal:50000,   color:'#818cf8', glow:'#6366f1',  bg:'#0a0015' },
+      // Siêu Quý
+      { id:'egg_gold', name:'Trứng Vàng',    icon:'🌟',  rarity:'siêu quý',  chance:0.015,minVal:50000,  maxVal:200000,  color:'#fde047', glow:'#eab308',  bg:'#1a1000' },
+      { id:'meteor',   name:'Thiên Thạch',   icon:'☄️',  rarity:'siêu quý',  chance:0.01, minVal:100000, maxVal:500000,  color:'#f97316', glow:'#ea580c',  bg:'#1a0500' },
+      // Huyền Thoại
+      { id:'dragon',   name:'Trứng Rồng',    icon:'🥚🐉', rarity:'huyền thoại',chance:0.005,minVal:500000,maxVal:2000000, color:'#c084fc', glow:'#a855f7',  bg:'#0a0015' },
+      { id:'diamond',  name:'Kim Cương',     icon:'💎',  rarity:'huyền thoại',chance:0.003,minVal:1000000,maxVal:5000000, color:'#7dd3fc', glow:'#38bdf8',  bg:'#00101a' },
+      // Thần
+      { id:'cosmic_egg',name:'Trứng Vũ Trụ',icon:'🌌🥚',rarity:'thần',       chance:0.001,minVal:5000000,maxVal:20000000,color:'#a78bfa', glow:'#8b5cf6',  bg:'#050010' },
+      { id:'god_stone', name:'Đá Thần',      icon:'🔮',  rarity:'thần',       chance:0.0005,minVal:10000000,maxVal:100000000,color:'#f0abfc',glow:'#e879f9',bg:'#100015'},
+    ];
+
+    const RARITY_COLORS = {
+      thường:'#94a3b8', hiếm:'#38bdf8', quý:'#a78bfa',
+      'siêu quý':'#fbbf24', 'huyền thoại':'#c084fc', thần:'#f0abfc',
+    };
+
+    function fmtMoney(n) {
+      if (n >= 1e12) return (n/1e12).toFixed(1)+'T₫';
+      if (n >= 1e9)  return (n/1e9).toFixed(1)+'B₫';
+      if (n >= 1e6)  return (n/1e6).toFixed(2)+'M₫';
+      if (n >= 1e3)  return (n/1e3).toFixed(1)+'K₫';
+      return n.toLocaleString()+'₫';
+    }
+
+    // ===================== TAP GAME COMPONENT =====================
+    function TapGame({ onBack }) {
+      const [money, setMoney]         = useState(0);
+      const [total, setTotal]         = useState(0);
+      const [items, setItems]         = useState([]); // active items on screen
+      const [floats, setFloats]       = useState([]); // floating +money texts
+      const [log, setLog]             = useState([]);
+      const [stats, setStats]         = useState({});
+      const itemId = useRef(0);
+      const floatId = useRef(0);
+      const areaRef = useRef(null);
+
+      // Spawn items randomly
+      useEffect(() => {
+        const spawn = () => {
+          const roll = Math.random();
+          let cumulative = 0;
+          let chosen = TAP_ITEMS[0];
+          for (const item of TAP_ITEMS) {
+            cumulative += item.chance;
+            if (roll < cumulative) { chosen = item; break; }
+          }
+          const id = itemId.current++;
+          const x = 5 + Math.random() * 80;
+          const y = 10 + Math.random() * 75;
+          const size = chosen.rarity==='thần'?72:chosen.rarity==='huyền thoại'?60:chosen.rarity==='siêu quý'?52:chosen.rarity==='quý'?46:chosen.rarity==='hiếm'?40:34;
+          const lifetime = chosen.rarity==='thường'?3500:chosen.rarity==='hiếm'?5000:chosen.rarity==='quý'?7000:chosen.rarity==='siêu quý'?9000:chosen.rarity==='huyền thoại'?12000:15000;
+          setItems(prev => [...prev.slice(-20), {id, item:chosen, x, y, size, lifetime, born:Date.now()}]);
+        };
+        spawn();
+        const iv = setInterval(spawn, 800);
+        return () => clearInterval(iv);
+      }, []);
+
+      // Remove expired items
+      useEffect(() => {
+        const iv = setInterval(() => {
+          const now = Date.now();
+          setItems(prev => prev.filter(i => now - i.born < i.lifetime));
+        }, 500);
+        return () => clearInterval(iv);
+      }, []);
+
+      const tapItem = (e, obj) => {
+        e.stopPropagation();
+        const val = Math.floor(Math.random()*(obj.item.maxVal - obj.item.minVal + 1)) + obj.item.minVal;
+        setMoney(m => m + val);
+        setTotal(t => t + val);
+        setItems(prev => prev.filter(i => i.id !== obj.id));
+        setStats(s => ({...s, [obj.item.id]: (s[obj.item.id]||0)+1}));
+        // floating text
+        const fid = floatId.current++;
+        setFloats(f => [...f, {id:fid, x:obj.x, y:obj.y, val, color:obj.item.glow, name:obj.item.name, rarity:obj.item.rarity}]);
+        setTimeout(()=>setFloats(f=>f.filter(x=>x.id!==fid)), 1200);
+        // log for rare+
+        if (['quý','siêu quý','huyền thoại','thần'].includes(obj.item.rarity)) {
+          setLog(l => [`${obj.item.icon} ${obj.item.name} [${obj.item.rarity.toUpperCase()}] +${fmtMoney(val)}`, ...l.slice(0,19)]);
+        }
+      };
+
+      const rarityOrder = ['thường','hiếm','quý','siêu quý','huyền thoại','thần'];
+
+      return (
+        <div style={{minHeight:'100vh',background:'#050010',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',background:'rgba(0,0,0,0.5)',borderBottom:'1px solid rgba(255,255,255,0.06)',zIndex:10}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <div style={{textAlign:'center'}}>
+              <div style={{color:'#c084fc',fontWeight:900,fontSize:18}}>💰 {fmtMoney(money)}</div>
+              <div style={{color:'#64748b',fontSize:9}}>Tổng kiếm: {fmtMoney(total)}</div>
+            </div>
+            <div style={{textAlign:'right',fontSize:9,color:'#475569'}}>
+              <div>{Object.values(stats).reduce((a,b)=>a+b,0)} lần bấm</div>
+              <div>{items.length} vật hiện</div>
+            </div>
+          </div>
+
+          {/* Rarity legend */}
+          <div style={{display:'flex',gap:4,padding:'4px 8px',overflowX:'auto',background:'rgba(0,0,0,0.3)',flexShrink:0}}>
+            {rarityOrder.map(r=>(
+              <span key={r} style={{fontSize:8,fontWeight:700,color:RARITY_COLORS[r],background:`${RARITY_COLORS[r]}15`,border:`1px solid ${RARITY_COLORS[r]}40`,borderRadius:6,padding:'2px 6px',whiteSpace:'nowrap'}}>
+                {r}
+              </span>
+            ))}
+          </div>
+
+          {/* Main tap area */}
+          <div ref={areaRef} style={{flex:1,position:'relative',overflow:'hidden',cursor:'default',minHeight:320}}>
+            {/* Starfield bg */}
+            <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 30% 40%,rgba(100,0,150,0.08),transparent 60%), radial-gradient(ellipse at 70% 70%,rgba(0,50,100,0.1),transparent 50%)'}}/>
+
+            {/* Items */}
+            {items.map(obj => {
+              const age = Date.now() - obj.born;
+              const fading = age > obj.lifetime * 0.7;
+              const pulsing = ['huyền thoại','thần'].includes(obj.item.rarity);
+              return (
+                <div
+                  key={obj.id}
+                  onPointerDown={e=>tapItem(e, obj)}
+                  style={{
+                    position:'absolute',
+                    left:`${obj.x}%`,
+                    top:`${obj.y}%`,
+                    fontSize:obj.size,
+                    cursor:'pointer',
+                    userSelect:'none',
+                    transition:'opacity 0.3s',
+                    opacity: fading ? 0.3 : 1,
+                    filter:`drop-shadow(0 0 ${pulsing?16:8}px ${obj.item.glow})`,
+                    zIndex:5,
+                    animation:'none',
+                    transform:'translate(-50%,-50%)',
+                  }}
+                >
+                  {obj.item.icon}
+                  {/* Rarity badge */}
+                  <div style={{
+                    position:'absolute',bottom:-14,left:'50%',transform:'translateX(-50%)',
+                    fontSize:8,fontWeight:700,color:obj.item.color,
+                    background:'rgba(0,0,0,0.7)',borderRadius:4,padding:'1px 4px',
+                    whiteSpace:'nowrap',border:`1px solid ${obj.item.color}44`,
+                  }}>{obj.item.name}</div>
+                  {/* Glow ring for legendary+ */}
+                  {pulsing && (
+                    <div style={{
+                      position:'absolute',inset:-8,borderRadius:'50%',
+                      border:`2px solid ${obj.item.glow}66`,
+                      boxShadow:`0 0 20px ${obj.item.glow}44`,
+                    }}/>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Floating money texts */}
+            {floats.map(f=>(
+              <div key={f.id} style={{
+                position:'absolute',
+                left:`${f.x}%`,
+                top:`${f.y}%`,
+                transform:'translate(-50%,-50%)',
+                color:f.color,
+                fontSize:f.rarity==='thần'?20:f.rarity==='huyền thoại'?18:f.rarity==='siêu quý'?16:13,
+                fontWeight:900,
+                pointerEvents:'none',
+                zIndex:20,
+                textShadow:`0 0 10px ${f.color}`,
+                animation:'none',
+                opacity:0.95,
+                transition:'all 1.2s ease-out',
+              }}>
+                +{fmtMoney(f.val)}
+                {['huyền thoại','thần','siêu quý'].includes(f.rarity) && <div style={{fontSize:9,textAlign:'center',opacity:0.8}}>{f.name}!</div>}
+              </div>
+            ))}
+
+            {/* Empty hint */}
+            {items.length===0 && (
+              <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',color:'#334155',fontSize:14}}>Đang xuất hiện vật...</div>
+            )}
+          </div>
+
+          {/* Bottom: stats + log */}
+          <div style={{background:'rgba(0,0,0,0.6)',borderTop:'1px solid rgba(255,255,255,0.05)',padding:'8px 10px',maxHeight:160,overflowY:'auto'}}>
+            <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:6}}>
+              {TAP_ITEMS.filter(i=>stats[i.id]).map(i=>(
+                <div key={i.id} style={{background:`${RARITY_COLORS[i.rarity]}12`,border:`1px solid ${RARITY_COLORS[i.rarity]}30`,borderRadius:8,padding:'3px 7px',fontSize:9,color:RARITY_COLORS[i.rarity]}}>
+                  {i.icon} {i.name} ×{stats[i.id]}
+                </div>
+              ))}
+            </div>
+            {log.length>0 && (
+              <>
+                <div style={{fontSize:9,color:'#475569',marginBottom:3}}>📜 Vật quý gần đây:</div>
+                {log.slice(0,5).map((l,i)=>(
+                  <div key={i} style={{fontSize:10,color:'#a78bfa',marginBottom:1}}>{l}</div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ===================== APP =====================
+    function App() {
+      const handleBack = () => {
+        window.location.href = '../index.html';
+      };
+
+      return <TapGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

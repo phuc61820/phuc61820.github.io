@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐍 Rắn Săn Mồi — Game Hub</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  </style>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function SnakeGame({ onBack }) {
+      const COLS = 20, ROWS = 18, CELL = 24;
+      const [snake, setSnake] = useState([{x:10,y:9},{x:9,y:9},{x:8,y:9}]);
+      const [dir, setDir] = useState({x:1,y:0});
+      const [food, setFood] = useState({x:15,y:9});
+      const [score, setScore] = useState(0);
+      const [dead, setDead] = useState(false);
+      const [started, setStarted] = useState(false);
+      const [immortal, setImmortal] = useState(false);
+      const immortalRef = useRef(false);
+      const dirRef = useRef({x:1,y:0});
+      const gameRef = useRef(null);
+
+      const spawnFood = (s) => {
+        let f;
+        do { f = {x:Math.floor(Math.random()*COLS), y:Math.floor(Math.random()*ROWS)}; }
+        while (s.some(b => b.x===f.x && b.y===f.y));
+        return f;
+      };
+
+      useEffect(() => { immortalRef.current = immortal; }, [immortal]);
+
+      const foodRef = useRef(food);
+      useEffect(() => { foodRef.current = food; }, [food]);
+
+      useEffect(() => {
+        if (!started || dead) return;
+        const interval = setInterval(() => {
+          setSnake(prev => {
+            const d = dirRef.current;
+            let head = {x: prev[0].x + d.x, y: prev[0].y + d.y};
+            const isIm = immortalRef.current;
+            if (head.x < 0) { if (isIm) head.x = COLS-1; else { setDead(true); return prev; } }
+            if (head.x >= COLS) { if (isIm) head.x = 0; else { setDead(true); return prev; } }
+            if (head.y < 0) { if (isIm) head.y = ROWS-1; else { setDead(true); return prev; } }
+            if (head.y >= ROWS) { if (isIm) head.y = 0; else { setDead(true); return prev; } }
+            if (!isIm && prev.some(b=>b.x===head.x&&b.y===head.y)) { setDead(true); return prev; }
+            const f = foodRef.current;
+            if (head.x===f.x && head.y===f.y) {
+              setScore(s => s + (isIm ? 5 : 10));
+              const grown = [head, ...prev];
+              const newFood = spawnFood(grown);
+              foodRef.current = newFood;
+              setFood(newFood);
+              return grown;
+            }
+            return [head, ...prev.slice(0,-1)];
+          });
+        }, 130);
+        return () => clearInterval(interval);
+      }, [started, dead]);
+
+      useEffect(() => {
+        const onKey = e => {
+          if (!started) { setStarted(true); return; }
+          const map = { ArrowUp:{x:0,y:-1}, ArrowDown:{x:0,y:1}, ArrowLeft:{x:-1,y:0}, ArrowRight:{x:1,y:0},
+                        w:{x:0,y:-1}, s:{x:0,y:1}, a:{x:-1,y:0}, d:{x:1,y:0} };
+          const nd = map[e.key];
+          if (nd && !(nd.x===-dirRef.current.x && nd.y===-dirRef.current.y)) {
+            dirRef.current = nd; setDir(nd);
+          }
+          if (e.key === 'i' || e.key === 'I') {
+            setImmortal(p => { immortalRef.current = !p; return !p; });
+          }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [started]);
+
+      const reset = () => {
+        const s = [{x:10,y:9},{x:9,y:9},{x:8,y:9}];
+        setSnake(s); setDir({x:1,y:0}); dirRef.current={x:1,y:0};
+        setFood(spawnFood(s)); setScore(0); setDead(false); setStarted(false);
+      };
+
+      const dirs = [{label:'▲',d:{x:0,y:-1}},{label:'▼',d:{x:0,y:1}},{label:'◄',d:{x:-1,y:0}},{label:'►',d:{x:1,y:0}}];
+
+      return (
+        <div style={{minHeight:'100vh',background:'#0a1a0a',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:COLS*CELL,marginBottom:8}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 12px',color:'#94a3b8',cursor:'pointer',fontSize:13}}>← Quay lại</button>
+            <h2 style={{margin:0,color:'#4ade80',fontSize:20,fontWeight:800}}>🐍 Rắn Săn Mồi</h2>
+            <span style={{color:'#fbbf24',fontWeight:800,fontSize:16}}>🍎 {score}</span>
+          </div>
+          <div style={{width:COLS*CELL,marginBottom:6,display:'flex',justifyContent:'flex-end'}}>
+            <button
+              onClick={()=>setImmortal(p=>{immortalRef.current=!p;return !p;})}
+              style={{
+                background: immortal
+                  ? 'linear-gradient(135deg,#7c3aed,#6d28d9)'
+                  : 'rgba(124,58,237,0.12)',
+                border: `1px solid ${immortal?'#a78bfa':'rgba(124,58,237,0.3)'}`,
+                borderRadius:20, padding:'4px 14px',
+                color: immortal?'white':'#a78bfa',
+                fontSize:12, fontWeight:800, cursor:'pointer',
+                boxShadow: immortal?'0 0 16px rgba(124,58,237,0.5)':'none',
+                transition:'all 0.2s',
+              }}
+            >
+              {immortal ? '💜 BẤT TỬ: BẬT' : '🔮 Bất Tử: Tắt'}
+              {immortal && <span style={{fontSize:10,opacity:0.8}}> (điểm ÷2)</span>}
+            </button>
+          </div>
+          <div style={{position:'relative',width:COLS*CELL,height:ROWS*CELL,
+            background: immortal ? '#100a1f' : '#0f2d0f',
+            border:`2px solid ${immortal?'#7c3aed':'#166534'}`,
+            borderRadius:8,overflow:'hidden',
+            boxShadow: immortal?'0 0 30px rgba(124,58,237,0.4)':'none',
+          }}>
+            {immortal && <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at center,rgba(124,58,237,0.08),transparent)',pointerEvents:'none',zIndex:1}}/>}
+            {Array.from({length:ROWS}).map((_,r)=>Array.from({length:COLS}).map((_,c)=>(
+              <div key={`${r}-${c}`} style={{position:'absolute',left:c*CELL,top:r*CELL,width:CELL,height:CELL,border:`1px solid rgba(255,255,255,${immortal?0.05:0.03})`}}/>
+            )))}
+            <div style={{position:'absolute',left:food.x*CELL+2,top:food.y*CELL+2,width:CELL-4,height:CELL-4,background:'#ef4444',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,zIndex:2}}>🍎</div>
+            {snake.map((b,i)=>(
+              <div key={i} style={{
+                position:'absolute',left:b.x*CELL+1,top:b.y*CELL+1,width:CELL-2,height:CELL-2,
+                background: immortal
+                  ? (i===0?'#a855f7':'#7c3aed')
+                  : (i===0?'#22c55e':'#16a34a'),
+                borderRadius:i===0?6:3,
+                display:'flex',alignItems:'center',justifyContent:'center',fontSize:i===0?14:0,
+                boxShadow: immortal && i===0 ? '0 0 10px rgba(168,85,247,0.8)' : 'none',
+                zIndex:2,
+              }}>
+                {i===0?(immortal?'✨':'👁️'):''}
+              </div>
+            ))}
+            {(!started||dead) && (
+              <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12,zIndex:10}}>
+                <span style={{fontSize:40}}>{dead?'💀':'🐍'}</span>
+                <p style={{color:dead?'#f87171':'#4ade80',fontSize:18,fontWeight:800,margin:0}}>{dead?`Game Over! ${score} điểm`:'Rắn Săn Mồi'}</p>
+                <p style={{color:'#94a3b8',fontSize:13,margin:0}}>WASD / ← → ↑ ↓ để điều khiển</p>
+                <p style={{color:'#a78bfa',fontSize:11,margin:0}}>Phím I hoặc nút 🔮 để bật Bất Tử</p>
+                <button onClick={dead?reset:()=>setStarted(true)} style={{background:'linear-gradient(135deg,#16a34a,#15803d)',border:'none',borderRadius:10,padding:'10px 28px',color:'white',fontSize:15,fontWeight:800,cursor:'pointer'}}>
+                  {dead?'🔄 Chơi lại':'▶ Bắt đầu'}
+                </button>
+              </div>
+            )}
+          </div>
+          <div style={{marginTop:16,display:'grid',gridTemplateColumns:'repeat(3,52px)',gridTemplateRows:'repeat(2,52px)',gap:6}}>
+            {[null,dirs[0],null,dirs[2],dirs[1],dirs[3]].map((d,i)=>d?(
+              <button key={i} onPointerDown={()=>{if(!started)setStarted(true);if(!(d.d.x===-dirRef.current.x&&d.d.y===-dirRef.current.y)){dirRef.current=d.d;setDir(d.d);}}}
+                style={{background:'rgba(34,197,94,0.15)',border:'1px solid rgba(34,197,94,0.3)',borderRadius:10,color:'#4ade80',fontSize:20,fontWeight:800,cursor:'pointer'}}>
+                {d.label}
+              </button>
+            ):<div key={i}/>)}
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const handleBack = () => {
+        window.location.href = "../index.html";
+      };
+
+      return <SnakeGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

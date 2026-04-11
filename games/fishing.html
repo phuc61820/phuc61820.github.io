@@ -1,0 +1,2192 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎣 Câu Cá Vạn Cân — Game Hub</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0c1929; }
+    #root { min-height: 100vh; }
+    p { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useRef } = React;
+
+const LANGUAGES = [
+  { code: "vi", name: "Tiếng Việt", flag: "🇻🇳" },
+  { code: "en", name: "English", flag: "🇺🇸" },
+  { code: "ja", name: "日本語", flag: "🇯🇵" },
+  { code: "ko", name: "한국어", flag: "🇰🇷" },
+  { code: "zh", name: "中文", flag: "🇨🇳" },
+  { code: "fr", name: "Français", flag: "🇫🇷" },
+  { code: "es", name: "Español", flag: "🇪🇸" },
+  { code: "th", name: "ไทย", flag: "🇹🇭" },
+];
+
+const TRANSLATIONS = {
+  // === MENU ===
+  title: { vi: "CÂU CÁ VẠN CÂN", en: "MEGA FISHING", ja: "メガフィッシング", ko: "메가 낚시", zh: "万钧钓鱼", fr: "MÉGA PÊCHE", es: "MEGA PESCA", th: "ตกปลายักษ์" },
+  subtitle: { vi: "Huyền thoại sông nước", en: "Legend of the Waters", ja: "水の伝説", ko: "물의 전설", zh: "水域传说", fr: "Légende des eaux", es: "Leyenda de las aguas", th: "ตำนานแห่งสายน้ำ" },
+  startBtn: { vi: "🎣 Bắt Đầu Câu!", en: "🎣 Start Fishing!", ja: "🎣 釣り開始！", ko: "🎣 낚시 시작!", zh: "🎣 开始钓鱼！", fr: "🎣 Commencer!", es: "🎣 ¡A Pescar!", th: "🎣 เริ่มตกปลา!" },
+  continueBtn: { vi: "⚡ Tiếp tục", en: "⚡ Continue", ja: "⚡ 続ける", ko: "⚡ 계속", zh: "⚡ 继续", fr: "⚡ Continuer", es: "⚡ Continuar", th: "⚡ เล่นต่อ" },
+  menuMap: { vi: "map từ Ao Làng đến Biển Thần", en: "maps from Village Pond to Divine Sea", ja: "マップ: 村の池から神の海まで", ko: "맵: 마을 연못에서 신의 바다까지", zh: "地图：从村塘到神海", fr: "cartes du Bassin au Divin", es: "mapas del Estanque a Mar Divino", th: "แผนที่จากบ่อบ้านถึงทะเลเทพ" },
+  menuCosmic: { vi: "Map vũ trụ đặc biệt!", en: "Special cosmic maps!", ja: "特別な宇宙マップ！", ko: "특별 우주 맵!", zh: "特殊宇宙地图！", fr: "Cartes cosmiques!", es: "¡Mapas cósmicos!", th: "แผนที่จักรวาลพิเศษ!" },
+  menuCrew: { vi: "12 thuyền viên với kỹ năng đặc biệt!", en: "12 crew members with special skills!", ja: "12人の特殊スキル船員！", ko: "특수 스킬 선원 12명!", zh: "12名特殊技能船员！", fr: "12 membres d'équipage!", es: "¡12 tripulantes especiales!", th: "ลูกเรือ 12 คนพร้อมทักษะพิเศษ!" },
+  menuNet: { vi: "Cứ 5 ngày: thử thách bắt cá bằng lưới!", en: "Every 5 days: net fishing challenge!", ja: "5日ごと: 網漁チャレンジ！", ko: "5일마다: 그물 낚시 도전!", zh: "每5天：撒网捕鱼挑战！", fr: "Tous les 5 jours: défi au filet!", es: "Cada 5 días: ¡desafío de red!", th: "ทุก 5 วัน: ท้าทายจับปลาด้วยแห!" },
+  menuAquarium: { vi: "Mở thuỷ cung, bán vé khách tham quan!", en: "Open aquarium, sell visitor tickets!", ja: "水族館を開いてチケット販売！", ko: "수족관 개장, 입장권 판매!", zh: "开水族馆，卖门票！", fr: "Ouvrez un aquarium!", es: "¡Abre un acuario!", th: "เปิดพิพิธภัณฑ์สัตว์น้ำ ขายตั๋ว!" },
+  menuTank: { vi: "Nuôi cá trong bể, bán giá gấp 3!", en: "Raise fish in tank, sell at 3x!", ja: "水槽で魚を育てて3倍で売る！", ko: "수조에서 키워서 3배 판매!", zh: "鱼缸养鱼，3倍卖出！", fr: "Élevez des poissons, vendez ×3!", es: "¡Cría peces, vende a ×3!", th: "เลี้ยงปลาในบ่อ ขาย 3 เท่า!" },
+  menuCage: { vi: "Nhốt thuỷ quái, giá tăng theo thời gian!", en: "Cage monsters, price grows over time!", ja: "怪物を檻に！時間と共に値上がり！", ko: "괴물 가두기, 시간에 따라 가격 상승!", zh: "关怪物，价格随时间增长！", fr: "Enfermez des monstres!", es: "¡Enjaulad monstruos!", th: "ขังสัตว์ประหลาด ราคาเพิ่มตามเวลา!" },
+  menuNight: { vi: "Mỗi đêm: chiến đấu 5 wave hoặc đi ngủ", en: "Each night: fight 5 waves or sleep", ja: "毎晩: 5ウェーブ戦闘か睡眠", ko: "매일 밤: 5웨이브 전투 또는 수면", zh: "每晚：战斗5波或睡觉", fr: "Chaque nuit: 5 vagues ou dormir", es: "Cada noche: 5 oleadas o dormir", th: "ทุกคืน: ต่อสู้ 5 เวฟ หรือนอน" },
+  // === ACTIONS ===
+  eat: { vi: "Ăn", en: "Eat", ja: "食べる", ko: "먹기", zh: "吃", fr: "Manger", es: "Comer", th: "กิน" },
+  sell: { vi: "Bán", en: "Sell", ja: "売る", ko: "판매", zh: "卖", fr: "Vendre", es: "Vender", th: "ขาย" },
+  release: { vi: "Thả", en: "Release", ja: "放す", ko: "놓아주기", zh: "放生", fr: "Relâcher", es: "Soltar", th: "ปล่อย" },
+  tankBtn: { vi: "Bể", en: "Tank", ja: "水槽", ko: "수조", zh: "鱼缸", fr: "Bassin", es: "Tanque", th: "บ่อ" },
+  aquariumBtn: { vi: "Thuỷ Cung", en: "Aquarium", ja: "水族館", ko: "수족관", zh: "水族馆", fr: "Aquarium", es: "Acuario", th: "พิพิธภัณฑ์" },
+  // === SIDEBAR ===
+  upgrade: { vi: "Nâng cần", en: "Upgrade Rod", ja: "竿を強化", ko: "낚싯대 강화", zh: "升级鱼竿", fr: "Améliorer", es: "Mejorar", th: "อัปเกรด" },
+  hireNpc: { vi: "Thuê NPC", en: "Hire NPC", ja: "NPC雇用", ko: "NPC 고용", zh: "雇佣NPC", fr: "Embaucher", es: "Contratar", th: "จ้าง NPC" },
+  fishShop: { vi: "Nâng cấp cá", en: "Fish Upgrades", ja: "魚の強化", ko: "물고기 업그레이드", zh: "鱼类升级", fr: "Améliorations", es: "Mejoras pez", th: "อัปเกรดปลา" },
+  fishTank: { vi: "Bể Cá", en: "Fish Tank", ja: "水槽", ko: "어항", zh: "鱼缸", fr: "Aquarium", es: "Pecera", th: "บ่อปลา" },
+  monsterCage: { vi: "Chuồng Quái", en: "Monster Cage", ja: "モンスター檻", ko: "괴물 우리", zh: "怪物笼", fr: "Cage Monstre", es: "Jaula", th: "กรงสัตว์" },
+  aquariumPanel: { vi: "Thuỷ Cung", en: "Aquarium", ja: "水族館", ko: "수족관", zh: "水族馆", fr: "Aquarium", es: "Acuario", th: "พิพิธภัณฑ์" },
+  crewPanel: { vi: "Thuyền Viên", en: "Crew", ja: "乗組員", ko: "선원", zh: "船员", fr: "Équipage", es: "Tripulación", th: "ลูกเรือ" },
+  mapBtn: { vi: "Bản đồ", en: "Map", ja: "マップ", ko: "지도", zh: "地图", fr: "Carte", es: "Mapa", th: "แผนที่" },
+  menu: { vi: "Menu", en: "Menu", ja: "メニュー", ko: "메뉴", zh: "菜单", fr: "Menu", es: "Menú", th: "เมนู" },
+  // === NIGHT ===
+  nightTitle: { vi: "Màn Đêm Buông!", en: "Night Falls!", ja: "夜が来た！", ko: "밤이 왔다!", zh: "夜幕降临！", fr: "La nuit tombe!", es: "¡Cae la noche!", th: "ค่ำคืนมาถึง!" },
+  fight: { vi: "Chiến Đấu", en: "Fight", ja: "戦闘", ko: "전투", zh: "战斗", fr: "Combattre", es: "Luchar", th: "ต่อสู้" },
+  sleep: { vi: "Đi Ngủ", en: "Sleep", ja: "寝る", ko: "수면", zh: "睡觉", fr: "Dormir", es: "Dormir", th: "นอน" },
+  wave: { vi: "Wave", en: "Wave", ja: "ウェーブ", ko: "웨이브", zh: "波次", fr: "Vague", es: "Oleada", th: "เวฟ" },
+  nightSummary: { vi: "Tổng Kết Đêm", en: "Night Summary", ja: "夜の結果", ko: "밤 결과", zh: "夜间总结", fr: "Résumé nocturne", es: "Resumen nocturno", th: "สรุปกลางคืน" },
+  // === NET ===
+  netTitle: { vi: "Thử Thách Lưới", en: "Net Challenge", ja: "網チャレンジ", ko: "그물 도전", zh: "撒网挑战", fr: "Défi Filet", es: "Desafío Red", th: "ท้าทายแห" },
+  throwNet: { vi: "Click ô để thả lưới", en: "Click to throw net", ja: "クリックして網を投げる", ko: "클릭하여 그물 던지기", zh: "点击投网", fr: "Cliquez pour lancer le filet", es: "Haz clic para lanzar red", th: "คลิกเพื่อทอดแห" },
+  harvest: { vi: "Thu hoạch", en: "Harvest", ja: "収穫", ko: "수확", zh: "收获", fr: "Récolter", es: "Cosechar", th: "เก็บเกี่ยว" },
+  endEarly: { vi: "Kết thúc sớm", en: "End Early", ja: "早期終了", ko: "조기 종료", zh: "提前结束", fr: "Fin anticipée", es: "Terminar antes", th: "จบก่อน" },
+  // === MAP ===
+  mapTitle: { vi: "Bản Đồ Thế Giới", en: "World Map", ja: "ワールドマップ", ko: "월드 맵", zh: "世界地图", fr: "Carte du Monde", es: "Mapa del Mundo", th: "แผนที่โลก" },
+  travel: { vi: "Đi", en: "Go", ja: "移動", ko: "이동", zh: "前往", fr: "Aller", es: "Ir", th: "ไป" },
+  unlock: { vi: "Mở khoá", en: "Unlock", ja: "解放", ko: "해금", zh: "解锁", fr: "Débloquer", es: "Desbloquear", th: "ปลดล็อก" },
+  currentMap: { vi: "Đang ở", en: "Here", ja: "現在地", ko: "현재", zh: "当前", fr: "Ici", es: "Aquí", th: "อยู่ที่นี่" },
+  cosmicMaps: { vi: "VŨ TRỤ — MAP ĐẶC BIỆT", en: "COSMOS — SPECIAL MAPS", ja: "宇宙 — 特別マップ", ko: "우주 — 특별 맵", zh: "宇宙 — 特殊地图", fr: "COSMOS — CARTES SPÉCIALES", es: "COSMOS — MAPAS ESPECIALES", th: "จักรวาล — แผนที่พิเศษ" },
+  // === BATTLE ===
+  victory: { vi: "CHIẾN THẮNG!", en: "VICTORY!", ja: "勝利！", ko: "승리!", zh: "胜利！", fr: "VICTOIRE!", es: "¡VICTORIA!", th: "ชัยชนะ!" },
+  defeat: { vi: "THẤT BẠI...", en: "DEFEAT...", ja: "敗北...", ko: "패배...", zh: "失败...", fr: "DÉFAITE...", es: "DERROTA...", th: "พ่ายแพ้..." },
+  loot: { vi: "Lấy Chiến Lợi Phẩm", en: "Collect Loot", ja: "戦利品を取る", ko: "전리품 획득", zh: "收集战利品", fr: "Récupérer le butin", es: "Recoger botín", th: "เก็บของรางวัล" },
+  sellMonster: { vi: "Bán Quái Ngay", en: "Sell Monster", ja: "モンスターを売る", ko: "괴물 판매", zh: "卖怪物", fr: "Vendre Monstre", es: "Vender Monstruo", th: "ขายสัตว์ประหลาด" },
+  cageMonster: { vi: "Nhốt Chuồng", en: "Cage It", ja: "檻に入れる", ko: "가두기", zh: "关进笼", fr: "Enfermer", es: "Enjaular", th: "ขังกรง" },
+  // === MISC ===
+  day: { vi: "Ngày", en: "Day", ja: "日目", ko: "일째", zh: "天", fr: "Jour", es: "Día", th: "วัน" },
+  turns: { vi: "lượt", en: "turns", ja: "ターン", ko: "턴", zh: "回合", fr: "tours", es: "turnos", th: "เทิร์น" },
+  tooHeavy: { vi: "Cần chưa đủ mạnh, kéo không nổi!", en: "Rod too weak, can't reel it in!", ja: "竿が弱すぎて引き上げられない！", ko: "낚싯대가 약해서 못 끌어올려!", zh: "鱼竿太弱，拉不上来！", fr: "Canne trop faible!", es: "¡Caña muy débil!", th: "เบ็ดอ่อนเกินไป!" },
+  rare: { vi: "HIẾM!", en: "RARE!", ja: "レア！", ko: "레어!", zh: "稀有！", fr: "RARE!", es: "¡RARO!", th: "แรร์!" },
+  cosmic: { vi: "VŨ TRỤ", en: "COSMIC", ja: "宇宙", ko: "우주", zh: "宇宙", fr: "COSMIQUE", es: "CÓSMICO", th: "จักรวาล" },
+  full: { vi: "Đầy!", en: "Full!", ja: "満杯！", ko: "가득!", zh: "满了！", fr: "Plein!", es: "¡Lleno!", th: "เต็ม!" },
+  close: { vi: "Đóng", en: "Close", ja: "閉じる", ko: "닫기", zh: "关闭", fr: "Fermer", es: "Cerrar", th: "ปิด" },
+  cont: { vi: "Tiếp tục", en: "Continue", ja: "続ける", ko: "계속", zh: "继续", fr: "Continuer", es: "Continuar", th: "ต่อไป" },
+  sellAll: { vi: "Bán hết", en: "Sell All", ja: "全部売る", ko: "전부 판매", zh: "全部卖", fr: "Tout vendre", es: "Vender todo", th: "ขายทั้งหมด" },
+  language: { vi: "Ngôn ngữ", en: "Language", ja: "言語", ko: "언어", zh: "语言", fr: "Langue", es: "Idioma", th: "ภาษา" },
+  newDay: { vi: "Bắt đầu ngày mới!", en: "Start new day!", ja: "新しい日の始まり！", ko: "새로운 하루 시작!", zh: "开始新的一天！", fr: "Nouveau jour!", es: "¡Nuevo día!", th: "เริ่มวันใหม่!" },
+  dawn: { vi: "Bình minh ngày", en: "Dawn of day", ja: "夜明け", ko: "새벽", zh: "黎明", fr: "Aube jour", es: "Amanecer día", th: "รุ่งอรุณวัน" },
+  nightResult: { vi: "Kết quả đêm qua:", en: "Last night's results:", ja: "昨夜の結果：", ko: "어젯밤 결과:", zh: "昨夜结果：", fr: "Résultats de la nuit:", es: "Resultados nocturnos:", th: "ผลคืนที่ผ่านมา:" },
+  won: { vi: "Thắng", en: "Won", ja: "勝ち", ko: "승리", zh: "胜", fr: "Gagné", es: "Ganado", th: "ชนะ" },
+};
+
+const CAN_MAX = [50, 150, 500, 2000, 99999];
+
+const CREW_MEMBERS = [
+  { id: "fisher",   name: "Ngư Dân Lão Luyện", icon: "👨‍🌾", cost: 500,    desc: "Câu thêm 1 cá mỗi lượt", bonus: { type: "fish", value: 1 } },
+  { id: "warrior",  name: "Chiến Binh Biển",   icon: "⚔️", cost: 1000,   desc: "+50 sức chiến ban đêm", bonus: { type: "nightPower", value: 50 } },
+  { id: "merchant", name: "Thương Nhân",       icon: "💼", cost: 1500,   desc: "Bán cá +20% NC", bonus: { type: "sellBonus", value: 0.2 } },
+  { id: "trainer",  name: "Huấn Luyện Viên Cá",icon: "🐬", cost: 2000,   desc: "Cá chiến đấu +30 sức", bonus: { type: "fishPower", value: 30 } },
+  { id: "scout",    name: "Trinh Sát",         icon: "🔭", cost: 800,    desc: "Thấy cá xa hơn, +2 cá/map", bonus: { type: "extraFish", value: 2 } },
+  { id: "healer",   name: "Thầy Thuốc",        icon: "💊", cost: 1200,   desc: "Hồi 10 SM mỗi 3 lượt", bonus: { type: "heal", value: 10 } },
+  { id: "pirate",   name: "Hải Tặc",           icon: "🏴‍☠️", cost: 3000,   desc: "Kho báu thả cá +50% NC", bonus: { type: "treasureBonus", value: 0.5 } },
+  { id: "mermaid",  name: "Nàng Tiên Cá",      icon: "🧜‍♀️", cost: 5000,   desc: "Thả cá 80% kho báu (thay 70%)", bonus: { type: "treasureChance", value: 0.1 } },
+  { id: "diver",    name: "Thợ Lặn",           icon: "🤿", cost: 2500,   desc: "Cần câu +500kg tải trọng", bonus: { type: "rodBonus", value: 500 } },
+  { id: "chef",     name: "Đầu Bếp",           icon: "👨‍🍳", cost: 1800,   desc: "Ăn cá +50% SM", bonus: { type: "eatBonus", value: 0.5 } },
+  { id: "shaman",   name: "Phù Thuỷ Biển",     icon: "🧙", cost: 8000,   desc: "+100 sức đêm, cá +50 sức", bonus: { type: "allPower", value: 1 } },
+  { id: "king",     name: "Vua Đại Dương",      icon: "👑", cost: 20000,  desc: "Tất cả bonus x1.5", bonus: { type: "multiply", value: 1.5 } },
+  // === NHÓM CHIẾN ĐẤU ===
+  { id: "ninja",      name: "Ninja Biển",          icon: "🥷",  cost: 25000,    desc: "+80 sức chiến ban đêm", bonus: { type: "nightPower", value: 80 } },
+  { id: "samurai",    name: "Samurai Hải",          icon: "⚔️",  cost: 32000,    desc: "Cá chiến đấu +60 sức", bonus: { type: "fishPower", value: 60 } },
+  { id: "archer",     name: "Cung Thủ Biển",        icon: "🏹",  cost: 28000,    desc: "+100 sức chiến ban đêm", bonus: { type: "nightPower", value: 100 } },
+  { id: "knight",     name: "Kỵ Sĩ Đại Dương",      icon: "🛡️",  cost: 40000,    desc: "Cá chiến đấu +80 sức", bonus: { type: "fishPower", value: 80 } },
+  { id: "assassin",   name: "Sát Thủ Bóng Tối",     icon: "🗡️",  cost: 55000,    desc: "+150 sức chiến ban đêm", bonus: { type: "nightPower", value: 150 } },
+  { id: "berserker",  name: "Chiến Binh Cuồng Nộ",  icon: "😤",  cost: 70000,    desc: "+200 sức chiến ban đêm", bonus: { type: "nightPower", value: 200 } },
+  { id: "paladin",    name: "Hiệp Sĩ Ánh Sáng",     icon: "🌟",  cost: 90000,    desc: "Cá chiến đấu +120 sức", bonus: { type: "fishPower", value: 120 } },
+  { id: "warlord",    name: "Thống Soái Chiến Tranh",icon: "🪖",  cost: 120000,   desc: "+300 sức chiến ban đêm", bonus: { type: "nightPower", value: 300 } },
+  { id: "dragonknight",name: "Kỵ Sĩ Rồng",         icon: "🐲",  cost: 180000,   desc: "Cá chiến đấu +200 sức, +100 đêm", bonus: { type: "allPower", value: 2 } },
+  { id: "godwarrior", name: "Chiến Thần",            icon: "⚡",  cost: 300000,   desc: "+500 sức chiến ban đêm", bonus: { type: "nightPower", value: 500 } },
+  // === NHÓM KINH DOANH ===
+  { id: "broker",     name: "Môi Giới Tài Chính",   icon: "💹",  cost: 35000,    desc: "Bán cá +30% NC", bonus: { type: "sellBonus", value: 0.3 } },
+  { id: "banker",     name: "Chủ Ngân Hàng",         icon: "🏦",  cost: 50000,    desc: "Bán cá +40% NC", bonus: { type: "sellBonus", value: 0.4 } },
+  { id: "trader",     name: "Thương Gia Quốc Tế",    icon: "🌍",  cost: 75000,    desc: "Bán cá +50% NC", bonus: { type: "sellBonus", value: 0.5 } },
+  { id: "tycoon",     name: "Tỷ Phú Đại Dương",      icon: "🤑",  cost: 120000,   desc: "Bán cá +70% NC", bonus: { type: "sellBonus", value: 0.7 } },
+  { id: "mogul",      name: "Đại Gia Biển Cả",       icon: "💰",  cost: 200000,   desc: "Bán cá +100% NC", bonus: { type: "sellBonus", value: 1.0 } },
+  { id: "emperor_merchant", name: "Hoàng Đế Thương Mại", icon: "👘", cost: 350000, desc: "Bán cá +150% NC", bonus: { type: "sellBonus", value: 1.5 } },
+  { id: "goldking",   name: "Vua Vàng",               icon: "🥇",  cost: 600000,   desc: "Bán cá +200% NC", bonus: { type: "sellBonus", value: 2.0 } },
+  // === NHÓM THUYỀN CÁ ===
+  { id: "fishmaster", name: "Đại Sư Câu Cá",         icon: "🎣",  cost: 30000,    desc: "Câu thêm 2 cá mỗi lượt", bonus: { type: "fish", value: 2 } },
+  { id: "netmaster",  name: "Cao Thủ Lưới",          icon: "🕸️",  cost: 45000,    desc: "Câu thêm 3 cá mỗi lượt", bonus: { type: "fish", value: 3 } },
+  { id: "oceanfisher",name: "Ngư Dân Đại Dương",     icon: "🌊",  cost: 65000,    desc: "Câu thêm 4 cá mỗi lượt", bonus: { type: "fish", value: 4 } },
+  { id: "legendfisher",name: "Huyền Thoại Câu Cá",  icon: "🏆",  cost: 100000,   desc: "Câu thêm 5 cá mỗi lượt", bonus: { type: "fish", value: 5 } },
+  { id: "godangler",  name: "Thần Câu Cá",           icon: "🎏",  cost: 180000,   desc: "Câu thêm 7 cá mỗi lượt", bonus: { type: "fish", value: 7 } },
+  { id: "cosmicfisher",name: "Vũ Trụ Ngư Ông",      icon: "🌌",  cost: 350000,   desc: "Câu thêm 10 cá mỗi lượt", bonus: { type: "fish", value: 10 } },
+  // === NHÓM Y TẾ & HỒI PHỤC ===
+  { id: "doctor",     name: "Bác Sĩ Hải Quân",       icon: "👨‍⚕️", cost: 22000,   desc: "Hồi 20 SM mỗi 3 lượt", bonus: { type: "heal", value: 20 } },
+  { id: "surgeon",    name: "Phẫu Thuật Viên",        icon: "🏥",  cost: 38000,    desc: "Hồi 35 SM mỗi 3 lượt", bonus: { type: "heal", value: 35 } },
+  { id: "herbalist",  name: "Lương Y Thảo Dược",      icon: "🌿",  cost: 55000,    desc: "Hồi 50 SM mỗi 3 lượt", bonus: { type: "heal", value: 50 } },
+  { id: "alchemist",  name: "Giả Kim Thuật Sư",       icon: "⚗️",  cost: 80000,    desc: "Hồi 80 SM mỗi 3 lượt", bonus: { type: "heal", value: 80 } },
+  { id: "archealer",  name: "Đại Pháp Sư Chữa Trị",  icon: "💚",  cost: 130000,   desc: "Hồi 120 SM mỗi 3 lượt", bonus: { type: "heal", value: 120 } },
+  { id: "divinehealer",name: "Thần Y",                icon: "✨",  cost: 220000,   desc: "Hồi 200 SM mỗi 3 lượt", bonus: { type: "heal", value: 200 } },
+  { id: "immortalhealer",name: "Bất Tử Thần Y",      icon: "💎",  cost: 400000,   desc: "Hồi 350 SM mỗi 3 lượt", bonus: { type: "heal", value: 350 } },
+  // === NHÓM THÁM HIỂM ===
+  { id: "explorer",   name: "Nhà Thám Hiểm",         icon: "🧭",  cost: 27000,    desc: "+3 cá/map thêm", bonus: { type: "extraFish", value: 3 } },
+  { id: "navigator",  name: "Hoa Tiêu Đại Dương",    icon: "⛵",  cost: 42000,    desc: "+4 cá/map thêm", bonus: { type: "extraFish", value: 4 } },
+  { id: "cartographer",name: "Người Vẽ Bản Đồ",     icon: "🗺️",  cost: 62000,    desc: "+5 cá/map thêm", bonus: { type: "extraFish", value: 5 } },
+  { id: "voyager",    name: "Thuỷ Thủ Viễn Dương",   icon: "🚢",  cost: 90000,    desc: "+6 cá/map thêm", bonus: { type: "extraFish", value: 6 } },
+  { id: "pathfinder", name: "Người Mở Đường",         icon: "🌐",  cost: 140000,   desc: "+8 cá/map thêm", bonus: { type: "extraFish", value: 8 } },
+  { id: "legendexplorer",name: "Thám Tử Vũ Trụ",    icon: "🔭",  cost: 250000,   desc: "+12 cá/map thêm", bonus: { type: "extraFish", value: 12 } },
+  // === NHÓM ĐẦU BẾP & ẨM THỰC ===
+  { id: "chef2",      name: "Đầu Bếp Ngôi Sao",      icon: "⭐",  cost: 30000,    desc: "Ăn cá +80% SM", bonus: { type: "eatBonus", value: 0.8 } },
+  { id: "masterchef", name: "Master Chef Biển",       icon: "🍱",  cost: 50000,    desc: "Ăn cá +120% SM", bonus: { type: "eatBonus", value: 1.2 } },
+  { id: "cuisineking",name: "Vua Ẩm Thực",            icon: "🍽️",  cost: 85000,    desc: "Ăn cá +180% SM", bonus: { type: "eatBonus", value: 1.8 } },
+  { id: "godchef",    name: "Thần Ẩm Thực",           icon: "🥘",  cost: 150000,   desc: "Ăn cá +250% SM", bonus: { type: "eatBonus", value: 2.5 } },
+  { id: "cosmicchef", name: "Đầu Bếp Vũ Trụ",        icon: "🌟",  cost: 280000,   desc: "Ăn cá +400% SM", bonus: { type: "eatBonus", value: 4.0 } },
+  // === NHÓM KHO BÁU & VẬN MAY ===
+  { id: "pirate2",    name: "Hải Tặc Huyền Thoại",   icon: "☠️",  cost: 40000,    desc: "Kho báu thả cá +80% NC", bonus: { type: "treasureBonus", value: 0.8 } },
+  { id: "treasurehunter",name: "Thợ Săn Kho Báu",    icon: "💎",  cost: 60000,    desc: "Kho báu thả cá +120% NC", bonus: { type: "treasureBonus", value: 1.2 } },
+  { id: "golddigger", name: "Người Đào Vàng",         icon: "⛏️",  cost: 90000,    desc: "Kho báu thả cá +180% NC", bonus: { type: "treasureBonus", value: 1.8 } },
+  { id: "fortuneking",name: "Vua May Mắn",            icon: "🍀",  cost: 150000,   desc: "Kho báu thả cá +260% NC", bonus: { type: "treasureBonus", value: 2.6 } },
+  { id: "luckgod",    name: "Thần May Mắn",           icon: "🎰",  cost: 250000, desc: "Kho báu thả cá +400% NC", bonus: { type: "treasureBonus", value: 4.0 } },
+  { id: "mermaid2",   name: "Tiên Cá Cổ Đại",        icon: "🧜",  cost: 80000,    desc: "Thả cá 90% kho báu", bonus: { type: "treasureChance", value: 0.2 } },
+  { id: "siren",      name: "Nữ Thần Siren",          icon: "🎵",  cost: 130000,   desc: "Thả cá 95% kho báu", bonus: { type: "treasureChance", value: 0.25 } },
+  // === NHÓM KỸ THUẬT ===
+  { id: "engineer",   name: "Kỹ Sư Hải Thuyền",      icon: "🔧",  cost: 33000,    desc: "Cần câu +1000kg tải trọng", bonus: { type: "rodBonus", value: 1000 } },
+  { id: "mechanic",   name: "Thợ Cơ Khí Đại Dương",  icon: "⚙️",  cost: 55000,    desc: "Cần câu +1800kg tải trọng", bonus: { type: "rodBonus", value: 1800 } },
+  { id: "inventor",   name: "Nhà Phát Minh",          icon: "💡",  cost: 85000,    desc: "Cần câu +3000kg tải trọng", bonus: { type: "rodBonus", value: 3000 } },
+  { id: "scientist",  name: "Nhà Khoa Học Biển",      icon: "🔬",  cost: 130000,   desc: "Cần câu +5000kg tải trọng", bonus: { type: "rodBonus", value: 5000 } },
+  { id: "genius",     name: "Thiên Tài Công Nghệ",    icon: "🧪",  cost: 220000,   desc: "Cần câu +9000kg tải trọng", bonus: { type: "rodBonus", value: 9000 } },
+  { id: "techgod",    name: "Thần Công Nghệ",         icon: "🤖",  cost: 400000,   desc: "Cần câu +15000kg tải trọng", bonus: { type: "rodBonus", value: 15000 } },
+  // === NHÓM PHÉP THUẬT ===
+  { id: "wizard",     name: "Phù Thuỷ Đại Pháp",     icon: "🧙‍♂️", cost: 45000,   desc: "+160 sức đêm, cá +80 sức", bonus: { type: "allPower", value: 1.5 } },
+  { id: "warlock",    name: "Phù Thuỷ Hắc Ám",       icon: "🌑",  cost: 75000,    desc: "+250 sức đêm, cá +120 sức", bonus: { type: "allPower", value: 2.5 } },
+  { id: "archmage",   name: "Đại Pháp Sư Tối Cao",   icon: "🔮",  cost: 120000,   desc: "+400 sức đêm, cá +200 sức", bonus: { type: "allPower", value: 4 } },
+  { id: "sorcerer",   name: "Thuật Sĩ Vũ Trụ",       icon: "🌌",  cost: 200000,   desc: "+600 sức đêm, cá +300 sức", bonus: { type: "allPower", value: 6 } },
+  { id: "prophet",    name: "Tiên Tri Đại Hải",       icon: "📿",  cost: 350000,   desc: "+1000 sức đêm, cá +500 sức", bonus: { type: "allPower", value: 10 } },
+  { id: "demigod",    name: "Bán Thần Biển",          icon: "⚡",  cost: 600000,   desc: "+1800 sức đêm, cá +900 sức", bonus: { type: "allPower", value: 18 } },
+  // === NHÓM THẦN THÁNH ===
+  { id: "zeus",       name: "Zeus Biển",              icon: "⛈️",  cost: 1000000,  desc: "Tất cả bonus x2", bonus: { type: "multiply", value: 2.0 } },
+  { id: "poseidon",   name: "Poseidon Vương",         icon: "🔱",  cost: 2000000,  desc: "Tất cả bonus x2.5", bonus: { type: "multiply", value: 2.5 } },
+  { id: "odin",       name: "Odin Toàn Trí",          icon: "🪄",  cost: 3500000,  desc: "Tất cả bonus x3", bonus: { type: "multiply", value: 3.0 } },
+  { id: "thor",       name: "Thor Búa Sấm",           icon: "🔨",  cost: 5000000,  desc: "+2000 sức chiến ban đêm", bonus: { type: "nightPower", value: 2000 } },
+  { id: "loki",       name: "Loki Biến Hoá",          icon: "🃏",  cost: 7000000,  desc: "Tất cả bonus x3.5", bonus: { type: "multiply", value: 3.5 } },
+  { id: "vishnu",     name: "Vishnu Bảo Hộ",         icon: "🪷",  cost: 10000000, desc: "Hồi 1000 SM mỗi 3 lượt", bonus: { type: "heal", value: 1000 } },
+  { id: "shiva",      name: "Shiva Huỷ Diệt",        icon: "🕉️",  cost: 15000000, desc: "+5000 sức chiến ban đêm", bonus: { type: "nightPower", value: 5000 } },
+  { id: "brahma",     name: "Brahma Sáng Tạo",        icon: "🌺",  cost: 20000000, desc: "Câu thêm 20 cá mỗi lượt", bonus: { type: "fish", value: 20 } },
+  { id: "ra",         name: "Ra Thần Mặt Trời",       icon: "☀️",  cost: 30000000, desc: "Tất cả bonus x4", bonus: { type: "multiply", value: 4.0 } },
+  { id: "anubis",     name: "Anubis Hải Minh",        icon: "🐾",  cost: 50000000, desc: "+10000 sức chiến ban đêm", bonus: { type: "nightPower", value: 10000 } },
+  // === NHÓM THẦN VIỆT NAM ===
+  { id: "longthanh",  name: "Long Thành Đại Vương",   icon: "🐉",  cost: 8000000,  desc: "Câu thêm 15 cá mỗi lượt", bonus: { type: "fish", value: 15 } },
+  { id: "laclong",    name: "Lạc Long Quân",          icon: "🦅",  cost: 12000000, desc: "Tất cả bonus x3.2", bonus: { type: "multiply", value: 3.2 } },
+  { id: "auco",       name: "Âu Cơ Tiên Nữ",         icon: "🦢",  cost: 18000000, desc: "Hồi 500 SM mỗi 3 lượt, +10 cá", bonus: { type: "allPower", value: 15 } },
+  { id: "thanhgiong", name: "Thánh Gióng Thiên Binh", icon: "⚔️",  cost: 25000000, desc: "+8000 sức chiến ban đêm", bonus: { type: "nightPower", value: 8000 } },
+  { id: "tansythuy",  name: "Thuỷ Tinh Thần",         icon: "🌊",  cost: 40000000, desc: "Bán cá +500% NC", bonus: { type: "sellBonus", value: 5.0 } },
+  // === NHÓM THIÊN VĂN ===
+  { id: "astronomer", name: "Nhà Thiên Văn",           icon: "🔭",  cost: 55000000, desc: "+12 cá/map, bán +80%", bonus: { type: "extraFish", value: 12 } },
+  { id: "cosmologist",name: "Nhà Vũ Trụ Học",         icon: "🌌",  cost: 80000000, desc: "Tất cả bonus x4.5", bonus: { type: "multiply", value: 4.5 } },
+  { id: "stargod",    name: "Thần Sao Vũ Trụ",        icon: "⭐",  cost: 130000000,desc: "+20000 sức đêm, cá +10000 sức", bonus: { type: "allPower", value: 50 } },
+  { id: "galaxyking", name: "Vua Thiên Hà",           icon: "🌠",  cost: 220000000,desc: "Tất cả bonus x5", bonus: { type: "multiply", value: 5.0 } },
+  { id: "universelord",name: "Chúa Tể Vũ Trụ",       icon: "🔮",  cost: 400000000,desc: "Câu thêm 30 cá mỗi lượt", bonus: { type: "fish", value: 30 } },
+  // === NHÓM SIÊU ANH HÙNG ===
+  { id: "speedster",  name: "Thần Tốc Hải",           icon: "⚡",  cost: 600000000,desc: "Tất cả bonus x5.5", bonus: { type: "multiply", value: 5.5 } },
+  { id: "titan",      name: "Titan Đại Dương",         icon: "💪",  cost: 1000000000,desc: "+50000 sức chiến ban đêm", bonus: { type: "nightPower", value: 50000 } },
+  { id: "colossus",   name: "Người Khổng Lồ Biển",    icon: "🗿",  cost: 1500000000,desc: "Cần câu +100000kg tải trọng", bonus: { type: "rodBonus", value: 100000 } },
+  { id: "phoenix",    name: "Phượng Hoàng Lửa",       icon: "🦅",  cost: 2500000000,desc: "Hồi 5000 SM mỗi 3 lượt", bonus: { type: "heal", value: 5000 } },
+  { id: "dragonlord", name: "Long Vương Tối Thượng",  icon: "🐲",  cost: 4000000000,desc: "Tất cả bonus x6", bonus: { type: "multiply", value: 6.0 } },
+  // === NHÓM HUYỀN THOẠI ===
+  { id: "leviathan_ally",name: "Đồng Minh Leviathan", icon: "🐉",  cost: 7000000000,desc: "+200000 sức chiến ban đêm", bonus: { type: "nightPower", value: 200000 } },
+  { id: "kraken_ally",name: "Đồng Minh Kraken",       icon: "🐙",  cost: 10000000000,desc: "Câu thêm 50 cá mỗi lượt", bonus: { type: "fish", value: 50 } },
+  { id: "cthulhu_ally",name: "Tôi Tớ Cthulhu",       icon: "👾",  cost: 20000000000,desc: "Tất cả bonus x7", bonus: { type: "multiply", value: 7.0 } },
+  { id: "godfish",    name: "Thần Cá Tối Thượng",     icon: "🐋",  cost: 40000000000,desc: "Bán cá +1000% NC", bonus: { type: "sellBonus", value: 10.0 } },
+  { id: "oceanspirit",name: "Linh Hồn Đại Dương",    icon: "🌊",  cost: 80000000000,desc: "Tất cả bonus x8", bonus: { type: "multiply", value: 8.0 } },
+  // === NHÓM VŨ TRỤ ===
+  { id: "blackhole_ally",name: "Hố Đen Liên Minh",   icon: "🕳️",  cost: 150000000000,desc: "+1000000 sức chiến ban đêm", bonus: { type: "nightPower", value: 1000000 } },
+  { id: "starbeing",  name: "Sinh Vật Tinh Tú",       icon: "✨",  cost: 300000000000,desc: "Câu thêm 100 cá mỗi lượt", bonus: { type: "fish", value: 100 } },
+  { id: "voidlord",   name: "Chúa Tể Hư Vô",         icon: "◻️",  cost: 600000000000,desc: "Tất cả bonus x9", bonus: { type: "multiply", value: 9.0 } },
+  { id: "cosmicdragon",name: "Rồng Vũ Trụ",          icon: "🌌",  cost: 1200000000000,desc: "Cần câu +10000000kg tải trọng", bonus: { type: "rodBonus", value: 10000000 } },
+  { id: "multiverseking",name: "Vua Đa Vũ Trụ",      icon: "🔮",  cost: 2500000000000,desc: "Tất cả bonus x10", bonus: { type: "multiply", value: 10.0 } },
+  // === NHÓM SIÊU VIỆT ===
+  { id: "timemaster", name: "Chủ Nhân Thời Gian",     icon: "⏳",  cost: 5000000000000,desc: "Tất cả bonus x12", bonus: { type: "multiply", value: 12.0 } },
+  { id: "realitybender",name: "Bẻ Cong Thực Tại",    icon: "🎭",  cost: 10000000000000,desc: "Câu thêm 200 cá mỗi lượt", bonus: { type: "fish", value: 200 } },
+  { id: "dimensionlord",name: "Chúa Tể Chiều Không Gian",icon:"🔲",cost: 20000000000000,desc: "Tất cả bonus x15", bonus: { type: "multiply", value: 15.0 } },
+  { id: "omegabeing", name: "Thực Thể Omega",          icon: "Ω",   cost: 50000000000000,desc: "Bán cá +3000% NC", bonus: { type: "sellBonus", value: 30.0 } },
+  { id: "infinityone",name: "Đấng Vô Cực",            icon: "∞",   cost: 100000000000000,desc: "Tất cả bonus x20", bonus: { type: "multiply", value: 20.0 } },
+  // === NHÓM TỐI THƯỢNG ===
+  { id: "alpha",      name: "Alpha — Khởi Nguồn",     icon: "🌱",  cost: 200000000000000,desc: "Tất cả bonus x25", bonus: { type: "multiply", value: 25.0 } },
+  { id: "omega_final",name: "Omega — Tận Cùng",       icon: "🌑",  cost: 500000000000000,desc: "Tất cả bonus x30", bonus: { type: "multiply", value: 30.0 } },
+  { id: "ouroboros",  name: "Ouroboros Hải",          icon: "🐍",  cost: 1e15, desc: "Câu thêm 500 cá mỗi lượt", bonus: { type: "fish", value: 500 } },
+  { id: "akasha",     name: "Akasha Vô Cực",          icon: "🌟",  cost: 2e15, desc: "Tất cả bonus x40", bonus: { type: "multiply", value: 40.0 } },
+  { id: "brahman_ally",name: "Brahman Tối Thượng",    icon: "🕉️",  cost: 5e15, desc: "Tất cả bonus x50", bonus: { type: "multiply", value: 50.0 } },
+  // === NHÓM CUỐI CÙNG ===
+  { id: "creatorfish",name: "Đấng Sáng Tạo Cá",      icon: "🐟",  cost: 1e16, desc: "Câu thêm 1000 cá mỗi lượt", bonus: { type: "fish", value: 1000 } },
+  { id: "destroyerfish",name: "Kẻ Huỷ Diệt Biển",    icon: "💥",  cost: 2e16, desc: "Tất cả bonus x60", bonus: { type: "multiply", value: 60.0 } },
+  { id: "preserverfish",name: "Đấng Bảo Tồn Biển",   icon: "🌊",  cost: 5e16, desc: "Hồi 100000 SM mỗi 3 lượt", bonus: { type: "heal", value: 100000 } },
+  { id: "absolutegod",name: "Thần Tuyệt Đối",         icon: "☀️",  cost: 1e17, desc: "Tất cả bonus x100", bonus: { type: "multiply", value: 100.0 } },
+  { id: "infinityfisher",name: "∞ Ngư Ông Vô Cực ∞", icon: "🎣",  cost: 1e18, desc: "Tất cả bonus x1000", bonus: { type: "multiply", value: 1000.0 } },
+];
+
+const MAP_DATA = [
+  { id: 1,  name: "Ao Làng",         icon: "🏡", size: 4, fishCount: 4,  fishMult: 1,    monsterBoost: 0,   unlockCost: 0,     color: "#0c1929", water: "🌊", desc: "Ao nước nhỏ bình yên" },
+  { id: 2,  name: "Sông Quê",        icon: "🏞️", size: 5, fishCount: 5,  fishMult: 1.2,  monsterBoost: 5,   unlockCost: 200,   color: "#0d2137", water: "💧", desc: "Dòng sông hiền hòa" },
+  { id: 3,  name: "Hồ Sen",          icon: "🪷", size: 5, fishCount: 6,  fishMult: 1.5,  monsterBoost: 10,  unlockCost: 500,   color: "#132744", water: "🪷", desc: "Hồ sen thơm ngát" },
+  { id: 4,  name: "Đầm Lầy",         icon: "🐊", size: 6, fishCount: 7,  fishMult: 1.8,  monsterBoost: 15,  unlockCost: 1000,  color: "#1a3c1a", water: "🌿", desc: "Đầm lầy hoang dã" },
+  { id: 5,  name: "Sông Mekong",     icon: "🐟", size: 6, fishCount: 8,  fishMult: 2.0,  monsterBoost: 20,  unlockCost: 2000,  color: "#1a3a5c", water: "🌊", desc: "Dòng sông hùng vĩ" },
+  { id: 6,  name: "Vịnh Xanh",       icon: "🏖️", size: 6, fishCount: 8,  fishMult: 2.5,  monsterBoost: 30,  unlockCost: 4000,  color: "#0e4166", water: "🐚", desc: "Vịnh nước trong vắt" },
+  { id: 7,  name: "Biển Đông",       icon: "⛵", size: 7, fishCount: 9,  fishMult: 3.0,  monsterBoost: 40,  unlockCost: 7000,  color: "#0a3060", water: "⛵", desc: "Biển rộng sóng lớn" },
+  { id: 8,  name: "Rạn San Hô",      icon: "🪸", size: 7, fishCount: 10, fishMult: 3.5,  monsterBoost: 50,  unlockCost: 12000, color: "#1a4a5c", water: "🪸", desc: "Rạn san hô rực rỡ" },
+  { id: 9,  name: "Hang Hải Tặc",    icon: "🏴‍☠️", size: 7, fishCount: 10, fishMult: 4.0,  monsterBoost: 65,  unlockCost: 20000, color: "#2d1b3e", water: "💀", desc: "Hang ổ hải tặc cổ" },
+  { id: 10, name: "Vực Sâu",         icon: "🕳️", size: 8, fishCount: 11, fishMult: 5.0,  monsterBoost: 80,  unlockCost: 35000, color: "#0a0a2e", water: "🌀", desc: "Vực sâu thăm thẳm" },
+  { id: 11, name: "Biển Băng",       icon: "🧊", size: 8, fishCount: 11, fishMult: 6.0,  monsterBoost: 100, unlockCost: 55000, color: "#0c2a4a", water: "❄️", desc: "Biển băng giá lạnh" },
+  { id: 12, name: "Núi Lửa Ngầm",   icon: "🌋", size: 8, fishCount: 12, fishMult: 7.0,  monsterBoost: 120, unlockCost: 80000, color: "#3a0a0a", water: "🔥", desc: "Miệng núi lửa dưới biển" },
+  { id: 13, name: "Xoáy Bermuda",    icon: "🌀", size: 8, fishCount: 12, fishMult: 8.0,  monsterBoost: 150, unlockCost: 120000, color: "#1a0a3e", water: "🌀", desc: "Tam giác quỷ Bermuda" },
+  { id: 14, name: "Atlantis",        icon: "🏛️", size: 9, fishCount: 13, fishMult: 10.0, monsterBoost: 180, unlockCost: 180000, color: "#0a2a3e", water: "🏛️", desc: "Thành phố chìm Atlantis" },
+  { id: 15, name: "Rãnh Mariana",    icon: "⬇️", size: 9, fishCount: 14, fishMult: 12.0, monsterBoost: 220, unlockCost: 250000, color: "#050520", water: "👁️", desc: "Nơi sâu nhất đại dương" },
+  { id: 16, name: "Biển Ngoài Hành Tinh", icon: "👽", size: 9, fishCount: 14, fishMult: 15.0, monsterBoost: 270, unlockCost: 400000, color: "#0a192f", water: "✨", desc: "Biển trên hành tinh khác" },
+  { id: 17, name: "Hố Đen Biển",     icon: "🕳️", size: 10, fishCount: 15, fishMult: 18.0, monsterBoost: 330, unlockCost: 600000, color: "#050510", water: "💫", desc: "Hố đen dưới lòng biển" },
+  { id: 18, name: "Biển Linh Hồn",   icon: "👻", size: 10, fishCount: 15, fishMult: 22.0, monsterBoost: 400, unlockCost: 900000, color: "#1a0a2e", water: "👻", desc: "Biển của linh hồn lạc" },
+  { id: 19, name: "Vùng Cthulhu",    icon: "🐙", size: 10, fishCount: 16, fishMult: 28.0, monsterBoost: 500, unlockCost: 1500000, color: "#0d0d1a", water: "🐙", desc: "Lãnh địa Cthulhu" },
+  { id: 20, name: "Biển Thần",       icon: "⚡", size: 10, fishCount: 18, fishMult: 35.0, monsterBoost: 666, unlockCost: 3000000, color: "#1a0a0a", water: "⚡", desc: "Biển cuối cùng — Thần cá" },
+  // === VŨ TRỤ — MAP ĐẶC BIỆT ===
+  { id: 21, name: "Hồ Trên Mặt Trăng",    icon: "🌙", size: 8,  fishCount: 12, fishMult: 50.0,  monsterBoost: 800,  unlockCost: 5000000,  color: "#0a0a1e", water: "🌙", desc: "Hồ nước bí ẩn trên Mặt Trăng", cosmic: true },
+  { id: 22, name: "Biển Sao Hoả",          icon: "🔴", size: 9,  fishCount: 14, fishMult: 75.0,  monsterBoost: 1000, unlockCost: 10000000, color: "#2a0a0a", water: "🔴", desc: "Đại dương ngầm dưới bề mặt Sao Hoả", cosmic: true },
+  { id: 23, name: "Đại Dương Europa",       icon: "🪐", size: 10, fishCount: 16, fishMult: 100.0, monsterBoost: 1500, unlockCost: 25000000, color: "#0a1a2e", water: "🪐", desc: "Đại dương dưới lớp băng vệ tinh Europa", cosmic: true },
+  { id: 24, name: "Tinh Vân Cá",           icon: "🌌", size: 11, fishCount: 20, fishMult: 200.0, monsterBoost: 2500, unlockCost: 50000000, color: "#0d0520", water: "🌌", desc: "Tinh vân hình cá, câu giữa các vì sao", cosmic: true },
+  { id: 25, name: "Biển Đa Vũ Trụ",       icon: "🔮", size: 12, fishCount: 25, fishMult: 500.0, monsterBoost: 5000, unlockCost: 100000000, color: "#050008", water: "🔮", desc: "Biển nối các vũ trụ song song — Cá Thần Tối Thượng", cosmic: true },
+  // === ĐỊA NGỤC & HUYỀN BÍ ===
+  { id: 26, name: "Đầm Địa Ngục",         icon: "🔥", size: 10, fishCount: 18, fishMult: 700,    monsterBoost: 7000,  unlockCost: 200000000,    color: "#1a0000", water: "🔥", desc: "Đầm lửa dưới lòng địa ngục", cosmic: true },
+  { id: 27, name: "Sông Styx",            icon: "💀", size: 10, fishCount: 18, fishMult: 950,    monsterBoost: 8500,  unlockCost: 400000000,    color: "#0d0010", water: "💀", desc: "Sông chia cách sống và chết", cosmic: true },
+  { id: 28, name: "Hồ Tar Pitch",         icon: "🌑", size: 11, fishCount: 19, fishMult: 1300,   monsterBoost: 10000, unlockCost: 800000000,    color: "#050005", water: "🌑", desc: "Hồ hắc ín bí ẩn không đáy", cosmic: true },
+  { id: 29, name: "Biển Máu",             icon: "🩸", size: 11, fishCount: 20, fishMult: 1800,   monsterBoost: 13000, unlockCost: 1500000000,   color: "#1a0000", water: "🩸", desc: "Biển máu từ trận chiến thần linh", cosmic: true },
+  { id: 30, name: "Vực Tartarus",         icon: "⛓️", size: 11, fishCount: 20, fishMult: 2500,   monsterBoost: 17000, unlockCost: 3000000000,   color: "#000005", water: "⛓️", desc: "Ngục thẳm dưới địa ngục Hy Lạp", cosmic: true },
+  // === THẦN THOẠI VIỆT NAM ===
+  { id: 31, name: "Hồ Hoàn Kiếm",        icon: "🗡️", size: 10, fishCount: 19, fishMult: 3500,   monsterBoost: 22000, unlockCost: 5000000000,   color: "#0a2a1a", water: "🐢", desc: "Hồ nơi Lê Lợi trả kiếm thần cho Rùa Vàng", cosmic: true },
+  { id: 32, name: "Biển Long Cung",       icon: "🐉", size: 11, fishCount: 20, fishMult: 5000,   monsterBoost: 28000, unlockCost: 10000000000,  color: "#0a1a3a", water: "🐉", desc: "Cung điện Long Vương dưới đáy biển", cosmic: true },
+  { id: 33, name: "Sông Lạc Hồng",       icon: "🦅", size: 11, fishCount: 21, fishMult: 7000,   monsterBoost: 35000, unlockCost: 20000000000,  color: "#1a0a0a", water: "🦅", desc: "Nguồn cội dân tộc Lạc Hồng", cosmic: true },
+  { id: 34, name: "Đầm Nhật Nguyệt",     icon: "☯️", size: 12, fishCount: 22, fishMult: 10000,  monsterBoost: 45000, unlockCost: 40000000000,  color: "#1a1a00", water: "☯️", desc: "Đầm hội tụ năng lượng mặt trời mặt trăng", cosmic: true },
+  { id: 35, name: "Hồ Núi Tản",         icon: "⛰️", size: 12, fishCount: 22, fishMult: 14000,  monsterBoost: 58000, unlockCost: 80000000000,  color: "#1a2a0a", water: "⛰️", desc: "Hồ thần trên đỉnh Ba Vì linh thiêng", cosmic: true },
+  // === THẦN THOẠI THẾ GIỚI ===
+  { id: 36, name: "Biển Asgard",          icon: "⚡", size: 12, fishCount: 23, fishMult: 20000,  monsterBoost: 75000,  unlockCost: 150000000000,  color: "#0a0a2a", water: "⚡", desc: "Biển thần linh Bắc Âu – Asgard", cosmic: true },
+  { id: 37, name: "Hồ Olympus",           icon: "🏛️", size: 12, fishCount: 23, fishMult: 28000,  monsterBoost: 95000,  unlockCost: 300000000000,  color: "#1a1a2a", water: "🏛️", desc: "Hồ trên đỉnh Olympus của thần Hy Lạp", cosmic: true },
+  { id: 38, name: "Sông Ganga Thần",     icon: "🕉️", size: 12, fishCount: 24, fishMult: 40000,  monsterBoost: 120000, unlockCost: 600000000000,  color: "#1a0a2a", water: "🕉️", desc: "Sông Hằng thiêng liêng chảy từ thiên đường", cosmic: true },
+  { id: 39, name: "Hải Nguyên Mayan",    icon: "🌞", size: 13, fishCount: 24, fishMult: 55000,  monsterBoost: 155000, unlockCost: 1200000000000, color: "#2a1a00", water: "🌞", desc: "Biển cổ đại của nền văn minh Maya", cosmic: true },
+  { id: 40, name: "Đại Hồng Thuỷ",       icon: "🌊", size: 13, fishCount: 25, fishMult: 75000,  monsterBoost: 200000, unlockCost: 2500000000000, color: "#000a1a", water: "🌊", desc: "Biển từ cơn đại hồng thuỷ thần thoại", cosmic: true },
+  // === CHIỀU KHÔNG GIAN ===
+  { id: 41, name: "Chiều Thứ Tư",        icon: "🔲", size: 13, fishCount: 25, fishMult: 100000, monsterBoost: 260000, unlockCost: 5000000000000,  color: "#0a0a0a", water: "🔲", desc: "Đại dương trong chiều không gian thứ 4", cosmic: true },
+  { id: 42, name: "Biển Sóng Đôi",       icon: "〰️", size: 13, fishCount: 26, fishMult: 140000, monsterBoost: 330000, unlockCost: 10000000000000, color: "#001a1a", water: "〰️", desc: "Biển chồng chéo hai chiều không gian", cosmic: true },
+  { id: 43, name: "Hồ Phản Vật Chất",   icon: "⚛️", size: 13, fishCount: 26, fishMult: 200000, monsterBoost: 420000, unlockCost: 20000000000000, color: "#1a001a", water: "⚛️", desc: "Hồ phản vật chất – cá sẽ biến mất nếu chạm", cosmic: true },
+  { id: 44, name: "Vùng Wormhole",       icon: "🌀", size: 14, fishCount: 27, fishMult: 280000, monsterBoost: 540000, unlockCost: 40000000000000, color: "#000a0a", water: "🌀", desc: "Cầu nối hai vũ trụ qua lỗ sâu đục không gian", cosmic: true },
+  { id: 45, name: "Bể Quantum",          icon: "💠", size: 14, fishCount: 27, fishMult: 380000, monsterBoost: 700000, unlockCost: 80000000000000, color: "#0a001a", water: "💠", desc: "Hồ lượng tử – cá tồn tại ở mọi vị trí cùng lúc", cosmic: true },
+  // === THỜI GIAN ===
+  // === THỜI GIAN ===
+  { id: 46, name: "Biển Tiền Sử",        icon: "🦕", size: 14, fishCount: 28, fishMult: 520000,  monsterBoost: 900000,  unlockCost: 160000000000000,  color: "#1a1a00", water: "🦕", desc: "Biển 250 triệu năm trước – kỷ Trias", cosmic: true },
+  { id: 47, name: "Đại Dương Cổ Đại",   icon: "🌿", size: 14, fishCount: 28, fishMult: 700000,  monsterBoost: 1150000, unlockCost: 320000000000000,  color: "#001a00", water: "🌿", desc: "Đại dương nguyên thuỷ khi sự sống mới hình thành", cosmic: true },
+  { id: 48, name: "Hồ Tương Lai 3000",  icon: "🤖", size: 14, fishCount: 29, fishMult: 950000,  monsterBoost: 1500000, unlockCost: 650000000000000,  color: "#001a1a", water: "🤖", desc: "Hồ nhân tạo năm 3000 – cá robot tiến hoá", cosmic: true },
+  { id: 49, name: "Biển Tận Thế",        icon: "☄️", size: 15, fishCount: 29, fishMult: 1300000, monsterBoost: 1900000, unlockCost: 1300000000000000, color: "#1a0000", water: "☄️", desc: "Biển trong ngày tận thế – cá cuối cùng trên đời", cosmic: true },
+  { id: 50, name: "Vùng Lặp Thời Gian", icon: "⏰", size: 15, fishCount: 30, fishMult: 1800000, monsterBoost: 2500000, unlockCost: 2600000000000000, color: "#0a0a1a", water: "⏰", desc: "Vùng thời gian lặp – câu mãi không hết cá", cosmic: true },
+  // === NGUYÊN TỐ ===
+  { id: 51, name: "Biển Lửa Vĩnh Cửu",  icon: "🔥", size: 15, fishCount: 30, fishMult: 2500000, monsterBoost: 3200000, unlockCost: 5000000000000000,  color: "#2a0000", water: "🔥", desc: "Biển lửa nguyên tố không bao giờ tắt", cosmic: true },
+  { id: 52, name: "Đại Băng Dương",      icon: "❄️", size: 15, fishCount: 31, fishMult: 3400000, monsterBoost: 4100000, unlockCost: 10000000000000000, color: "#001a2a", water: "❄️", desc: "Đại dương băng tuyệt đối – Cá tinh thể", cosmic: true },
+  { id: 53, name: "Hồ Sét Thần",        icon: "⚡", size: 15, fishCount: 31, fishMult: 4600000, monsterBoost: 5300000, unlockCost: 20000000000000000, color: "#1a1a00", water: "⚡", desc: "Hồ không ngừng sấm sét từ thần Sét", cosmic: true },
+  { id: 54, name: "Biển Gió Hư Vô",     icon: "🌪️", size: 15, fishCount: 32, fishMult: 6200000, monsterBoost: 6800000, unlockCost: 40000000000000000, color: "#0a0a00", water: "🌪️", desc: "Biển lốc xoáy vô tận – cá bay theo gió", cosmic: true },
+  { id: 55, name: "Đất Trời Hợp Nhất",  icon: "🌍", size: 15, fishCount: 32, fishMult: 8500000, monsterBoost: 8800000, unlockCost: 80000000000000000, color: "#0a1a0a", water: "🌍", desc: "Khi đất và trời hợp nhất thành đại dương", cosmic: true },
+  // === VŨ TRỤ CAO CẤP ===
+  { id: 56, name: "Sao Siêu Khổng Lồ",  icon: "⭐", size: 15, fishCount: 33, fishMult: 12000000,  monsterBoost: 11000000,  unlockCost: 160000000000000000,  color: "#1a1a00", water: "⭐", desc: "Câu cá trên bề mặt sao siêu khổng lồ đỏ", cosmic: true },
+  { id: 57, name: "Pulsar Ocean",        icon: "💫", size: 15, fishCount: 33, fishMult: 16000000,  monsterBoost: 14000000,  unlockCost: 320000000000000000,  color: "#00001a", water: "💫", desc: "Đại dương quay tròn của sao Pulsar", cosmic: true },
+  { id: 58, name: "Biển Quasar",         icon: "🌠", size: 15, fishCount: 34, fishMult: 22000000,  monsterBoost: 18000000,  unlockCost: 650000000000000000,  color: "#0a0020", water: "🌠", desc: "Biển năng lượng cực mạnh từ Quasar", cosmic: true },
+  { id: 59, name: "Hố Đen Trung Tâm",   icon: "🕳️", size: 15, fishCount: 34, fishMult: 30000000,  monsterBoost: 23000000,  unlockCost: 1300000000000000000, color: "#000000", water: "🕳️", desc: "Đại dương quanh hố đen trung tâm thiên hà", cosmic: true },
+  { id: 60, name: "Màng Vũ Trụ",        icon: "🔭", size: 15, fishCount: 35, fishMult: 40000000,  monsterBoost: 30000000,  unlockCost: 2500000000000000000, color: "#050010", water: "🔭", desc: "Câu cá trên rìa màng vũ trụ quan sát được", cosmic: true },
+  // === THẦN THÁNH ===
+  { id: 61, name: "Thiên Đình Hải",      icon: "☁️", size: 15, fishCount: 35, fishMult: 55000000,  monsterBoost: 38000000,  unlockCost: 5e18,  color: "#1a1a2a", water: "☁️", desc: "Biển trên Thiên Đình – cá tiên thần", cosmic: true },
+  { id: 62, name: "Cõi Niết Bàn",        icon: "🪷", size: 15, fishCount: 36, fishMult: 75000000,  monsterBoost: 49000000,  unlockCost: 1e19,  color: "#1a002a", water: "🪷", desc: "Hồ sen Niết Bàn – cá giác ngộ", cosmic: true },
+  { id: 63, name: "Valhalla Hải",        icon: "🪓", size: 15, fishCount: 36, fishMult: 100000000, monsterBoost: 63000000,  unlockCost: 2e19,  color: "#1a0a00", water: "🪓", desc: "Biển chiến binh Valhalla – cá bất tử", cosmic: true },
+  { id: 64, name: "Elysium Ocean",       icon: "🌅", size: 15, fishCount: 37, fishMult: 140000000, monsterBoost: 81000000,  unlockCost: 4e19,  color: "#1a1a0a", water: "🌅", desc: "Đại dương cõi cực lạc Hy Lạp", cosmic: true },
+  { id: 65, name: "Cõi Tịnh Độ",         icon: "🏮", size: 15, fishCount: 37, fishMult: 190000000, monsterBoost: 105000000, unlockCost: 8e19,  color: "#1a0a1a", water: "🏮", desc: "Hồ nước tịnh tâm trong cõi Tịnh Độ", cosmic: true },
+  // === BÍ ẨN VŨ TRỤ ===
+  { id: 66, name: "Biển Tối Vũ Trụ",    icon: "🌑", size: 15, fishCount: 38, fishMult: 260000000, monsterBoost: 135000000, unlockCost: 1.5e20, color: "#000000", water: "🌑", desc: "Đại dương vật chất tối – cá vô hình", cosmic: true },
+  { id: 67, name: "Năng Lượng Tối Hải", icon: "🔋", size: 15, fishCount: 38, fishMult: 360000000, monsterBoost: 175000000, unlockCost: 3e20,   color: "#00000a", water: "🔋", desc: "Biển năng lượng tối thúc đẩy vũ trụ giãn nở", cosmic: true },
+  { id: 68, name: "Hồ Lý Thuyết M",     icon: "📐", size: 15, fishCount: 39, fishMult: 500000000, monsterBoost: 225000000, unlockCost: 6e20,   color: "#0a000a", water: "📐", desc: "Đại dương trong lý thuyết M – 11 chiều", cosmic: true },
+  { id: 69, name: "Biển Siêu Đối Xứng", icon: "🔯", size: 15, fishCount: 39, fishMult: 700000000, monsterBoost: 290000000, unlockCost: 1.2e21, color: "#00001a", water: "🔯", desc: "Biển cân bằng hoàn hảo giữa vật chất và năng lượng", cosmic: true },
+  { id: 70, name: "Omega Point Hải",    icon: "Ω",  size: 15, fishCount: 40, fishMult: 980000000, monsterBoost: 375000000, unlockCost: 2.4e21, color: "#050005", water: "Ω",  desc: "Điểm Omega – kết cục của vũ trụ", cosmic: true },
+  // === SIÊU VŨ TRỤ ===
+  { id: 71, name: "Đa Vũ Trụ Bong Bóng",icon: "🫧", size: 15, fishCount: 40, fishMult: 1.4e9,  monsterBoost: 480000000, unlockCost: 5e21,   color: "#00001a", water: "🫧", desc: "Vùng bong bóng vũ trụ vô tận", cosmic: true },
+  { id: 72, name: "Siêu Dây Hải",       icon: "〰️", size: 15, fishCount: 41, fishMult: 2e9,    monsterBoost: 620000000, unlockCost: 1e22,   color: "#0a000a", water: "〰️", desc: "Đại dương trên siêu dây vũ trụ", cosmic: true },
+  { id: 73, name: "Biển Lạm Phát",      icon: "📈", size: 15, fishCount: 41, fishMult: 2.8e9,  monsterBoost: 800000000, unlockCost: 2e22,   color: "#001a00", water: "📈", desc: "Biển giãn nở cực nhanh từ Big Bang", cosmic: true },
+  { id: 74, name: "Trước Big Bang",      icon: "🌐", size: 15, fishCount: 42, fishMult: 4e9,    monsterBoost: 1.0e9,     unlockCost: 4e22,   color: "#000000", water: "🌐", desc: "Đại dương tồn tại trước cả Big Bang", cosmic: true },
+  { id: 75, name: "Hải Ngoài Vũ Trụ",   icon: "🔭", size: 15, fishCount: 42, fishMult: 5.5e9,  monsterBoost: 1.3e9,     unlockCost: 8e22,   color: "#000005", water: "🔭", desc: "Vùng ngoài ranh giới vũ trụ quan sát được", cosmic: true },
+  // === HƯ VÔ & SIÊU VIỆT ===
+  { id: 76, name: "Hồ Hư Không",        icon: "◻️", size: 15, fishCount: 43, fishMult: 7.5e9,  monsterBoost: 1.7e9, unlockCost: 1.6e23, color: "#000000", water: "◻️", desc: "Đại dương trong hư không – không gì tồn tại", cosmic: true },
+  { id: 77, name: "Biển Ý Thức",        icon: "🧠", size: 15, fishCount: 43, fishMult: 1.0e10, monsterBoost: 2.2e9, unlockCost: 3.2e23, color: "#0a0010", water: "🧠", desc: "Biển ý thức – cá là hiện thân của tư duy", cosmic: true },
+  { id: 78, name: "Đại Dương Giấc Mơ",  icon: "💤", size: 15, fishCount: 44, fishMult: 1.4e10, monsterBoost: 2.8e9, unlockCost: 6.5e23, color: "#0a0020", water: "💤", desc: "Đại dương trong giấc mơ sâu nhất", cosmic: true },
+  { id: 79, name: "Biển Vô Cực",        icon: "∞",  size: 15, fishCount: 44, fishMult: 2.0e10, monsterBoost: 3.6e9, unlockCost: 1.3e24, color: "#000010", water: "∞",  desc: "Biển vô tận – cá không bao giờ hết", cosmic: true },
+  { id: 80, name: "Nguồn Gốc Tất Cả",   icon: "🌟", size: 15, fishCount: 45, fishMult: 2.8e10, monsterBoost: 4.6e9, unlockCost: 2.6e24, color: "#050005", water: "🌟", desc: "Nguồn gốc của mọi đại dương, mọi vũ trụ", cosmic: true },
+  // === THỰC THỂ TỐI CAO ===
+  { id: 81, name: "Biển Thực Thể I",     icon: "👁️", size: 15, fishCount: 45, fishMult: 4.0e10, monsterBoost: 6.0e9,  unlockCost: 5e24,   color: "#000000", water: "👁️", desc: "Vùng nước của Thực Thể Đệ Nhất", cosmic: true },
+  { id: 82, name: "Hồ Toàn Tri",         icon: "🔮", size: 15, fishCount: 46, fishMult: 5.5e10, monsterBoost: 7.7e9,  unlockCost: 1e25,   color: "#000010", water: "🔮", desc: "Hồ biết tất cả mọi thứ – cá tiên tri", cosmic: true },
+  { id: 83, name: "Biển Toàn Năng",      icon: "⚡", size: 15, fishCount: 46, fishMult: 7.5e10, monsterBoost: 1.0e10, unlockCost: 2e25,   color: "#0a0a00", water: "⚡", desc: "Đại dương của sức mạnh tuyệt đối", cosmic: true },
+  { id: 84, name: "Đại Dương Toàn Diện", icon: "🌊", size: 15, fishCount: 47, fishMult: 1.0e11, monsterBoost: 1.3e10, unlockCost: 4e25,   color: "#000a1a", water: "🌊", desc: "Biển hiện diện khắp nơi, mọi lúc", cosmic: true },
+  { id: 85, name: "Tuyệt Đối Hải",       icon: "🔱", size: 15, fishCount: 47, fishMult: 1.4e11, monsterBoost: 1.7e10, unlockCost: 8e25,   color: "#050000", water: "🔱", desc: "Đại dương tuyệt đối – vượt mọi giới hạn", cosmic: true },
+  // === CHIỀU SIÊU VIỆT ===
+  { id: 86, name: "Chiều Thứ 5",         icon: "🔵", size: 15, fishCount: 48, fishMult: 2.0e11, monsterBoost: 2.2e10, unlockCost: 1.5e26, color: "#000a2a", water: "🔵", desc: "Đại dương trong chiều không gian thứ năm", cosmic: true },
+  { id: 87, name: "Chiều Thứ 6",         icon: "🟣", size: 15, fishCount: 48, fishMult: 2.7e11, monsterBoost: 2.8e10, unlockCost: 3e26,   color: "#0a002a", water: "🟣", desc: "Đại dương trong chiều không gian thứ sáu", cosmic: true },
+  { id: 88, name: "Chiều Thứ 7",         icon: "🟤", size: 15, fishCount: 49, fishMult: 3.7e11, monsterBoost: 3.6e10, unlockCost: 6e26,   color: "#1a0a00", water: "🟤", desc: "Đại dương trong chiều không gian thứ bảy", cosmic: true },
+  { id: 89, name: "Chiều Thứ 8",         icon: "🟠", size: 15, fishCount: 49, fishMult: 5.0e11, monsterBoost: 4.6e10, unlockCost: 1.2e27, color: "#1a0a00", water: "🟠", desc: "Đại dương trong chiều không gian thứ tám", cosmic: true },
+  { id: 90, name: "Chiều Thứ 9",         icon: "🔴", size: 15, fishCount: 50, fishMult: 6.8e11, monsterBoost: 6.0e10, unlockCost: 2.5e27, color: "#1a0000", water: "🔴", desc: "Đại dương trong chiều không gian thứ chín", cosmic: true },
+  // === SIÊU VIỆT CUỐI CÙNG ===
+  { id: 91, name: "Hải Nguyên Khởi",     icon: "🌱", size: 15, fishCount: 50, fishMult: 9.5e11, monsterBoost: 7.8e10, unlockCost: 5e27,   color: "#001a00", water: "🌱", desc: "Điểm khởi đầu của mọi đại dương trong lịch sử", cosmic: true },
+  { id: 92, name: "Biển Phản Thực",      icon: "🪞", size: 15, fishCount: 51, fishMult: 1.3e12, monsterBoost: 1.0e11, unlockCost: 1e28,   color: "#0a001a", water: "🪞", desc: "Biển phản chiếu thực tại – mọi thứ đều ngược", cosmic: true },
+  { id: 93, name: "Đại Hồ Xác Suất",    icon: "🎲", size: 15, fishCount: 51, fishMult: 1.8e12, monsterBoost: 1.3e11, unlockCost: 2e28,   color: "#00001a", water: "🎲", desc: "Hồ xác suất lượng tử – cá tồn tại và không tồn tại", cosmic: true },
+  { id: 94, name: "Biển Entropi",        icon: "♾️", size: 15, fishCount: 52, fishMult: 2.5e12, monsterBoost: 1.7e11, unlockCost: 4e28,   color: "#0a0000", water: "♾️", desc: "Biển hỗn loạn entropi tối đa – cá hỗn độn", cosmic: true },
+  { id: 95, name: "Điểm Kỳ Dị Công Nghệ",icon: "🤖",size: 15, fishCount: 52, fishMult: 3.5e12, monsterBoost: 2.2e11, unlockCost: 8e28,   color: "#001a1a", water: "🤖", desc: "Đại dương sau điểm kỳ dị công nghệ – cá siêu trí tuệ", cosmic: true },
+  // === ĐỈNH CAO TỐI THƯỢNG ===
+  { id: 96, name: "Biển Akasha",          icon: "🌌", size: 15, fishCount: 53, fishMult: 5.0e12, monsterBoost: 2.8e11, unlockCost: 1.6e29, color: "#000020", water: "🌌", desc: "Akashic Ocean – lưu trữ mọi ký ức vũ trụ", cosmic: true },
+  { id: 97, name: "Hải Nguyên Plato",     icon: "📜", size: 15, fishCount: 53, fishMult: 7.0e12, monsterBoost: 3.6e11, unlockCost: 3.2e29, color: "#1a1a00", water: "📜", desc: "Đại dương của ý niệm thuần tuý Plato", cosmic: true },
+  { id: 98, name: "Biển Logos",           icon: "📖", size: 15, fishCount: 54, fishMult: 1.0e13, monsterBoost: 4.6e11, unlockCost: 6.5e29, color: "#001a0a", water: "📖", desc: "Đại dương của Logos – trí tuệ vũ trụ tối cao", cosmic: true },
+  { id: 99, name: "Hồ Tuyệt Đối",        icon: "☀️", size: 15, fishCount: 54, fishMult: 1.4e13, monsterBoost: 6.0e11, unlockCost: 1.3e30, color: "#1a1a00", water: "☀️", desc: "Hồ ánh sáng tuyệt đối – cá là hiện thân của chân lý", cosmic: true },
+  { id: 100, name: "Đại Dương Brahman",   icon: "🕉️", size: 15, fishCount: 55, fishMult: 2.0e13, monsterBoost: 7.8e11, unlockCost: 2.6e30, color: "#1a0a00", water: "🕉️", desc: "Brahman Ocean – thực tại tối thượng bất biến", cosmic: true },
+  // === SIÊU VŨ TRỤ TẬN CÙNG ===
+  { id: 101, name: "Biển Thực Tại Ảo",   icon: "🥽", size: 15, fishCount: 55, fishMult: 2.8e13, monsterBoost: 1.0e12, unlockCost: 5e30,   color: "#000a10", water: "🥽", desc: "Đại dương mô phỏng – toàn bộ vũ trụ là code", cosmic: true },
+  { id: 102, name: "Hải Siêu Máy Tính",  icon: "💻", size: 15, fishCount: 56, fishMult: 4.0e13, monsterBoost: 1.3e12, unlockCost: 1e31,   color: "#001a10", water: "💻", desc: "Biển tính toán của siêu máy tính vũ trụ", cosmic: true },
+  { id: 103, name: "Biển Thần Số Học",   icon: "🔢", size: 15, fishCount: 56, fishMult: 5.5e13, monsterBoost: 1.7e12, unlockCost: 2e31,   color: "#0a001a", water: "🔢", desc: "Đại dương của toán học thuần tuý – cá số nguyên tố", cosmic: true },
+  { id: 104, name: "Hồ Vô Lượng Tâm",   icon: "💜", size: 15, fishCount: 57, fishMult: 7.5e13, monsterBoost: 2.2e12, unlockCost: 4e31,   color: "#0a0010", water: "💜", desc: "Đại dương từ bi vô lượng – cá hộ trì", cosmic: true },
+  { id: 105, name: "Đại Ngộ Hải",        icon: "☯️", size: 15, fishCount: 57, fishMult: 1.0e14, monsterBoost: 2.8e12, unlockCost: 8e31,   color: "#001010", water: "☯️", desc: "Biển giác ngộ hoàn toàn – cá siêu thoát", cosmic: true },
+  // === TẦNG TỐI THƯỢNG ===
+  { id: 106, name: "Biển Thái Cực",       icon: "☯️", size: 15, fishCount: 58, fishMult: 1.4e14, monsterBoost: 3.6e12, unlockCost: 1.6e32, color: "#0a0a0a", water: "☯️", desc: "Thái Cực sinh Lưỡng Nghi – cá âm dương", cosmic: true },
+  { id: 107, name: "Hồ Lưỡng Nghi",      icon: "☯️", size: 15, fishCount: 58, fishMult: 2.0e14, monsterBoost: 4.6e12, unlockCost: 3.2e32, color: "#050505", water: "☯️", desc: "Lưỡng Nghi sinh Tứ Tượng – cá biến hoá", cosmic: true },
+  { id: 108, name: "Biển Tứ Tượng",      icon: "🐉", size: 15, fishCount: 59, fishMult: 2.8e14, monsterBoost: 6.0e12, unlockCost: 6.5e32, color: "#0a0505", water: "🐉", desc: "Tứ Tượng sinh Bát Quái – cá thiên địa", cosmic: true },
+  { id: 109, name: "Hải Bát Quái",        icon: "🔯", size: 15, fishCount: 59, fishMult: 4.0e14, monsterBoost: 7.8e12, unlockCost: 1.3e33, color: "#05050a", water: "🔯", desc: "Bát Quái sinh vạn vật – cá vạn hoá", cosmic: true },
+  { id: 110, name: "Vô Cực Đại Hải",     icon: "∞",  size: 15, fishCount: 60, fishMult: 5.5e14, monsterBoost: 1.0e13, unlockCost: 2.6e33, color: "#000000", water: "∞",  desc: "Vô Cực — trước khi Thái Cực xuất hiện", cosmic: true },
+  // === ÁNH SÁNG TỐI THƯỢNG ===
+  { id: 111, name: "Biển Ánh Sáng",       icon: "✨", size: 15, fishCount: 60, fishMult: 7.5e14, monsterBoost: 1.3e13, unlockCost: 5e33,   color: "#0a0a05", water: "✨", desc: "Đại dương ánh sáng thuần khiết – cá quang tử", cosmic: true },
+  { id: 112, name: "Hải Quang Tử",        icon: "💡", size: 15, fishCount: 61, fishMult: 1.0e15, monsterBoost: 1.7e13, unlockCost: 1e34,   color: "#0a0a00", water: "💡", desc: "Đại dương của các hạt quang tử bất tử", cosmic: true },
+  { id: 113, name: "Biển Sắc Không",      icon: "🌈", size: 15, fishCount: 61, fishMult: 1.4e15, monsterBoost: 2.2e13, unlockCost: 2e34,   color: "#050005", water: "🌈", desc: "Sắc tức thị Không – cá siêu việt hình tướng", cosmic: true },
+  { id: 114, name: "Đại Dương Chân Như",  icon: "🌺", size: 15, fishCount: 62, fishMult: 2.0e15, monsterBoost: 2.8e13, unlockCost: 4e34,   color: "#050000", water: "🌺", desc: "Chân Như pháp giới – bản thể tối thượng", cosmic: true },
+  { id: 115, name: "Hồ Vô Thường",        icon: "🍂", size: 15, fishCount: 62, fishMult: 2.8e15, monsterBoost: 3.6e13, unlockCost: 8e34,   color: "#0a0500", water: "🍂", desc: "Đại dương vô thường – cá sinh diệt từng sát na", cosmic: true },
+  // === TUYỆT ĐỈNH TỐI CAO ===
+  { id: 116, name: "Biển Thuỷ Tinh Vũ Trụ",icon: "💎",size: 15, fishCount: 63, fishMult: 4.0e15, monsterBoost: 4.6e13, unlockCost: 1.6e35, color: "#000a0a", water: "💎", desc: "Đại dương thuỷ tinh trong suốt – cá vô hình", cosmic: true },
+  { id: 117, name: "Hải Nguyên Tinh Tuý",  icon: "🫀", size: 15, fishCount: 63, fishMult: 5.5e15, monsterBoost: 6.0e13, unlockCost: 3.2e35, color: "#0a0000", water: "🫀", desc: "Tinh tuý của mọi đại dương trong vũ trụ", cosmic: true },
+  { id: 118, name: "Biển Vĩnh Hằng",       icon: "⏳", size: 15, fishCount: 64, fishMult: 7.5e15, monsterBoost: 7.8e13, unlockCost: 6.5e35, color: "#000000", water: "⏳", desc: "Đại dương không có đầu không có cuối — vĩnh hằng", cosmic: true },
+  { id: 119, name: "Đại Dương Nhất Thể",   icon: "☀️", size: 15, fishCount: 64, fishMult: 1.0e16, monsterBoost: 1.0e14, unlockCost: 1.3e36, color: "#050500", water: "☀️", desc: "Vạn vật nhất thể — cá là cả vũ trụ", cosmic: true },
+  { id: 120, name: "Hải Nguyên Tối Thượng",icon: "🌟", size: 15, fishCount: 65, fishMult: 1.4e16, monsterBoost: 1.3e14, unlockCost: 2.6e36, color: "#000000", water: "🌟", desc: "Đỉnh cao nhất — Nguồn gốc của nguồn gốc", cosmic: true },
+  // === BẤT KHẢ TƯ NGHỊ ===
+  { id: 121, name: "Biển Bất Nhị",         icon: "🫱", size: 15, fishCount: 65, fishMult: 2.0e16, monsterBoost: 1.7e14, unlockCost: 5e36,   color: "#000000", water: "🫱", desc: "Bất Nhị — không hai không khác, cá là ta", cosmic: true },
+  { id: 122, name: "Đại Dương Vô Danh",    icon: "❓", size: 15, fishCount: 66, fishMult: 2.8e16, monsterBoost: 2.2e14, unlockCost: 1e37,   color: "#000000", water: "❓", desc: "Vô danh thiên địa chi thuỷ — biển vô danh", cosmic: true },
+  { id: 123, name: "Hải Nguyên Huyền Bí",  icon: "🌀", size: 15, fishCount: 66, fishMult: 4.0e16, monsterBoost: 2.8e14, unlockCost: 2e37,   color: "#000000", water: "🌀", desc: "Huyền chi hựu huyền — nhiệm diệu chi môn", cosmic: true },
+  { id: 124, name: "Biển Siêu Thực",        icon: "🎭", size: 15, fishCount: 67, fishMult: 5.5e16, monsterBoost: 3.6e14, unlockCost: 4e37,   color: "#000000", water: "🎭", desc: "Siêu thực tại — vượt qua mọi khái niệm về biển", cosmic: true },
+  { id: 125, name: "∞ Cá Vô Cực Hải ∞",   icon: "🐋", size: 15, fishCount: 99, fishMult: 1.0e17, monsterBoost: 5.0e14, unlockCost: 1e38,   color: "#000000", water: "🐋", desc: "Cá Vô Cực — đích đến cuối cùng của mọi ngư dân huyền thoại", cosmic: true },
+
+function generateFishForMap(mapData) {
+  const s = mapData.size;
+  const map = Array.from({ length: s }, () => Array(s).fill(false));
+  let placed = 0;
+  while (placed < mapData.fishCount) {
+    const x = Math.floor(Math.random() * s);
+    const y = Math.floor(Math.random() * s);
+    if (!map[y][x]) {
+      map[y][x] = true;
+      placed++;
+    }
+  }
+  return map;
+}
+
+const WATER_EMOJIS = ["🌊", "💧", "〰️", "🌀"];
+const FISH_SPECIES = [
+  // === THƯỜNG (map 1-9) ===
+  { id:"ca_ro",    name:"Cá Rô",         icon:"🐟", rarity:"thường",  desc:"Cá nước ngọt phổ biến nhất Việt Nam, thịt dai ngon",        minW:1,   maxW:5,    habitat:"ao,sông", cosmicOnly:false },
+  { id:"ca_tre",   name:"Cá Trê",        icon:"🐟", rarity:"thường",  desc:"Râu dài, da trơn, sống dưới bùn sâu",                      minW:1,   maxW:8,    habitat:"ao,đầm",  cosmicOnly:false },
+  { id:"ca_loc",   name:"Cá Lóc",        icon:"🐟", rarity:"thường",  desc:"Vua cá đồng, săn mồi nhanh như tia chớp",                  minW:2,   maxW:15,   habitat:"ao,sông", cosmicOnly:false },
+  { id:"ca_chep",  name:"Cá Chép",       icon:"🐟", rarity:"thường",  desc:"Biểu tượng may mắn, vảy vàng lấp lánh",                    minW:2,   maxW:20,   habitat:"ao,hồ",   cosmicOnly:false },
+  { id:"ca_tra",   name:"Cá Tra",        icon:"🐟", rarity:"thường",  desc:"Cá sông Mekong nổi tiếng, thịt trắng mịn",                 minW:3,   maxW:30,   habitat:"sông",    cosmicOnly:false },
+  { id:"ca_basa",  name:"Cá Basa",       icon:"🐠", rarity:"thường",  desc:"Cá xuất khẩu số 1, bơi dọc sông Cửu Long",                 minW:3,   maxW:25,   habitat:"sông",    cosmicOnly:false },
+  { id:"ca_ruong", name:"Cá Ruộng",      icon:"🐟", rarity:"thường",  desc:"Cá nhỏ xinh sống trong ruộng lúa, béo ngậy",               minW:0,   maxW:3,    habitat:"ao,ruộng",cosmicOnly:false },
+  { id:"ca_diem",  name:"Cá Diêm",       icon:"🐟", rarity:"thường",  desc:"Thân dẹp, bơi lặng lẽ trong bóng tối",                     minW:1,   maxW:6,    habitat:"ao,đầm",  cosmicOnly:false },
+  { id:"ca_vang",  name:"Cá Vàng",       icon:"🐡", rarity:"hiếm",    desc:"Cá cảnh quý, vảy vàng óng ánh như kim loại",               minW:0,   maxW:1,    habitat:"ao,hồ",   cosmicOnly:false },
+  { id:"ca_quet",  name:"Cá Quét",       icon:"🐟", rarity:"thường",  desc:"Miệng hút bùn, thám tử dưới đáy ao",                       minW:1,   maxW:5,    habitat:"ao",      cosmicOnly:false },
+  // === SÔNG-BIỂN (map 5-10) ===
+  { id:"ca_bong",  name:"Cá Bống",       icon:"🐠", rarity:"thường",  desc:"Bé mà dữ, ẩn nấp dưới đá chờ mồi",                        minW:0,   maxW:4,    habitat:"sông,biển",cosmicOnly:false },
+  { id:"ca_den",   name:"Cá Đèn",        icon:"🐡", rarity:"hiếm",    desc:"Phát sáng dưới đáy biển, dẫn đường trong đêm tối",         minW:2,   maxW:10,   habitat:"biển",    cosmicOnly:false },
+  { id:"ca_kiếm",  name:"Cá Kiếm",       icon:"🐟", rarity:"hiếm",    desc:"Mỏ dài như kiếm, lao nhanh xuyên sóng",                    minW:10,  maxW:100,  habitat:"biển",    cosmicOnly:false },
+  { id:"ca_ngu",   name:"Cá Ngừ",        icon:"🐟", rarity:"hiếm",    desc:"Vua biển cả, bơi không nghỉ cả ngàn dặm",                  minW:20,  maxW:200,  habitat:"biển",    cosmicOnly:false },
+  { id:"ca_chim",  name:"Cá Chim",       icon:"🐠", rarity:"hiếm",    desc:"Vây rộng như cánh, lướt trên mặt sóng",                    minW:5,   maxW:50,   habitat:"biển",    cosmicOnly:false },
+  { id:"ca_hop",   name:"Cá Hộp",        icon:"🐡", rarity:"hiếm",    desc:"Thân hình hộp vuông kỳ lạ, tiết độc nhẹ",                  minW:1,   maxW:8,    habitat:"biển",    cosmicOnly:false },
+  { id:"ca_say",   name:"Cá Say",        icon:"🐠", rarity:"hiếm",    desc:"Mắt đỏ rực, tiết độc làm say người câu",                   minW:3,   maxW:20,   habitat:"biển",    cosmicOnly:false },
+  { id:"ca_hong",  name:"Cá Hồng",       icon:"🐠", rarity:"hiếm",    desc:"Vảy hồng rực rỡ, thịt thơm ngon bậc nhất",                 minW:5,   maxW:40,   habitat:"biển",    cosmicOnly:false },
+  // === ĐẠI DƯƠNG SÂU (map 10-20) ===
+  { id:"ca_map",   name:"Cá Mập",        icon:"🦈", rarity:"quý",     desc:"Vua đại dương, hàm răng sắc như dao cạo",                  minW:50,  maxW:500,  habitat:"biển sâu",cosmicOnly:false },
+  { id:"ca_hoi",   name:"Cá Hồi",        icon:"🐟", rarity:"quý",     desc:"Ngược dòng sinh đẻ, thịt đỏ giàu dinh dưỡng",             minW:3,   maxW:40,   habitat:"sông,biển",cosmicOnly:false },
+  { id:"ca_doc",   name:"Cá Độc",        icon:"🐡", rarity:"quý",     desc:"Độc đủ giết 30 người, nhưng thịt là đặc sản cao cấp",      minW:1,   maxW:15,   habitat:"biển sâu",cosmicOnly:false },
+  { id:"ca_rai",   name:"Cá Đuối",       icon:"🐟", rarity:"quý",     desc:"Phẳng như tấm thảm, đuôi phóng điện 200V",                 minW:10,  maxW:300,  habitat:"biển sâu",cosmicOnly:false },
+  { id:"ca_voi",   name:"Cá Voi",        icon:"🐋", rarity:"siêu quý",desc:"Sinh vật lớn nhất hành tinh, tiếng hát vọng ngàn dặm",     minW:5000,maxW:50000,habitat:"biển sâu",cosmicOnly:false },
+  { id:"ca_bạch",  name:"Cá Bạch Tạng", icon:"🐟", rarity:"siêu quý",desc:"Cá trắng albino cực hiếm, mắt hồng trong suốt",            minW:5,   maxW:60,   habitat:"biển sâu",cosmicOnly:false },
+  { id:"ca_muc",   name:"Mực Khổng Lồ", icon:"🦑", rarity:"siêu quý",desc:"Xúc tu dài 10m, mắt to như bánh xe",                        minW:100, maxW:2000, habitat:"vực sâu", cosmicOnly:false },
+  { id:"ca_phat",  name:"Cá Phát Sáng", icon:"🐡", rarity:"siêu quý",desc:"Phát sáng 7 màu, sống tận đáy rãnh Mariana",               minW:0,   maxW:5,    habitat:"vực sâu", cosmicOnly:false },
+  { id:"ca_bang",  name:"Cá Băng",       icon:"🐟", rarity:"siêu quý",desc:"Máu chống đông, sống ở -2°C dưới băng cực",                minW:2,   maxW:30,   habitat:"biển băng",cosmicOnly:false },
+  { id:"ca_nham",  name:"Cá Nhám Búa",  icon:"🦈", rarity:"quý",     desc:"Đầu hình chữ T kỳ lạ, thần kinh từ siêu nhạy",            minW:80,  maxW:600,  habitat:"biển sâu",cosmicOnly:false },
+  { id:"ca_thanh", name:"Cá Thần Kinh", icon:"🐡", rarity:"huyền thoại",desc:"Cá sống ở chiều không gian khác, thân nửa trong suốt", minW:1,   maxW:50,   habitat:"bermuda", cosmicOnly:false },
+  { id:"ca_rong",  name:"Cá Rồng",       icon:"🐉", rarity:"huyền thoại",desc:"Rồng biển cổ đại 1000 năm, vảy cứng hơn kim cương",   minW:500, maxW:10000,habitat:"atlantis", cosmicOnly:false },
+  // === VŨ TRỤ ===
+  { id:"ca_saobangg",name:"Cá Sao Băng",icon:"☄️", rarity:"vũ trụ",  desc:"Sinh ra từ sao băng, đuôi kéo dài cả km",                  minW:50,  maxW:500,  habitat:"không gian",cosmicOnly:true },
+  { id:"ca_tinhvan",name:"Cá Tinh Vân",  icon:"🌌", rarity:"vũ trụ",  desc:"Thân hình là đám mây tinh vân rực màu",                    minW:100, maxW:1000, habitat:"tinh vân",  cosmicOnly:true },
+  { id:"ca_lodenvt",name:"Cá Lỗ Đen",   icon:"🕳️", rarity:"vũ trụ",  desc:"Nuốt mọi thứ vào lòng kể cả ánh sáng",                    minW:9999,maxW:99999,habitat:"hố đen",    cosmicOnly:true },
+  { id:"ca_plasma", name:"Cá Plasma",    icon:"⚡", rarity:"vũ trụ",  desc:"Cơ thể là plasma nóng triệu độ C",                          minW:200, maxW:2000, habitat:"sao",       cosmicOnly:true },
+  { id:"ca_photon", name:"Cá Photon",    icon:"💡", rarity:"vũ trụ",  desc:"Di chuyển với tốc độ ánh sáng, khó câu nhất",              minW:0,   maxW:1,    habitat:"không gian",cosmicOnly:true },
+  { id:"ca_antimatter",name:"Cá Phản Vật Chất",icon:"💜",rarity:"vũ trụ",desc:"Chạm vào là nổ, phải câu bằng trường từ", minW:500, maxW:5000, habitat:"phản vũ trụ",cosmicOnly:true },
+  { id:"ca_thoigian",name:"Cá Thời Gian",icon:"⏳",rarity:"thần",    desc:"Cá sống ngược thời gian, già đi khi câu lên",              minW:1,   maxW:9999, habitat:"thời gian", cosmicOnly:true },
+  { id:"ca_davutru",name:"Cá Đa Vũ Trụ",icon:"🔮",rarity:"thần",    desc:"Tồn tại trong vô số vũ trụ song song cùng lúc",            minW:9999,maxW:999999,habitat:"đa vũ trụ",cosmicOnly:true },
+  { id:"ca_brahman",name:"Cá Brahman",   icon:"🕉️", rarity:"thần",   desc:"Thực thể tối thượng, là chính vũ trụ",                     minW:99999,maxW:9999999,habitat:"vô cực",  cosmicOnly:true },
+];
+const FISH_NAMES = FISH_SPECIES.filter(f => !f.cosmicOnly).map(f => f.name);
+const COSMIC_FISH_NAMES = FISH_SPECIES.filter(f => f.cosmicOnly).map(f => f.name);
+const COSMIC_WATER = ["✨", "⭐", "💫", "🌟", "✦", "·", "°", "∘"];
+
+function FishingGame({ onBack }) {
+  const [lang, setLang] = useState("vi");
+  const [showLangPicker, setShowLangPicker] = useState(false);
+  const t = (key) => (TRANSLATIONS[key] && TRANSLATIONS[key][lang]) || TRANSLATIONS[key]?.vi || key;
+  const [gameState, setGameState] = useState("menu");
+  const [currentMapId, setCurrentMapId] = useState(1);
+  const [unlockedMaps, setUnlockedMaps] = useState([1]);
+  const [showMapSelect, setShowMapSelect] = useState(false);
+  const currentMap = MAP_DATA.find((m) => m.id === currentMapId) || MAP_DATA[0];
+  const SIZE = currentMap.size;
+  const [px, setPx] = useState(Math.floor(MAP_DATA[0].size / 2));
+  const [py, setPy] = useState(Math.floor(MAP_DATA[0].size / 2));
+  const [fishMap, setFishMap] = useState(() => generateFishForMap(MAP_DATA[0]));
+  const [sm, setSm] = useState(100);
+  const [nc, setNc] = useState(0);
+  const [canCap, setCanCap] = useState(1);
+  const [npc, setNpc] = useState(0);
+  const [luot, setLuot] = useState(0);
+  const [day, setDay] = useState(1);
+  const [timeOfDay, setTimeOfDay] = useState("day"); // day, sunset, night
+  const TURNS_PER_DAY = 15;
+  // Night battle state
+  const [nightWave, setNightWave] = useState(0); // 0 = not in wave, 1-5 = current wave
+  const [nightMonster, setNightMonster] = useState(null);
+  const [nightResult, setNightResult] = useState(null); // {won, dmg, lootNc, lootSm, ...}
+  const [nightStats, setNightStats] = useState({ wins: 0, losses: 0, totalNc: 0, totalSm: 0, dmgTaken: 0 });
+  // Net challenge every 5 days
+  const [netChallenge, setNetChallenge] = useState(null);
+  const [netHover, setNetHover] = useState(null); // {x, y}
+  const NET_CHALLENGE_INTERVAL = 5;
+  // Thuỷ Cung (Aquarium)
+  const [aquarium, setAquarium] = useState([]); // [{id, type:'fish'|'monster', name, icon, kg, rarity, stars}]
+  const [aquariumIdCounter, setAquariumIdCounter] = useState(0);
+  const [aquariumCapacity, setAquariumCapacity] = useState(5);
+  const [showAquarium, setShowAquarium] = useState(false);
+  const [aquariumTotalVisitors, setAquariumTotalVisitors] = useState(0);
+  const [aquariumTotalIncome, setAquariumTotalIncome] = useState(0);
+  const [log, setLog] = useState([]);
+  const [caughtFish, setCaughtFish] = useState(null);
+  const [fishingAnim, setFishingAnim] = useState(false);
+  const [ripple, setRipple] = useState(null);
+  const [totalCaught, setTotalCaught] = useState(0);
+  const [biggestFish, setBiggestFish] = useState(0);
+  const [showShop, setShowShop] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showFishDex, setShowFishDex] = useState(false);
+  const [fishDex, setFishDex] = useState({}); // { [fishName]: { count, maxWeight } }
+  const [showTank, setShowTank] = useState(false);
+  const recordFishCatch = (name, weight) => {
+    setFishDex(prev => {
+      const entry = prev[name] || { count: 0, maxWeight: 0 };
+      return { ...prev, [name]: { count: entry.count + 1, maxWeight: Math.max(entry.maxWeight, weight) } };
+    });
+  };
+  const [showCrew, setShowCrew] = useState(false);
+  const [mapCatFilter, setMapCatFilter] = useState("all");
+
+  // 5 phần bản đồ
+  const MAP_CATS = [
+    { id: "all",    label: "Tất Cả",   icon: "🗺️", color: "#94a3b8", bg: "rgba(148,163,184,0.12)", border: "rgba(148,163,184,0.3)" },
+    { id: "thuong", label: "Thường",   icon: "🌊",  color: "#38bdf8", bg: "rgba(56,189,248,0.10)",  border: "rgba(56,189,248,0.35)" },
+    { id: "vucsau", label: "Vực Sâu", icon: "🕳️", color: "#818cf8", bg: "rgba(129,140,248,0.10)", border: "rgba(129,140,248,0.35)" },
+    { id: "nuilua", label: "Núi Lửa", icon: "🌋",  color: "#f87171", bg: "rgba(248,113,113,0.10)", border: "rgba(248,113,113,0.35)" },
+    { id: "vutru",  label: "Vũ Trụ",  icon: "🌌",  color: "#c084fc", bg: "rgba(192,132,252,0.10)", border: "rgba(192,132,252,0.35)" },
+    { id: "than",   label: "Thần",    icon: "⚡",  color: "#fbbf24", bg: "rgba(251,191,36,0.10)",  border: "rgba(251,191,36,0.35)" },
+  ];
+  const getMapCat = (id) => {
+    // THƯỜNG: ao làng → hang hải tặc (1-9)
+    if (id <= 9)  return "thuong";
+    // VỰC SÂU: vực sâu → biển thần (10-20)
+    if (id <= 20) return "vucsau";
+    // VŨ TRỤ: cosmic gốc + chiều KG + thời gian + vũ trụ cao cấp (21-25, 41-75)
+    if (id <= 25) return "vutru";
+    // NÚI LỬA: địa ngục + lửa + nguyên tố (26-30, 51-55)
+    if (id <= 30) return "nuilua";
+    // THẦN: thần thoại VN + TG (31-40)
+    if (id <= 40) return "than";
+    // VŨ TRỤ: chiều KG + thời gian + nguyên tố + vũ trụ (41-75)
+    if (id <= 75) return "vutru";
+    // THẦN: siêu việt + tuyệt đỉnh (76-125)
+    return "than";
+  };
+  // Thuyền: nâng cấp để chứa thêm thuyền viên
+  const [boatLevel, setBoatLevel] = useState(1); // cấp 1–10
+  const BOAT_CAPACITY = [10, 30, 40, 50, 60, 80, 100, 130, 170, 220]; // sức chứa theo từng cấp
+  const BOAT_UPGRADE_COSTS = [0, 2000, 8000, 25000, 80000, 250000, 800000, 2500000, 8000000, 25000000];
+  // Crew: người chơi mua thêm thuyền viên
+  const [ownedCrew, setOwnedCrew] = useState([]); // array of crew ids
+  // Bể cá: nuôi cá rồi bán gấp 3
+  const [tank, setTank] = useState([]); // [{id, name, weight, originalWeight, turnsInTank}]
+  // Túi đồ: chứa cá bạn thân
+  const [bagLevel, setBagLevel] = useState(1); // cấp 1→1 con, cấp 2→5 con, cấp 3→10 con
+  const BAG_CAP = [1, 5, 10];
+  const BAG_UPGRADE_COSTS = [0, 3000, 20000]; // cost to go lv1→2, lv2→3
+  const bagCapacity = BAG_CAP[bagLevel - 1];
+  const upgradeBAG = () => {
+    if (bagLevel >= 3) { addLog("🎒 Túi đồ đã đạt cấp tối đa (10 con)!"); return; }
+    const cost = BAG_UPGRADE_COSTS[bagLevel];
+    if (nc < cost) { addLog(`❌ Cần ${cost.toLocaleString()} NC để nâng cấp túi đồ!`); return; }
+    setNc(p => p - cost);
+    setBagLevel(p => p + 1);
+    addLog(`🎒 Nâng túi đồ lên cấp ${bagLevel + 1}! Chứa được ${BAG_CAP[bagLevel]} cá bạn thân.`);
+  };
+  // Cá bạn thân: giữ 1 ngày → +120% sức chiến đấu (mỗi con)
+  const [buddyFish, setBuddyFish] = useState([]); // [{id, name, icon, weight, dayKept, ready}]
+
+  const [tankCapacity, setTankCapacity] = useState(3); // max slots, upgradeable
+  const [tankIdCounter, setTankIdCounter] = useState(0);
+  // Fish upgrades: each level costs more, boosts fish battle power
+  const [fishUpgrades, setFishUpgrades] = useState({
+    armor: 0,    // max 5 - Giáp vảy: giảm sát thương quái, tăng sức chịu
+    weapon: 0,   // max 5 - Nanh độc: tăng sát thương cá
+    training: 0, // max 5 - Huấn luyện: tăng hệ số cân nặng
+    spirit: 0,   // max 3 - Linh hồn biển: % crit đánh x3
+    army: 0,     // max 5 - Bầy đàn: mỗi cấp +1 cá hỗ trợ
+    rage: 0,     // max 3 - Cuồng nộ: cá yếu đánh mạnh hơn
+  });
+  const FISH_UPGRADES = [
+    { key: "armor", name: "Giáp Vảy", icon: "🛡️", max: 5, baseCost: 150, desc: "Cá cứng hơn, khó bị hạ", perLevel: "+20 sức chống" },
+    { key: "weapon", name: "Nanh Độc", icon: "🗡️", max: 5, baseCost: 200, desc: "Cá đánh đau hơn", perLevel: "+25 sức tấn công" },
+    { key: "training", name: "Huấn Luyện", icon: "🏋️", max: 5, baseCost: 250, desc: "Cân nặng hiệu quả hơn", perLevel: "×0.5 hệ số kg" },
+    { key: "spirit", name: "Linh Hồn Biển", icon: "🌀", max: 3, baseCost: 500, desc: "Cơ hội đánh chí mạng x3", perLevel: "+15% crit" },
+    { key: "army", name: "Bầy Đàn", icon: "🐠", max: 5, baseCost: 300, desc: "Thêm cá hỗ trợ chiến đấu", perLevel: "+1 cá đồng đội" },
+    { key: "rage", name: "Cuồng Nộ", icon: "🔥", max: 3, baseCost: 400, desc: "Cá nhỏ đánh mạnh bất ngờ", perLevel: "+30 sức nếu <50kg" },
+  ];
+  const logRef = useRef(null);
+
+  const level = Math.floor(sm / 100);
+
+  const addLog = useCallback((msg) => {
+    setLog((prev) => [...prev.slice(-15), msg]);
+  }, []);
+
+  const addFish = useCallback(() => {
+    setFishMap((prev) => {
+      const m = prev.map((r) => [...r]);
+      const s = m.length;
+      let attempts = 0;
+      while (attempts < 20) {
+        const x = Math.floor(Math.random() * s);
+        const y = Math.floor(Math.random() * s);
+        if (!m[y][x]) {
+          m[y][x] = true;
+          break;
+        }
+        attempts++;
+      }
+      return m;
+    });
+  }, []);
+
+  const npcCau = useCallback(() => {
+    if (npc > 0) {
+      const ca = (Math.floor(Math.random() * 16) + 5) * npc;
+      const luong = Math.floor(ca / 10);
+      const earn = ca - luong;
+      setNc((p) => p + earn);
+      addLog(`👥 NPC câu được ${ca}kg → +${earn} NC`);
+    }
+  }, [npc, addLog]);
+
+  const doFish = useCallback(() => {
+    if (!fishMap[py][px]) {
+      addLog("❌ Không có cá ở đây!");
+      return;
+    }
+    setFishingAnim(true);
+    setTimeout(() => {
+      setFishingAnim(false);
+      const chance = Math.floor(Math.random() * 100) + 1;
+      let ca;
+      if (chance <= 80) ca = Math.floor((Math.floor(Math.random() * 26) + 5) * currentMap.fishMult);
+      else if (chance <= 99) ca = Math.floor((Math.floor(Math.random() * 71) + 30) * currentMap.fishMult);
+      else ca = Math.floor(10000 * currentMap.fishMult);
+
+      const isCosmic = currentMap.cosmic;
+      const names = isCosmic ? COSMIC_FISH_NAMES : FISH_NAMES;
+      const name = names[Math.floor(Math.random() * names.length)];
+      const rodMax = CAN_MAX[canCap - 1] + (hasCrew("diver") ? crewMult(500) : 0);
+      const tooHeavy = ca > rodMax;
+
+      setCaughtFish({ name, weight: ca, tooHeavy, rare: ca >= 100, cosmic: isCosmic });
+      setFishMap((prev) => {
+        const m = prev.map((r) => [...r]);
+        m[py][px] = false;
+        return m;
+      });
+      setGameState("result");
+    }, 1200);
+  }, [fishMap, py, px, canCap, addLog, currentMap]);
+
+  const handleEat = () => {
+    if (!caughtFish) return;
+    const ca = caughtFish.weight;
+    let gain = ca <= 50 ? Math.floor(ca / 2) : Math.floor(ca / 5);
+    if (hasCrew("chef")) gain = Math.floor(gain * (1 + crewMult(0.5)));
+    setSm((p) => p + gain);
+    recordFishCatch(caughtFish.name, ca);
+    addLog(`🐟 ${caughtFish.name} ${ca}kg → Ăn +${gain} SM${hasCrew("chef") ? " 👨‍🍳" : ""}`);
+    setTotalCaught((p) => p + 1);
+    if (ca > biggestFish) setBiggestFish(ca);
+    finishFishing();
+  };
+
+  const handleSell = () => {
+    if (!caughtFish) return;
+    const ca = caughtFish.weight;
+    let price = ca;
+    if (hasCrew("merchant")) price = Math.floor(ca * (1 + crewMult(0.2)));
+    setNc((p) => p + price);
+    recordFishCatch(caughtFish.name, ca);
+    addLog(`🐟 ${caughtFish.name} ${ca}kg → Bán +${price} NC${hasCrew("merchant") ? " 💼" : ""}`);
+    setTotalCaught((p) => p + 1);
+    if (ca > biggestFish) setBiggestFish(ca);
+    finishFishing();
+  };
+
+  const handleTank = () => {
+    if (!caughtFish) return;
+    if (tank.length >= tankCapacity) {
+      addLog(`❌ Bể cá đầy! (${tank.length}/${tankCapacity})`);
+      return;
+    }
+    recordFishCatch(caughtFish.name, caughtFish.weight);
+    const newId = tankIdCounter;
+    setTankIdCounter((p) => p + 1);
+    setTank((prev) => [...prev, {
+      id: newId,
+      name: caughtFish.name,
+      weight: caughtFish.weight,
+      originalWeight: caughtFish.weight,
+      turnsInTank: 0,
+    }]);
+    addLog(`🐠 ${caughtFish.name} ${caughtFish.weight}kg → Vào bể nuôi!`);
+    setTotalCaught((p) => p + 1);
+    if (caughtFish.weight > biggestFish) setBiggestFish(caughtFish.weight);
+    finishFishing();
+  };
+
+  const sellFromTank = (fishId) => {
+    const fish = tank.find((f) => f.id === fishId);
+    if (!fish) return;
+    const sellPrice = fish.weight * 3;
+    setNc((p) => p + sellPrice);
+    setTank((prev) => prev.filter((f) => f.id !== fishId));
+    addLog(`💰 Bán ${fish.name} ${fish.weight}kg từ bể → +${sellPrice} NC (×3!)`);
+  };
+
+  const sellAllTank = () => {
+    if (tank.length === 0) return;
+    let total = 0;
+    tank.forEach((f) => { total += f.weight * 3; });
+    setNc((p) => p + total);
+    addLog(`💰 Bán hết bể (${tank.length} con) → +${total} NC (×3!)`);
+    setTank([]);
+  };
+
+  const upgradeTank = () => {
+    const cost = tankCapacity * 200;
+    if (tankCapacity >= 10) {
+      addLog("❌ Bể đã max 10 ô!");
+      return;
+    }
+    if (nc < cost) {
+      addLog(`❌ Cần ${cost} NC để mở rộng bể (có ${nc})`);
+      return;
+    }
+    setNc((p) => p - cost);
+    setTankCapacity((p) => p + 1);
+    addLog(`🏗️ Bể mở rộng lên ${tankCapacity + 1} ô!`);
+  };
+
+  // Cá trong bể tăng cân theo lượt
+  const growTankFish = useCallback(() => {
+    setTank((prev) => prev.map((f) => {
+      const growth = Math.floor(Math.random() * 3) + 1; // +1~3 kg mỗi lần
+      return { ...f, weight: f.weight + growth, turnsInTank: f.turnsInTank + 1 };
+    }));
+  }, []);
+
+  const [treasureResult, setTreasureResult] = useState(null);
+  const [monsterEncounter, setMonsterEncounter] = useState(null);
+  const [battleResult, setBattleResult] = useState(null);
+  const [monstersSlain, setMonstersSlain] = useState(0);
+  const [showCage, setShowCage] = useState(false);
+  // Chuồng thuỷ quái: nhốt quái bán sau
+  const [monsterCage, setMonsterCage] = useState([]); // [{id, name, icon, sellPrice, power, cageIdCounter}]
+  const [cageCapacity, setCageCapacity] = useState(2);
+  const [cageIdCounter, setCageIdCounter] = useState(0);
+
+  const TREASURES = [
+    { name: "Ngọc Trai", icon: "🫧", type: "nc", min: 50, max: 200 },
+    { name: "Rương Vàng", icon: "📦", type: "nc", min: 200, max: 500 },
+    { name: "Vương Miện Cổ", icon: "👑", type: "nc", min: 500, max: 1500 },
+    { name: "Trái Tim Đại Dương", icon: "💎", type: "nc", min: 1000, max: 5000 },
+    { name: "Rong Biển Thần", icon: "🌿", type: "sm", min: 30, max: 100 },
+    { name: "San Hô Phép", icon: "🪸", type: "sm", min: 50, max: 200 },
+    { name: "Bản Đồ Kho Báu", icon: "🗺️", type: "both", min: 100, max: 300 },
+    { name: "Sò Thần Kỳ", icon: "🐚", type: "upgrade", min: 0, max: 0 },
+  ];
+
+  const COSMIC_TREASURES = [
+    { name: "Bụi Sao", icon: "✨", type: "nc", min: 50000, max: 200000 },
+    { name: "Lõi Sao Neutron", icon: "💠", type: "nc", min: 200000, max: 800000 },
+    { name: "Mảnh Vỡ Big Bang", icon: "💥", type: "both", min: 100000, max: 500000 },
+    { name: "Nước Mắt Thần", icon: "💧", type: "sm", min: 5000, max: 20000 },
+    { name: "Pha Lê Thời Gian", icon: "⏳", type: "nc", min: 500000, max: 2000000 },
+    { name: "Vật Chất Tối", icon: "🌑", type: "both", min: 300000, max: 1000000 },
+    { name: "Trái Tim Vũ Trụ", icon: "💜", type: "sm", min: 10000, max: 50000 },
+    { name: "Sò Thần Kỳ", icon: "🐚", type: "upgrade", min: 0, max: 0 },
+  ];
+
+  // Thuỷ quái - tổng weight = 100 (trong 30% ko có kho báu)
+  const MONSTERS = [
+    { name: "Space Bloop", icon: "👽", weight: 10, hp: 500, power: 80, sellPrice: 5000, desc: "Sinh vật ngoài hành tinh rơi xuống đại dương, phát ra sóng âm xuyên không gian", loot_nc: [2000, 8000], loot_sm: [200, 500], color: "#0a192f" },
+    { name: "Sea Eater", icon: "🦑", weight: 5, hp: 800, power: 120, sellPrice: 12000, desc: "Quái vật nuốt chửng cả tàu chiến, xúc tu dài hàng trăm mét", loot_nc: [5000, 15000], loot_sm: [500, 1000], color: "#4a1942" },
+    { name: "Kraken", icon: "🐙", weight: 8, hp: 600, power: 90, sellPrice: 8000, desc: "Bạch tuộc khổng lồ từ thần thoại Bắc Âu", loot_nc: [3000, 10000], loot_sm: [300, 600], color: "#2d1b4e" },
+    { name: "Leviathan", icon: "🐉", weight: 3, hp: 1200, power: 200, sellPrice: 25000, desc: "Rồng biển cổ đại, vua của mọi thuỷ quái", loot_nc: [10000, 30000], loot_sm: [1000, 3000], color: "#1a0a2e" },
+    { name: "Cá Mập Ma", icon: "🦈", weight: 15, hp: 200, power: 40, sellPrice: 1500, desc: "Bóng ma của loài Megalodon đã tuyệt chủng", loot_nc: [500, 2000], loot_sm: [50, 150], color: "#1c2833" },
+    { name: "Rắn Biển Độc", icon: "🐍", weight: 12, hp: 150, power: 60, sellPrice: 2000, desc: "Nọc độc hoà tan cả kim loại, dài 30 mét", loot_nc: [800, 2500], loot_sm: [80, 200], color: "#0b3d0b" },
+    { name: "Sứa Tử Thần", icon: "🪼", weight: 14, hp: 100, power: 70, sellPrice: 1800, desc: "Xúc tu phóng điện 10.000 volt, phát sáng trong đêm", loot_nc: [600, 1800], loot_sm: [60, 180], color: "#2e1065" },
+    { name: "Thuồng Luồng", icon: "🐊", weight: 10, hp: 350, power: 65, sellPrice: 4000, desc: "Thuỷ quái sông Mekong, nỗi sợ ngàn đời", loot_nc: [1500, 5000], loot_sm: [150, 400], color: "#1a3c1a" },
+    { name: "Hải Yêu", icon: "🧜", weight: 7, hp: 250, power: 50, sellPrice: 6000, desc: "Nàng tiên cá bóng tối, giọng hát mê hoặc linh hồn", loot_nc: [2000, 6000], loot_sm: [100, 300], color: "#1a1a3e" },
+    { name: "Cthulhu Con", icon: "👾", weight: 2, hp: 2000, power: 300, sellPrice: 50000, desc: "Hậu duệ Cthulhu, chỉ nhìn đã mất nửa trí", loot_nc: [20000, 50000], loot_sm: [2000, 5000], color: "#0d0d1a" },
+    { name: "Cua Hoàng Đế", icon: "🦀", weight: 8, hp: 180, power: 35, sellPrice: 1200, desc: "Càng cắt đứt xích sắt, mai cứng như thép", loot_nc: [400, 1500], loot_sm: [40, 120], color: "#5c1a1a" },
+    { name: "Rùa Ngàn Năm", icon: "🐢", weight: 6, hp: 800, power: 20, sellPrice: 15000, desc: "Sống từ thời khủng long, mai chứa cổ vật vô giá", loot_nc: [8000, 20000], loot_sm: [100, 200], color: "#1a3a2a" },
+  ];
+
+  const COSMIC_MONSTERS = [
+    { name: "Rồng Sao", icon: "🐲", weight: 12, hp: 5000, power: 500, sellPrice: 200000, desc: "Rồng sinh ra từ sao chết, hơi thở thiêu đốt hành tinh", loot_nc: [100000, 300000], loot_sm: [5000, 15000], color: "#3a0a2e" },
+    { name: "Sứa Tinh Vân", icon: "🪼", weight: 15, hp: 3000, power: 350, sellPrice: 80000, desc: "Sứa khổng lồ bằng cả tinh vân, xúc tu quấn quanh sao", loot_nc: [50000, 150000], loot_sm: [3000, 8000], color: "#1a0040" },
+    { name: "Bạch Tuộc Chiều Không", icon: "🌀", weight: 8, hp: 8000, power: 700, sellPrice: 500000, desc: "Sống ở chiều thứ 5, mỗi xúc tu ở 1 vũ trụ khác", loot_nc: [200000, 600000], loot_sm: [10000, 30000], color: "#0a0020" },
+    { name: "Cá Mập Lỗ Đen", icon: "🦈", weight: 10, hp: 6000, power: 600, sellPrice: 300000, desc: "Miệng là lỗ đen thu nhỏ, nuốt cả ánh sáng", loot_nc: [150000, 400000], loot_sm: [8000, 20000], color: "#000010" },
+    { name: "Hydra Sao", icon: "🐍", weight: 6, hp: 10000, power: 800, sellPrice: 400000, desc: "Chặt 1 đầu mọc thêm 3, mỗi đầu là 1 ngôi sao", loot_nc: [200000, 500000], loot_sm: [8000, 25000], color: "#2a000a" },
+    { name: "Thần Cá Cosmos", icon: "🐋", weight: 3, hp: 20000, power: 1200, sellPrice: 1000000, desc: "Thực thể tối thượng, cơ thể chứa cả thiên hà", loot_nc: [500000, 2000000], loot_sm: [20000, 80000], color: "#05000a" },
+    { name: "Virus Vũ Trụ", icon: "🦠", weight: 18, hp: 2000, power: 250, sellPrice: 50000, desc: "Vi sinh vật phá huỷ sao, lan truyền qua ánh sáng", loot_nc: [30000, 80000], loot_sm: [2000, 5000], color: "#002010" },
+    { name: "Bóng Ma Phi Hành", icon: "👻", weight: 10, hp: 4000, power: 400, sellPrice: 120000, desc: "Linh hồn phi hành gia lạc trong vũ trụ ngàn năm", loot_nc: [80000, 200000], loot_sm: [5000, 12000], color: "#0a0a20" },
+    { name: "Đại Đế Void", icon: "🕳️", weight: 2, hp: 50000, power: 2000, sellPrice: 5000000, desc: "Chúa tể hư vô — nơi không gì tồn tại", loot_nc: [1000000, 5000000], loot_sm: [50000, 200000], color: "#000000" },
+  ];
+
+  const pickMonster = () => {
+    const pool = currentMap.cosmic ? COSMIC_MONSTERS : MONSTERS;
+    const totalW = pool.reduce((s, m) => s + m.weight, 0);
+    let roll = Math.random() * totalW;
+    for (const m of pool) {
+      roll -= m.weight;
+      if (roll <= 0) return m;
+    }
+    return pool[0];
+  };
+
+  const handleRelease = () => {
+    if (!caughtFish) return;
+    const chance = Math.random();
+    const treasureChance = hasCrew("mermaid") ? 0.8 : 0.7;
+    if (chance < treasureChance) {
+      const tPool = currentMap.cosmic ? COSMIC_TREASURES : TREASURES;
+      const treasure = tPool[Math.floor(Math.random() * tPool.length)];
+      let amount = treasure.min !== undefined && treasure.max > 0
+        ? Math.floor(Math.random() * (treasure.max - treasure.min + 1)) + treasure.min
+        : 0;
+      if (hasCrew("pirate") && (treasure.type === "nc" || treasure.type === "both")) {
+        amount = Math.floor(amount * (1 + crewMult(0.5)));
+      }
+      setTreasureResult({ treasure, amount, fishName: caughtFish.name, fishWeight: caughtFish.weight });
+      setGameState("treasure");
+    } else {
+      // 30% → cá gặp thuỷ quái và chiến đấu!
+      const monster = pickMonster();
+      const fish = caughtFish;
+      const { power: fishPower, crit: fishCrit } = calcFishPower(fish.weight);
+      const monsterPower = monster.power + currentMap.monsterBoost + Math.floor(Math.random() * (monster.power / 2));
+      const won = fishPower >= monsterPower;
+
+      if (won) {
+        const mapLootMult = Math.max(1, Math.sqrt(currentMap.fishMult));
+        const lootNc = Math.floor((Math.floor(Math.random() * (monster.loot_nc[1] - monster.loot_nc[0] + 1)) + monster.loot_nc[0]) * mapLootMult);
+        const lootSm = Math.floor((Math.floor(Math.random() * (monster.loot_sm[1] - monster.loot_sm[0] + 1)) + monster.loot_sm[0]) * mapLootMult);
+        setMonstersSlain((p) => p + 1);
+        setMonsterEncounter({ ...monster, fishName: fish.name, fishWeight: fish.weight });
+        setBattleResult({ won: true, lootNc, lootSm, fishPower, monsterPower, fishCrit, collected: false });
+        addLog(`⚔️ ${fish.name} ${fish.weight}kg ${fishCrit ? "💥CRIT! " : ""}hạ ${monster.icon} ${monster.name}!`);
+      } else {
+        setMonsterEncounter({ ...monster, fishName: fish.name, fishWeight: fish.weight });
+        setBattleResult({ won: false, fishPower, monsterPower, fishCrit });
+        addLog(`💀 ${fish.name} ${fish.weight}kg thua ${monster.icon} ${monster.name}...`);
+      }
+      setGameState("monster");
+    }
+  };
+
+  const closeMonster = () => {
+    setMonsterEncounter(null);
+    setBattleResult(null);
+    finishFishing();
+  };
+
+  // Player chooses to collect loot from defeated monster
+  const collectMonsterLoot = () => {
+    if (!battleResult || !battleResult.won) return;
+    setNc((p) => p + battleResult.lootNc);
+    setSm((p) => p + battleResult.lootSm);
+    addLog(`🎁 Lấy chiến lợi phẩm: +${battleResult.lootNc} NC +${battleResult.lootSm} SM`);
+    closeMonster();
+  };
+
+  // Player chooses to sell the monster directly
+  const sellMonsterDirect = () => {
+    if (!monsterEncounter || !battleResult?.won) return;
+    const price = monsterEncounter.sellPrice;
+    setNc((p) => p + price);
+    addLog(`💰 Bán ${monsterEncounter.icon} ${monsterEncounter.name} → +${price.toLocaleString()} NC`);
+    closeMonster();
+  };
+
+  // Player chooses to cage the monster for later sale
+  const cageMonster = () => {
+    if (!monsterEncounter || !battleResult?.won) return;
+    if (monsterCage.length >= cageCapacity) {
+      addLog(`❌ Chuồng quái đầy! (${monsterCage.length}/${cageCapacity})`);
+      return;
+    }
+    const newId = cageIdCounter;
+    setCageIdCounter((p) => p + 1);
+    setMonsterCage((prev) => [...prev, {
+      id: newId,
+      name: monsterEncounter.name,
+      icon: monsterEncounter.icon,
+      sellPrice: monsterEncounter.sellPrice,
+      power: monsterEncounter.power,
+      color: monsterEncounter.color,
+      turnsInCage: 0,
+    }]);
+    addLog(`🔒 Nhốt ${monsterEncounter.icon} ${monsterEncounter.name} vào chuồng!`);
+    closeMonster();
+  };
+
+  const sellFromCage = (monsterId) => {
+    const m = monsterCage.find((x) => x.id === monsterId);
+    if (!m) return;
+    // Giá tăng theo thời gian nhốt: base + 10% mỗi 3 lượt
+    const bonus = Math.floor(m.sellPrice * (m.turnsInCage * 0.1));
+    const finalPrice = m.sellPrice + bonus;
+    setNc((p) => p + finalPrice);
+    setMonsterCage((prev) => prev.filter((x) => x.id !== monsterId));
+    addLog(`💰 Bán ${m.icon} ${m.name} từ chuồng → +${finalPrice.toLocaleString()} NC${bonus > 0 ? ` (+${bonus} bonus)` : ""}`);
+  };
+
+  const sellAllCage = () => {
+    if (monsterCage.length === 0) return;
+    let total = 0;
+    monsterCage.forEach((m) => {
+      const bonus = Math.floor(m.sellPrice * (m.turnsInCage * 0.1));
+      total += m.sellPrice + bonus;
+    });
+    setNc((p) => p + total);
+    addLog(`💰 Bán hết chuồng (${monsterCage.length} con) → +${total.toLocaleString()} NC`);
+    setMonsterCage([]);
+  };
+
+  const upgradeCage = () => {
+    const cost = cageCapacity * 500;
+    if (cageCapacity >= 8) {
+      addLog("❌ Chuồng đã max 8 ô!");
+      return;
+    }
+    if (nc < cost) {
+      addLog(`❌ Cần ${cost} NC để mở rộng chuồng (có ${nc})`);
+      return;
+    }
+    setNc((p) => p - cost);
+    setCageCapacity((p) => p + 1);
+    addLog(`🏗️ Chuồng mở rộng lên ${cageCapacity + 1} ô!`);
+  };
+
+  const travelToMap = (mapId) => {
+    const mapDef = MAP_DATA.find((m) => m.id === mapId);
+    if (!mapDef) return;
+    if (!unlockedMaps.includes(mapId)) return;
+    setCurrentMapId(mapId);
+    const newSize = mapDef.size;
+    setPx(Math.floor(newSize / 2));
+    setPy(Math.floor(newSize / 2));
+    setFishMap(generateFishForMap(mapDef));
+    setShowMapSelect(false);
+    addLog(`🗺️ Đến ${mapDef.icon} ${mapDef.name}!`);
+  };
+
+  const unlockMap = (mapId) => {
+    const mapDef = MAP_DATA.find((m) => m.id === mapId);
+    if (!mapDef || unlockedMaps.includes(mapId)) return;
+    if (nc < mapDef.unlockCost) {
+      addLog(`❌ Cần ${mapDef.unlockCost.toLocaleString()} NC để mở khoá ${mapDef.name} (có ${nc.toLocaleString()})`);
+      return;
+    }
+    setNc((p) => p - mapDef.unlockCost);
+    setUnlockedMaps((prev) => [...prev, mapId]);
+    addLog(`🔓 Mở khoá ${mapDef.icon} ${mapDef.name}!`);
+  };
+
+  // Quái trong chuồng tăng giá theo lượt
+  const growCageMonsters = useCallback(() => {
+    setMonsterCage((prev) => prev.map((m) => ({
+      ...m, turnsInCage: m.turnsInCage + 1,
+    })));
+  }, []);
+
+  const healerTick = useCallback(() => {
+    if (ownedCrew.includes("healer")) {
+      const heal = ownedCrew.includes("king") ? 15 : 10;
+      setSm((p) => p + heal);
+      addLog(`💊 Thầy Thuốc hồi +${heal} SM`);
+    }
+  }, [ownedCrew, addLog]);
+
+  // ===== THUỶ CUNG (AQUARIUM) =====
+  const calcAquariumStars = (item) => {
+    // Stars based on rarity/kg
+    if (item.type === "monster") return item.kg >= 500 ? 5 : item.kg >= 200 ? 4 : item.kg >= 50 ? 3 : 2;
+    // fish
+    if (item.kg >= 10000) return 5;
+    if (item.kg >= 500) return 4;
+    if (item.kg >= 100) return 3;
+    if (item.kg >= 30) return 2;
+    return 1;
+  };
+
+  const addToAquarium = (type, name, icon, kg) => {
+    if (aquarium.length >= aquariumCapacity) {
+      addLog("❌ Thuỷ cung đầy! Nâng cấp để thêm chỗ.");
+      return false;
+    }
+    const id = aquariumIdCounter + 1;
+    const stars = calcAquariumStars({ type, kg });
+    setAquariumIdCounter(id);
+    setAquarium((prev) => [...prev, { id, type, name, icon, kg, stars }]);
+    addLog(`🏛️ ${icon} ${name} ${kg.toLocaleString()}kg vào Thuỷ Cung! (${"⭐".repeat(stars)})`);
+    return true;
+  };
+
+  const removeFromAquarium = (id) => {
+    setAquarium((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const upgradeAquarium = () => {
+    if (aquariumCapacity >= 20) {
+      addLog("❌ Thuỷ cung đã max 20 chỗ!");
+      return;
+    }
+    const cost = aquariumCapacity * 300;
+    if (nc < cost) {
+      addLog(`❌ Cần ${cost.toLocaleString()} NC để mở rộng thuỷ cung`);
+      return;
+    }
+    setNc((p) => p - cost);
+    setAquariumCapacity((p) => p + 1);
+    addLog(`🏛️ Thuỷ cung mở rộng → ${aquariumCapacity + 1} chỗ!`);
+  };
+
+  // Aquarium rank based on total stars
+  const aquariumRank = (() => {
+    const totalStars = aquarium.reduce((s, a) => s + a.stars, 0);
+    if (totalStars >= 80) return 1;
+    if (totalStars >= 50) return 2;
+    if (totalStars >= 30) return 3;
+    if (totalStars >= 15) return 4;
+    if (totalStars >= 5) return 5;
+    return 0; // unranked
+  })();
+  const AQUARIUM_TIERS = [
+    { rank: 0, name: "Chưa xếp hạng", icon: "—", ticket: 100, color: "#64748b" },
+    { rank: 5, name: "Top 5", icon: "🥉", ticket: 200, color: "#a78bfa" },
+    { rank: 4, name: "Top 4", icon: "🥉", ticket: 300, color: "#818cf8" },
+    { rank: 3, name: "Top 3", icon: "🥉", ticket: 400, color: "#f59e0b" },
+    { rank: 2, name: "Top 2", icon: "🥈", ticket: 467, color: "#94a3b8" },
+    { rank: 1, name: "Top 1", icon: "🥇", ticket: 1000000, color: "#fbbf24" },
+  ];
+  const currentTier = AQUARIUM_TIERS.find((t) => t.rank === aquariumRank) || AQUARIUM_TIERS[0];
+
+  const aquariumVisitorTick = useCallback(() => {
+    if (aquarium.length === 0) return;
+    const totalStars = aquarium.reduce((s, a) => s + a.stars, 0);
+    let rank = 0;
+    if (totalStars >= 80) rank = 1;
+    else if (totalStars >= 50) rank = 2;
+    else if (totalStars >= 30) rank = 3;
+    else if (totalStars >= 15) rank = 4;
+    else if (totalStars >= 5) rank = 5;
+    const ticket = rank === 1 ? 1000000 : rank === 2 ? 467 : rank === 3 ? 400 : rank === 4 ? 300 : rank === 5 ? 200 : 100;
+    const hasMonster = aquarium.some((a) => a.type === "monster");
+    const variety = new Set(aquarium.map((a) => a.name)).size;
+    let visitors = aquarium.length + Math.floor(totalStars / 3) + (hasMonster ? 3 : 0) + Math.floor(variety / 2);
+    visitors = Math.floor(visitors * Math.max(1, Math.sqrt(currentMap.fishMult)));
+    visitors = Math.max(1, Math.floor(visitors * (0.7 + Math.random() * 0.6)));
+    const income = visitors * ticket;
+    setNc((p) => p + income);
+    setAquariumTotalVisitors((p) => p + visitors);
+    setAquariumTotalIncome((p) => p + income);
+    addLog(`🏛️ Thuỷ cung: ${visitors} khách × ${ticket.toLocaleString()} NC = +${income.toLocaleString()} NC`);
+  }, [aquarium, currentMap, addLog]);
+
+  const collectTreasure = () => {
+    if (!treasureResult) return;
+    const { treasure, amount } = treasureResult;
+    if (treasure.type === "nc") {
+      setNc((p) => p + amount);
+      addLog(`🎁 ${treasure.icon} ${treasure.name}! +${amount} NC`);
+    } else if (treasure.type === "sm") {
+      setSm((p) => p + amount);
+      addLog(`🎁 ${treasure.icon} ${treasure.name}! +${amount} SM`);
+    } else if (treasure.type === "both") {
+      setNc((p) => p + amount);
+      setSm((p) => p + Math.floor(amount / 2));
+      addLog(`🎁 ${treasure.icon} ${treasure.name}! +${amount} NC & +${Math.floor(amount / 2)} SM`);
+    } else if (treasure.type === "upgrade") {
+      if (canCap < 5) {
+        setCanCap((p) => p + 1);
+        addLog(`🎁 ${treasure.icon} ${treasure.name}! Cần câu tự nâng lên cấp ${canCap + 1}!`);
+      } else {
+        const bonus = 500;
+        setNc((p) => p + bonus);
+        addLog(`🎁 ${treasure.icon} ${treasure.name}! Cần đã max → +${bonus} NC`);
+      }
+    }
+    setTreasureResult(null);
+    finishFishing();
+  };
+
+  const finishFishing = () => {
+    setCaughtFish(null);
+    addFish();
+    advanceTurn();
+    setGameState("playing");
+  };
+
+  const handleTooHeavy = () => {
+    addLog(`🪝 ${caughtFish.name} ${caughtFish.weight}kg quá nặng! Cần chưa đủ mạnh`);
+    setCaughtFish(null);
+    addFish();
+    advanceTurn();
+    setGameState("playing");
+  };
+
+  const advanceTurn = useCallback(() => {
+    setLuot((prev) => {
+      const next = prev + 1;
+      if (next % 3 === 0) {
+        setTimeout(() => npcCau(), 100);
+        setTimeout(() => growTankFish(), 150);
+        setTimeout(() => growCageMonsters(), 200);
+        setTimeout(() => healerTick(), 250);
+        setTimeout(() => aquariumVisitorTick(), 300);
+      }
+      // Day/night cycle
+      const turnsInDay = next % TURNS_PER_DAY;
+      if (turnsInDay >= TURNS_PER_DAY - 3) {
+        setTimeOfDay("sunset");
+      } else {
+        setTimeOfDay("day");
+      }
+      if (turnsInDay === 0 && next > 0) {
+        // Calculate which day is ending based on turns
+        const endingDay = Math.floor(next / TURNS_PER_DAY);
+        setTimeout(() => {
+          setTimeOfDay("night");
+          setNightStats({ wins: 0, losses: 0, totalNc: 0, totalSm: 0, dmgTaken: 0 });
+          if (endingDay > 0 && endingDay % NET_CHALLENGE_INTERVAL === 0) {
+            startNetChallenge();
+          } else {
+            setGameState("nightChoice");
+          }
+        }, 300);
+      }
+      return next;
+    });
+  }, [npcCau, growTankFish, growCageMonsters, healerTick, aquariumVisitorTick]);
+
+  const move = useCallback(
+    (dx, dy) => {
+      if (gameState !== "playing") return;
+      setPx((p) => Math.max(0, Math.min(SIZE - 1, p + dx)));
+      setPy((p) => Math.max(0, Math.min(SIZE - 1, p + dy)));
+      setRipple({ x: px + dx, y: py + dy });
+      setTimeout(() => setRipple(null), 400);
+      advanceTurn();
+    },
+    [gameState, px, py, advanceTurn]
+  );
+
+  const upgrade = () => {
+    const gia = canCap * 100;
+    if (canCap >= 5) {
+      addLog("❌ Cần đã max cấp!");
+      return;
+    }
+    if (nc < gia) {
+      addLog(`❌ Cần ${gia} NC để nâng cấp (có ${nc})`);
+      return;
+    }
+    setNc((p) => p - gia);
+    setCanCap((p) => p + 1);
+    addLog(`⬆️ Nâng cần lên cấp ${canCap + 1}!`);
+  };
+
+  const hireNPC = () => {
+    if (nc < 100) {
+      addLog("❌ Cần 100 NC để thuê NPC");
+      return;
+    }
+    setNc((p) => p - 100);
+    setNpc((p) => p + 1);
+    addLog("👤 Thuê thêm 1 người câu!");
+  };
+
+  // Crew bonus helper
+  const hasCrew = (id) => ownedCrew.includes(id);
+  const hasKing = ownedCrew.includes("king");
+  const crewMult = (val) => hasKing ? val * 1.5 : val;
+
+  const upgradeBoat = () => {
+    if (boatLevel >= 10) { addLog("⛵ Thuyền đã đạt cấp tối đa (220 người)!"); return; }
+    const cost = BOAT_UPGRADE_COSTS[boatLevel];
+    if (nc < cost) { addLog(`❌ Cần ${cost.toLocaleString()} NC để nâng cấp thuyền!`); return; }
+    setNc(p => p - cost);
+    setBoatLevel(p => p + 1);
+    addLog(`⛵ Nâng cấp thuyền lên cấp ${boatLevel + 1}! Chứa được ${BOAT_CAPACITY[boatLevel]} thuyền viên.`);
+  };
+
+  const buyCrew = (crewId) => {
+    const def = CREW_MEMBERS.find((c) => c.id === crewId);
+    if (!def) return;
+    if (ownedCrew.includes(crewId)) {
+      addLog(`❌ ${def.icon} ${def.name} đã có trong đội!`);
+      return;
+    }
+    if (ownedCrew.length >= BOAT_CAPACITY[boatLevel - 1]) {
+      addLog(`⛵ Thuyền đầy! Nâng cấp thuyền để chứa thêm (${ownedCrew.length}/${BOAT_CAPACITY[boatLevel - 1]}).`);
+      return;
+    }
+    if (nc < def.cost) {
+      addLog(`Cần ${def.cost.toLocaleString()} NC để thuê ${def.name}`);
+      return;
+    }
+    setNc((p) => p - def.cost);
+    setOwnedCrew((prev) => [...prev, crewId]);
+    addLog(`${def.icon} ${def.name} gia nhập đội!`);
+  };
+
+  const calcFishPower = (fishWeight) => {
+    let power = fishWeight * 2;
+    power += fishUpgrades.armor * 20;
+    power += fishUpgrades.weapon * 25;
+    power += fishWeight * fishUpgrades.training * 0.5;
+    const readyBuddies = buddyFish.filter(b => b.ready);
+    power += readyBuddies.length * fishWeight * 0.5;
+    power += fishUpgrades.army * 15;
+    if (fishWeight < 50) power += fishUpgrades.rage * 30;
+    if (hasCrew("trainer")) power += crewMult(30);
+    if (hasCrew("samurai")) power += crewMult(60);
+    if (hasCrew("knight")) power += crewMult(80);
+    if (hasCrew("paladin")) power += crewMult(120);
+    if (hasCrew("dragonknight")) power += crewMult(200);
+    const allPowerCrews = ["shaman", "wizard", "warlock", "archmage", "sorcerer", "prophet", "demigod"];
+    for (const c of allPowerCrews) {
+      if (hasCrew(c)) {
+        const def = CREW_MEMBERS.find(x => x.id === c);
+        if (def && def.bonus.type === "allPower") {
+          const fishBonus = def.bonus.value * 50;
+          power += crewMult(fishBonus);
+        }
+      }
+    }
+    const multCrews = ["king", "zeus", "poseidon", "odin", "loki", "ra", "laclong", "cosmologist", "galaxyking", "speedster", "dragonlord", "cthulhu_ally", "oceanspirit", "voidlord", "multiverseking", "timemaster", "dimensionlord", "infinityone", "alpha", "omega_final", "akasha", "brahman_ally", "destroyerfish", "absolutegod", "infinityfisher"];
+    for (const c of multCrews) {
+      if (hasCrew(c)) {
+        const def = CREW_MEMBERS.find(x => x.id === c);
+        if (def && def.bonus.type === "multiply") {
+          power = Math.floor(power * def.bonus.value);
+        }
+      }
+    }
+    const critChance = fishUpgrades.spirit * 0.15;
+    const crit = Math.random() < critChance;
+    if (crit) power *= 3;
+    return { power, crit };
+  };
+
+  const calcPlayerNightPower = () => {
+    let power = sm + canCap * 30 + npc * 20;
+    const nightPowerCrews = ["warrior", "ninja", "archer", "assassin", "berserker", "warlord", "godwarrior", "thor", "shiva", "thanhgiong", "anubis", "titan", "leviathan_ally", "blackhole_ally"];
+    for (const c of nightPowerCrews) {
+      if (hasCrew(c)) {
+        const def = CREW_MEMBERS.find(x => x.id === c);
+        if (def && def.bonus.type === "nightPower") {
+          power += crewMult(def.bonus.value);
+        }
+      }
+    }
+    const allPowerCrews = ["shaman", "wizard", "warlock", "archmage", "sorcerer", "prophet", "demigod", "dragonknight", "auco", "stargod"];
+    for (const c of allPowerCrews) {
+      if (hasCrew(c)) {
+        const def = CREW_MEMBERS.find(x => x.id === c);
+        if (def && def.bonus.type === "allPower") {
+          const nightBonus = def.bonus.value * 100;
+          power += crewMult(nightBonus);
+        }
+      }
+    }
+    const multCrews = ["king", "zeus", "poseidon", "odin", "loki", "ra", "laclong", "cosmologist", "galaxyking", "speedster", "dragonlord", "cthulhu_ally", "oceanspirit", "voidlord", "multiverseking", "timemaster", "dimensionlord", "infinityone", "alpha", "omega_final", "akasha", "brahman_ally", "destroyerfish", "absolutegod", "infinityfisher"];
+    for (const c of multCrews) {
+      if (hasCrew(c)) {
+        const def = CREW_MEMBERS.find(x => x.id === c);
+        if (def && def.bonus.type === "multiply") {
+          power = Math.floor(power * def.bonus.value);
+        }
+      }
+    }
+    return power;
+  };
+
+  const buyFishUpgrade = (key) => {
+    const def = FISH_UPGRADES.find((u) => u.key === key);
+    if (!def) return;
+    const curLv = fishUpgrades[key];
+    if (curLv >= def.max) {
+      addLog(`${def.name} đã max!`);
+      return;
+    }
+    const cost = def.baseCost * (curLv + 1);
+    if (nc < cost) {
+      addLog(`Cần ${cost} NC để nâng ${def.name}`);
+      return;
+    }
+    setNc((p) => p - cost);
+    setFishUpgrades((prev) => ({ ...prev, [key]: curLv + 1 }));
+    addLog(`${def.icon} ${def.name} lên cấp ${curLv + 1}!`);
+  };
+
+  const chooseNightFight = () => {
+    setNightWave(1);
+    setGameState("nightBattle");
+    spawnNightMonster();
+  };
+
+  const chooseNightSleep = () => {
+    const heal = 20 + Math.floor(sm * 0.1);
+    setSm((p) => p + heal);
+    addLog(`Nghỉ ngơi... Hồi +${heal} SM`);
+    setDay((d) => d + 1);
+    setGameState("playing");
+    setTimeOfDay("day");
+  };
+
+  const spawnNightMonster = () => {
+    const pool = currentMap.cosmic ? COSMIC_MONSTERS : MONSTERS;
+    const monster = pool[Math.floor(Math.random() * pool.length)];
+    const boost = currentMap.monsterBoost + (nightWave - 1) * 15 + (day - 1) * 10;
+    setNightMonster({
+      ...monster,
+      power: monster.power + boost,
+      hp: monster.hp + boost * 2,
+    });
+    setNightResult(null);
+  };
+
+  const fightNightMonster = () => {
+    if (!nightMonster) return;
+    const playerPower = calcPlayerNightPower();
+    const monsterPower = nightMonster.power + Math.floor(Math.random() * (nightMonster.power / 3));
+    const won = playerPower >= monsterPower;
+    if (won) {
+      const mapLootMult = Math.max(1, Math.sqrt(currentMap.fishMult));
+      const lootNc = Math.floor((Math.floor(Math.random() * (nightMonster.loot_nc[1] - nightMonster.loot_nc[0] + 1)) + nightMonster.loot_nc[0]) * mapLootMult);
+      const lootSm = Math.floor((Math.floor(Math.random() * (nightMonster.loot_sm[1] - nightMonster.loot_sm[0] + 1)) + nightMonster.loot_sm[0]) * mapLootMult);
+      setNc((p) => p + lootNc);
+      setSm((p) => p + lootSm);
+      setNightStats((prev) => ({
+        ...prev,
+        wins: prev.wins + 1,
+        totalNc: prev.totalNc + lootNc,
+        totalSm: prev.totalSm + lootSm,
+      }));
+      setNightResult({ won: true, playerPower, monsterPower, lootNc, lootSm });
+    } else {
+      const dmg = Math.floor(monsterPower / 3);
+      const lostNc = Math.floor(nc * 0.05);
+      setSm((p) => Math.max(10, p - dmg));
+      setNc((p) => Math.max(0, p - lostNc));
+      setNightStats((prev) => ({
+        ...prev,
+        losses: prev.losses + 1,
+        dmgTaken: prev.dmgTaken + dmg,
+      }));
+      setNightResult({ won: false, playerPower, monsterPower, dmg, lostNc });
+    }
+  };
+
+  const nextNightWave = () => {
+    if (nightWave >= 5) {
+      setGameState("nightSummary");
+      return;
+    }
+    setNightWave((w) => w + 1);
+    spawnNightMonster();
+  };
+
+  const closeNightSummary = () => {
+    setDay((d) => d + 1);
+    setNightWave(0);
+    setNightMonster(null);
+    setNightResult(null);
+    setGameState("playing");
+    setTimeOfDay("day");
+  };
+
+  const startNetChallenge = () => {
+    const size = currentMap.size;
+    const fishPositions = [];
+    const fishCount = Math.floor(currentMap.fishCount * 1.5);
+    while (fishPositions.length < fishCount) {
+      const x = Math.floor(Math.random() * size);
+      const y = Math.floor(Math.random() * size);
+      if (!fishPositions.some(p => p.x === x && p.y === y)) {
+        fishPositions.push({ x, y, weight: Math.floor(Math.random() * 50 * currentMap.fishMult) + 10 });
+      }
+    }
+    setNetChallenge({
+      fishPositions,
+      netThrows: 3,
+      caughtFish: [],
+      totalKg: 0,
+    });
+    setGameState("netChallenge");
+  };
+
+  const throwNet = (cellX, cellY) => {
+    if (!netChallenge || netChallenge.netThrows <= 0) return;
+    const caught = [];
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const tx = cellX + dx;
+        const ty = cellY + dy;
+        const fish = netChallenge.fishPositions.find(f => f.x === tx && f.y === ty);
+        if (fish) caught.push(fish);
+      }
+    }
+    const newFishPositions = netChallenge.fishPositions.filter(f => !caught.includes(f));
+    const kgCaught = caught.reduce((s, f) => s + f.weight, 0);
+    setNetChallenge(prev => ({
+      ...prev,
+      fishPositions: newFishPositions,
+      netThrows: prev.netThrows - 1,
+      caughtFish: [...prev.caughtFish, ...caught],
+      totalKg: prev.totalKg + kgCaught,
+    }));
+    if (caught.length > 0) addLog(`Bắt được ${caught.length} cá (${kgCaught}kg)!`);
+    else addLog(`Lưới trống!`);
+  };
+
+  const endNetChallenge = () => {
+    if (!netChallenge) return;
+    const sellPrice = netChallenge.totalKg * 2;
+    setNc(p => p + sellPrice);
+    addLog(`Kết thúc thử thách lưới: ${netChallenge.caughtFish.length} cá, ${netChallenge.totalKg}kg -> +${sellPrice} NC`);
+    setNetChallenge(null);
+    setGameState("nightChoice");
+  };
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (gameState !== "playing") return;
+      switch (e.key.toLowerCase()) {
+        case "w": case "arrowup": move(0, -1); break;
+        case "s": case "arrowdown": move(0, 1); break;
+        case "a": case "arrowleft": move(-1, 0); break;
+        case "d": case "arrowright": move(1, 0); break;
+        case "f": case " ": doFish(); break;
+        case "u": upgrade(); break;
+        case "h": hireNPC(); break;
+        case "m": setShowMapSelect(true); break;
+        case "?": setShowHelp(true); break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [gameState, move, doFish, upgrade, hireNPC]);
+
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight;
+    }
+  }, [log]);
+
+  const handleCellClick = (x, y) => {
+    if (gameState === "netChallenge") {
+      throwNet(x, y);
+      return;
+    }
+    if (gameState !== "playing") return;
+    if (x === px && y === py) {
+      doFish();
+    } else if (Math.abs(x - px) + Math.abs(y - py) === 1) {
+      move(x - px, y - py);
+    }
+  };
+
+  const startGame = () => {
+    setGameState("playing");
+    setPx(Math.floor(currentMap.size / 2));
+    setPy(Math.floor(currentMap.size / 2));
+    setFishMap(generateFishForMap(currentMap));
+  };
+
+  const goToMenu = () => {
+    setGameState("menu");
+  };
+
+  if (gameState === "menu") {
+    return (
+      <div style={styles.container}>
+        <div style={styles.menuWrap}>
+          <div style={styles.titleArea}>
+            <div style={styles.bigFish}>🐟</div>
+            <h1 style={styles.title}>{t("title")}</h1>
+            <p style={styles.subtitle}>{t("subtitle")}</p>
+          </div>
+          <div style={styles.menuInfo}>
+            <p style={styles.menuText}>🗺️ 125 {t("menuMap")}</p>
+            <p style={styles.menuText}>🌌 {t("menuCosmic")}</p>
+            <p style={styles.menuText}>👥 {t("menuCrew")}</p>
+            <p style={styles.menuText}>🕸️ {t("menuNet")}</p>
+            <p style={styles.menuText}>🏛️ {t("menuAquarium")}</p>
+            <p style={styles.menuText}>🐠 {t("menuTank")}</p>
+            <p style={styles.menuText}>🔒 {t("menuCage")}</p>
+            <p style={styles.menuText}>🌙 {t("menuNight")}</p>
+          </div>
+          <button style={styles.playBtn} onClick={startGame}>
+            {luot > 0 ? t("continueBtn") : t("startBtn")}
+          </button>
+          <button
+            style={{ ...styles.playBtn, background: "linear-gradient(135deg, #64748b, #475569)", marginTop: 10 }}
+            onClick={() => window.location.href = "../index.html"}
+          >
+            🏠 Quay về
+          </button>
+          <div style={styles.controls}>
+            <span style={styles.controlTag}>WASD di chuyển</span>
+            <span style={styles.controlTag}>F/Space câu</span>
+            <span style={styles.controlTag}>U nâng cần</span>
+            <span style={styles.controlTag}>H thuê NPC</span>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <button
+              style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer" }}
+              onClick={() => setShowLangPicker(!showLangPicker)}
+            >
+              {LANGUAGES.find(l => l.code === lang)?.flag || "🌐"}
+            </button>
+            {showLangPicker && (
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
+                {LANGUAGES.map(l => (
+                  <button
+                    key={l.code}
+                    style={{
+                      background: lang === l.code ? "rgba(94,234,212,0.2)" : "rgba(255,255,255,0.05)",
+                      border: lang === l.code ? "1px solid #5eead4" : "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: 18,
+                    }}
+                    onClick={() => { setLang(l.code); setShowLangPicker(false); }}
+                  >
+                    {l.flag}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render main game
+  return (
+    <div style={{
+      ...styles.container,
+      background: timeOfDay === "night"
+        ? "linear-gradient(145deg, #050510 0%, #0a0a20 50%, #0d0d30 100%)"
+        : timeOfDay === "sunset"
+        ? "linear-gradient(145deg, #1a0a0a 0%, #2d1020 50%, #1a2040 100%)"
+        : currentMap.cosmic
+        ? `linear-gradient(145deg, ${currentMap.color} 0%, #050510 50%, #0a0a20 100%)`
+        : `linear-gradient(145deg, ${currentMap.color} 0%, #132744 40%, #1a3a5c 100%)`,
+    }}>
+      <div style={styles.gameWrap}>
+        {/* HEADER */}
+        <div style={styles.header}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <h2 style={styles.headerTitle}>
+              {currentMap.icon} {currentMap.name}
+              {currentMap.cosmic && <span style={{ marginLeft: 8, fontSize: 12, color: "#c084fc" }}>VŨ TRỤ</span>}
+            </h2>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button style={{ ...styles.actionBtn, padding: "4px 10px", fontSize: 12 }} onClick={() => setShowHelp(true)}>❓</button>
+              <button style={{ ...styles.actionBtn, padding: "4px 10px", fontSize: 12 }} onClick={goToMenu}>📋</button>
+            </div>
+          </div>
+          <div style={styles.statsRow}>
+            <div style={styles.stat}>
+              <span style={styles.statLabel}>SM</span>
+              <span style={{ ...styles.statValue, color: "#5eead4" }}>{sm.toLocaleString()}</span>
+            </div>
+            <div style={styles.stat}>
+              <span style={styles.statLabel}>NC</span>
+              <span style={{ ...styles.statValue, color: "#fbbf24" }}>{nc.toLocaleString()}</span>
+            </div>
+            <div style={styles.stat}>
+              <span style={styles.statLabel}>{t("day")}</span>
+              <span style={styles.statValue}>{day}</span>
+            </div>
+            <div style={styles.stat}>
+              <span style={styles.statLabel}>{t("turns")}</span>
+              <span style={styles.statValue}>{luot}</span>
+            </div>
+            <div style={styles.stat}>
+              <span style={styles.statLabel}>Cá</span>
+              <span style={styles.statValue}>{totalCaught}</span>
+            </div>
+            <div style={styles.stat}>
+              <span style={styles.statLabel}>Quái</span>
+              <span style={styles.statValue}>{monstersSlain}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.mainArea}>
+          {/* MAP */}
+          <div style={styles.mapSection}>
+            <div style={{ ...styles.grid, gridTemplateColumns: `repeat(${SIZE}, 1fr)` }}>
+              {Array.from({ length: SIZE * SIZE }).map((_, i) => {
+                const x = i % SIZE;
+                const y = Math.floor(i / SIZE);
+                const isPlayer = x === px && y === py;
+                const hasFish = fishMap[y] && fishMap[y][x];
+                const isRipple = ripple && ripple.x === x && ripple.y === y;
+                const isNetHover = netHover && Math.abs(netHover.x - x) <= 1 && Math.abs(netHover.y - y) <= 1;
+                const netFish = netChallenge?.fishPositions.find(f => f.x === x && f.y === y);
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      ...styles.cell,
+                      ...(isPlayer ? styles.playerCell : {}),
+                      ...(hasFish && !isPlayer ? styles.fishCell : {}),
+                      ...(isRipple ? styles.rippleCell : {}),
+                      ...(isNetHover ? { background: "rgba(94,234,212,0.2)", border: "1px dashed #5eead4" } : {}),
+                      fontSize: SIZE > 8 ? 16 : SIZE > 6 ? 20 : 24,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => handleCellClick(x, y)}
+                    onMouseEnter={() => gameState === "netChallenge" && setNetHover({ x, y })}
+                    onMouseLeave={() => setNetHover(null)}
+                  >
+                    {isPlayer ? (fishingAnim ? "🎣" : "🧑") : netFish ? "🐟" : hasFish ? "🐟" : (currentMap.cosmic ? COSMIC_WATER[Math.floor(Math.random() * COSMIC_WATER.length)] : WATER_EMOJIS[Math.floor(Math.random() * WATER_EMOJIS.length)])}
+                  </div>
+                );
+              })}
+            </div>
+            {/* D-PAD */}
+            <div style={styles.dpad}>
+              <div style={styles.dpadRow}>
+                <div style={styles.dpadSpacer} />
+                <button style={styles.dpadBtn} onClick={() => move(0, -1)}>▲</button>
+                <div style={styles.dpadSpacer} />
+              </div>
+              <div style={styles.dpadRow}>
+                <button style={styles.dpadBtn} onClick={() => move(-1, 0)}>◄</button>
+                <button style={{ ...styles.dpadBtn, ...styles.dpadCenter }} onClick={doFish}>🎣</button>
+                <button style={styles.dpadBtn} onClick={() => move(1, 0)}>►</button>
+              </div>
+              <div style={styles.dpadRow}>
+                <div style={styles.dpadSpacer} />
+                <button style={styles.dpadBtn} onClick={() => move(0, 1)}>▼</button>
+                <div style={styles.dpadSpacer} />
+              </div>
+            </div>
+          </div>
+
+          {/* SIDE PANEL */}
+          <div style={styles.sidePanel}>
+            <div style={styles.actionBtns}>
+              <button style={styles.actionBtn} onClick={upgrade}>⬆️ {t("upgrade")} ({canCap}/5) - {canCap * 100} NC</button>
+              <button style={styles.actionBtn} onClick={hireNPC}>👤 {t("hireNpc")} ({npc}) - 100 NC</button>
+              <button style={styles.actionBtn} onClick={() => setShowShop(true)}>🐠 {t("fishShop")}</button>
+              <button style={styles.actionBtn} onClick={() => setShowTank(true)}>🐠 {t("fishTank")} ({tank.length}/{tankCapacity})</button>
+              <button style={styles.actionBtn} onClick={() => setShowCage(true)}>🔒 {t("monsterCage")} ({monsterCage.length}/{cageCapacity})</button>
+              <button style={styles.actionBtn} onClick={() => setShowAquarium(true)}>🏛️ {t("aquariumPanel")} ({aquarium.length}/{aquariumCapacity})</button>
+              <button style={styles.actionBtn} onClick={() => setShowCrew(true)}>👥 {t("crewPanel")} ({ownedCrew.length})</button>
+              <button style={styles.actionBtn} onClick={() => setShowMapSelect(true)}>🗺️ {t("mapBtn")}</button>
+            </div>
+            <div style={styles.rodInfo}>
+              <p style={styles.rodTitle}>🎣 Cần Câu Cấp {canCap}</p>
+              <p style={styles.rodDetail}>Tải trọng: {CAN_MAX[canCap - 1].toLocaleString()}kg</p>
+              <div style={styles.rodBar}>
+                <div style={{ ...styles.rodFill, width: `${(canCap / 5) * 100}%` }} />
+              </div>
+            </div>
+            <div style={styles.miniStats}>
+              <p>🏆 Cá lớn nhất: {biggestFish.toLocaleString()}kg</p>
+              <p>🏛️ Tổng khách: {aquariumTotalVisitors.toLocaleString()}</p>
+            </div>
+            <div ref={logRef} style={styles.logArea}>
+              {log.length === 0 ? <p style={styles.logEmpty}>Nhật ký trống...</p> : log.map((m, i) => <p key={i} style={styles.logMsg}>{m}</p>)}
+            </div>
+          </div>
+        </div>
+
+        {/* CAUGHT FISH MODAL */}
+        {gameState === "result" && caughtFish && !caughtFish.tooHeavy && (
+          <div style={styles.overlay}>
+            <div style={{ ...styles.modal, ...(caughtFish.rare ? styles.modalRare : {}) }}>
+              <div style={styles.fishEmoji}>{caughtFish.cosmic ? "🌌" : "🐟"}</div>
+              <h3 style={styles.fishName}>{caughtFish.name}</h3>
+              <p style={styles.fishWeight}>{caughtFish.weight.toLocaleString()} kg</p>
+              {caughtFish.rare && <span style={styles.rareBadge}>{caughtFish.cosmic ? t("cosmic") : t("rare")}</span>}
+              <div style={{ ...styles.choiceRow, marginTop: 20 }}>
+                <button style={{ ...styles.choiceBtn, ...styles.eatBtn }} onClick={handleEat}>
+                  🍖 {t("eat")}
+                  <span style={styles.choiceSub}>+SM</span>
+                </button>
+                <button style={{ ...styles.choiceBtn, ...styles.sellBtn }} onClick={handleSell}>
+                  💰 {t("sell")}
+                  <span style={styles.choiceSub}>+NC</span>
+                </button>
+                <button style={{ ...styles.choiceBtn, background: "linear-gradient(135deg, #0ea5e9, #0369a1)", color: "white" }} onClick={handleTank}>
+                  🐠 {t("tankBtn")}
+                  <span style={styles.choiceSub}>x3</span>
+                </button>
+                <button style={{ ...styles.choiceBtn, ...styles.releaseBtn }} onClick={handleRelease}>
+                  🌊 {t("release")}
+                  <span style={styles.choiceSub}>?</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TOO HEAVY MODAL */}
+        {gameState === "result" && caughtFish && caughtFish.tooHeavy && (
+          <div style={styles.overlay}>
+            <div style={styles.modal}>
+              <div style={styles.fishEmoji}>🐋</div>
+              <h3 style={styles.fishName}>{caughtFish.name}</h3>
+              <p style={styles.fishWeight}>{caughtFish.weight.toLocaleString()} kg</p>
+              <p style={styles.tooHeavy}>{t("tooHeavy")}</p>
+              <p style={styles.tooHeavySub}>Cần: {CAN_MAX[canCap - 1].toLocaleString()}kg max</p>
+              <button style={styles.modalBtn} onClick={handleTooHeavy}>{t("cont")}</button>
+            </div>
+          </div>
+        )}
+
+        {/* TREASURE MODAL */}
+        {gameState === "treasure" && treasureResult && (
+          <div style={styles.overlay}>
+            <div style={{ ...styles.modal, border: "2px solid rgba(251,191,36,0.4)", boxShadow: "0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(251,191,36,0.15)" }}>
+              <div style={{ fontSize: 48 }}>{treasureResult.treasure.icon}</div>
+              <h3 style={{ margin: "8px 0 4px", fontSize: 20, color: "#fbbf24" }}>{treasureResult.treasure.name}</h3>
+              <p style={{ fontSize: 14, color: "#94a3b8", margin: "0 0 16px" }}>
+                {treasureResult.fishName} {treasureResult.fishWeight}kg tìm thấy kho báu!
+              </p>
+              <button style={{ ...styles.modalBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white" }} onClick={collectTreasure}>
+                Thu thập
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* MONSTER BATTLE MODAL */}
+        {gameState === "monster" && monsterEncounter && battleResult && (
+          <div style={styles.overlay}>
+            <div style={{ ...styles.modal, background: `linear-gradient(160deg, ${monsterEncounter.color}, #0a192f)`, border: battleResult.won ? "2px solid rgba(94,234,212,0.4)" : "2px solid rgba(239,68,68,0.4)" }}>
+              <div style={{ fontSize: 56 }}>{monsterEncounter.icon}</div>
+              <h3 style={{ margin: "8px 0 4px", fontSize: 22, color: battleResult.won ? "#5eead4" : "#f87171" }}>
+                {battleResult.won ? t("victory") : t("defeat")}
+              </h3>
+              <p style={{ fontSize: 14, color: "#94a3b8", margin: "0 0 8px" }}>
+                {monsterEncounter.fishName} {monsterEncounter.fishWeight}kg vs {monsterEncounter.name}
+              </p>
+              <div style={{ display: "flex", gap: 12, justifyContent: "center", margin: "8px 0 16px" }}>
+                <span style={{ fontSize: 12, color: "#5eead4" }}>Cá: {battleResult.fishPower}{battleResult.fishCrit ? " CRIT!" : ""}</span>
+                <span style={{ fontSize: 12, color: "#f87171" }}>Quái: {battleResult.monsterPower}</span>
+              </div>
+              {battleResult.won ? (
+                <div style={{ ...styles.choiceRow }}>
+                  <button style={{ ...styles.choiceBtn, ...styles.sellBtn }} onClick={collectMonsterLoot}>
+                    🎁 {t("loot")}
+                    <span style={styles.choiceSub}>+{battleResult.lootNc} NC</span>
+                  </button>
+                  <button style={{ ...styles.choiceBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white" }} onClick={sellMonsterDirect}>
+                    💰 {t("sellMonster")}
+                    <span style={styles.choiceSub}>+{monsterEncounter.sellPrice.toLocaleString()}</span>
+                  </button>
+                  <button style={{ ...styles.choiceBtn, background: "linear-gradient(135deg, #6366f1, #4f46e5)", color: "white" }} onClick={cageMonster}>
+                    🔒 {t("cageMonster")}
+                  </button>
+                </div>
+              ) : (
+                <button style={styles.modalBtn} onClick={closeMonster}>{t("cont")}</button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* NIGHT CHOICE MODAL */}
+        {gameState === "nightChoice" && (
+          <div style={styles.overlay}>
+            <div style={{ ...styles.modal, background: "linear-gradient(160deg, #0a0a20, #1a0a30)", border: "2px solid rgba(129,140,248,0.3)" }}>
+              <div style={{ fontSize: 48 }}>🌙</div>
+              <h3 style={{ margin: "8px 0 16px", fontSize: 22, color: "#818cf8" }}>{t("nightTitle")}</h3>
+              <p style={{ fontSize: 13, color: "#94a3b8", margin: "0 0 20px" }}>{t("day")} {day} đã kết thúc.</p>
+              <div style={styles.choiceRow}>
+                <button style={{ ...styles.choiceBtn, background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "white" }} onClick={chooseNightFight}>
+                  ⚔️ {t("fight")}
+                  <span style={styles.choiceSub}>5 waves</span>
+                </button>
+                <button style={{ ...styles.choiceBtn, background: "linear-gradient(135deg, #6366f1, #4f46e5)", color: "white" }} onClick={chooseNightSleep}>
+                  😴 {t("sleep")}
+                  <span style={styles.choiceSub}>+SM</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* NIGHT BATTLE MODAL */}
+        {gameState === "nightBattle" && nightMonster && (
+          <div style={styles.overlay}>
+            <div style={{ ...styles.modal, background: `linear-gradient(160deg, ${nightMonster.color}, #0a0a20)`, border: "2px solid rgba(239,68,68,0.3)" }}>
+              <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 8px" }}>{t("wave")} {nightWave}/5</p>
+              <div style={{ fontSize: 56 }}>{nightMonster.icon}</div>
+              <h3 style={{ margin: "8px 0 4px", fontSize: 20, color: "#f87171" }}>{nightMonster.name}</h3>
+              <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 16px" }}>Sức mạnh: {nightMonster.power}</p>
+              {!nightResult ? (
+                <button
+                  style={{ background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "white", border: "none", borderRadius: 12, padding: "12px 32px", fontSize: 16, fontWeight: 700, cursor: "pointer" }}
+                  onClick={fightNightMonster}
+                >
+                  ⚔️ Chiến!
+                </button>
+              ) : (
+                <>
+                  <h3 style={{ margin: "0 0 8px", fontSize: 20, color: nightResult.won ? "#5eead4" : "#f87171" }}>
+                    {nightResult.won ? `Hạ gục ${nightMonster.name}!` : `${nightMonster.name} thắng!`}
+                  </h3>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "center", margin: "4px 0 12px", fontSize: 12, color: "#94a3b8" }}>
+                    <span>Bạn: <b style={{ color: "#5eead4" }}>{nightResult.playerPower}</b></span>
+                    <span>vs</span>
+                    <span>Quái: <b style={{ color: "#f87171" }}>{nightResult.monsterPower}</b></span>
+                  </div>
+                  <div style={{ background: "rgba(0,0,0,0.3)", borderRadius: 10, padding: "10px 16px", margin: "0 0 14px", textAlign: "center" }}>
+                    {nightResult.won ? (
+                      <p style={{ margin: 0, fontSize: 14, color: "#5eead4", fontWeight: 700 }}>+{nightResult.lootNc} NC +{nightResult.lootSm} SM</p>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: 14, color: "#f87171" }}>-{nightResult.dmg} SM -{nightResult.lostNc} NC</p>
+                    )}
+                  </div>
+                  <button
+                    style={{ background: "linear-gradient(135deg, #4338ca, #3730a3)", color: "white", border: "none", borderRadius: 12, padding: "10px 28px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%" }}
+                    onClick={nextNightWave}
+                  >
+                    {nightWave >= 5 ? "Kết thúc đêm" : `Wave ${nightWave + 1}/5`}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* NIGHT SUMMARY MODAL */}
+        {gameState === "nightSummary" && (
+          <div style={styles.overlay}>
+            <div style={{ ...styles.modal, background: "linear-gradient(160deg, #1a1040, #0a192f)", border: "2px solid rgba(251,191,36,0.3)", maxWidth: 380 }}>
+              <div style={{ fontSize: 48, margin: "0 0 8px" }}>🌅</div>
+              <h3 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 800, color: "#fbbf24" }}>{t("dawn")} {day}!</h3>
+              <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 14px" }}>{t("nightResult")}</p>
+              <div style={{ background: "rgba(0,0,0,0.3)", borderRadius: 10, padding: "12px 16px", margin: "0 0 16px", textAlign: "left" }}>
+                <p style={{ margin: "4px 0", fontSize: 14, color: "#e2e8f0" }}>{t("won")}: <b style={{ color: "#5eead4" }}>{nightStats.wins}</b>/5</p>
+                {nightStats.totalNc > 0 && <p style={{ margin: "4px 0", fontSize: 14, color: "#5eead4" }}>+{nightStats.totalNc} NC</p>}
+                {nightStats.totalSm > 0 && <p style={{ margin: "4px 0", fontSize: 14, color: "#5eead4" }}>+{nightStats.totalSm} SM</p>}
+                {nightStats.dmgTaken > 0 && <p style={{ margin: "4px 0", fontSize: 14, color: "#f87171" }}>-{nightStats.dmgTaken} SM tổng thiệt hại</p>}
+              </div>
+              <button
+                style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white", border: "none", borderRadius: 12, padding: "12px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}
+                onClick={closeNightSummary}
+              >
+                {t("newDay")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* NET CHALLENGE */}
+        {gameState === "netChallenge" && netChallenge && (
+          <div style={{ position: "fixed", top: 10, left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.8)", padding: "10px 20px", borderRadius: 12, zIndex: 50 }}>
+            <p style={{ margin: 0, color: "#fbbf24", fontWeight: 700 }}>{t("netTitle")} - {t("day")} {day}</p>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>Lưới còn: {netChallenge.netThrows} | Đã bắt: {netChallenge.totalKg}kg</p>
+            <button
+              style={{ marginTop: 8, background: "linear-gradient(135deg, #059669, #047857)", color: "white", border: "none", borderRadius: 8, padding: "6px 16px", fontSize: 12, cursor: "pointer" }}
+              onClick={endNetChallenge}
+            >
+              {t("harvest")}
+            </button>
+          </div>
+        )}
+
+        {/* FISH SHOP MODAL */}
+        {showShop && (
+          <div style={styles.overlay} onClick={() => setShowShop(false)}>
+            <div style={{ ...styles.modal, maxWidth: 420, maxHeight: "80vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ margin: "0 0 16px", fontSize: 20, color: "#fb923c" }}>{t("fishShop")}</h3>
+              {FISH_UPGRADES.map(u => (
+                <div key={u.key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <span style={{ fontSize: 28 }}>{u.icon}</span>
+                  <div style={{ flex: 1, textAlign: "left" }}>
+                    <p style={{ margin: 0, fontWeight: 700, color: "#e2e8f0" }}>{u.name} ({fishUpgrades[u.key]}/{u.max})</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 11, color: "#64748b" }}>{u.desc} | {u.perLevel}</p>
+                  </div>
+                  <button
+                    style={{ ...styles.modalBtn, padding: "6px 12px", fontSize: 12, background: fishUpgrades[u.key] >= u.max ? "#374151" : "linear-gradient(135deg, #f59e0b, #d97706)", color: "white" }}
+                    onClick={() => buyFishUpgrade(u.key)}
+                    disabled={fishUpgrades[u.key] >= u.max}
+                  >
+                    {fishUpgrades[u.key] >= u.max ? "MAX" : `${u.baseCost * (fishUpgrades[u.key] + 1)} NC`}
+                  </button>
+                </div>
+              ))}
+              <button style={{ ...styles.modalBtn, marginTop: 16, width: "100%" }} onClick={() => setShowShop(false)}>{t("close")}</button>
+            </div>
+          </div>
+        )}
+
+        {/* TANK MODAL */}
+        {showTank && (
+          <div style={styles.overlay} onClick={() => setShowTank(false)}>
+            <div style={{ ...styles.modal, maxWidth: 380 }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ margin: "0 0 12px", fontSize: 20, color: "#0ea5e9" }}>{t("fishTank")} ({tank.length}/{tankCapacity})</h3>
+              {tank.length === 0 ? (
+                <p style={{ color: "#64748b", fontSize: 13 }}>Bể trống. Thả cá vào để nuôi!</p>
+              ) : (
+                <div style={{ maxHeight: 200, overflowY: "auto" }}>
+                  {tank.map(f => (
+                    <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                      <span style={{ fontSize: 24 }}>🐠</span>
+                      <div style={{ flex: 1, textAlign: "left" }}>
+                        <p style={{ margin: 0, fontWeight: 600, color: "#e2e8f0", fontSize: 13 }}>{f.name}</p>
+                        <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{f.weight}kg (+{f.weight - f.originalWeight})</p>
+                      </div>
+                      <button style={{ ...styles.modalBtn, padding: "4px 10px", fontSize: 11, background: "linear-gradient(135deg, #059669, #047857)", color: "white" }} onClick={() => sellFromTank(f.id)}>
+                        Bán {(f.weight * 3).toLocaleString()}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button style={{ ...styles.modalBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)", color: "white" }} onClick={sellAllTank} disabled={tank.length === 0}>
+                  {t("sellAll")}
+                </button>
+                <button style={{ ...styles.modalBtn, flex: 1 }} onClick={upgradeTank}>
+                  Mở rộng ({tankCapacity * 200} NC)
+                </button>
+              </div>
+              <button style={{ ...styles.modalBtn, marginTop: 8, width: "100%" }} onClick={() => setShowTank(false)}>{t("close")}</button>
+            </div>
+          </div>
+        )}
+
+        {/* CAGE MODAL */}
+        {showCage && (
+          <div style={styles.overlay} onClick={() => setShowCage(false)}>
+            <div style={{ ...styles.modal, maxWidth: 380 }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ margin: "0 0 12px", fontSize: 20, color: "#a78bfa" }}>{t("monsterCage")} ({monsterCage.length}/{cageCapacity})</h3>
+              {monsterCage.length === 0 ? (
+                <p style={{ color: "#64748b", fontSize: 13 }}>Chuồng trống. Hạ quái rồi nhốt vào!</p>
+              ) : (
+                <div style={{ maxHeight: 200, overflowY: "auto" }}>
+                  {monsterCage.map(m => {
+                    const bonus = Math.floor(m.sellPrice * (m.turnsInCage * 0.1));
+                    return (
+                      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                        <span style={{ fontSize: 24 }}>{m.icon}</span>
+                        <div style={{ flex: 1, textAlign: "left" }}>
+                          <p style={{ margin: 0, fontWeight: 600, color: "#e2e8f0", fontSize: 13 }}>{m.name}</p>
+                          <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>+{bonus.toLocaleString()} bonus</p>
+                        </div>
+                        <button style={{ ...styles.modalBtn, padding: "4px 10px", fontSize: 11, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white" }} onClick={() => sellFromCage(m.id)}>
+                          {(m.sellPrice + bonus).toLocaleString()}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button style={{ ...styles.modalBtn, flex: 1, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white" }} onClick={sellAllCage} disabled={monsterCage.length === 0}>
+                  {t("sellAll")}
+                </button>
+                <button style={{ ...styles.modalBtn, flex: 1 }} onClick={upgradeCage}>
+                  Mở rộng ({cageCapacity * 500} NC)
+                </button>
+              </div>
+              <button style={{ ...styles.modalBtn, marginTop: 8, width: "100%" }} onClick={() => setShowCage(false)}>{t("close")}</button>
+            </div>
+          </div>
+        )}
+
+        {/* AQUARIUM MODAL */}
+        {showAquarium && (
+          <div style={styles.overlay} onClick={() => setShowAquarium(false)}>
+            <div style={{ ...styles.modal, maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ margin: "0 0 4px", fontSize: 20, color: currentTier.color }}>{t("aquariumPanel")} {currentTier.icon}</h3>
+              <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px" }}>{aquarium.length}/{aquariumCapacity} | Rank: {currentTier.name} | Vé: {currentTier.ticket.toLocaleString()} NC</p>
+              {aquarium.length === 0 ? (
+                <p style={{ color: "#64748b", fontSize: 13 }}>Thuỷ cung trống. Thêm cá hoặc quái!</p>
+              ) : (
+                <div style={{ maxHeight: 180, overflowY: "auto" }}>
+                  {aquarium.map(a => (
+                    <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                      <span style={{ fontSize: 22 }}>{a.icon}</span>
+                      <div style={{ flex: 1, textAlign: "left" }}>
+                        <p style={{ margin: 0, fontWeight: 600, color: "#e2e8f0", fontSize: 12 }}>{a.name} {"⭐".repeat(a.stars)}</p>
+                        <p style={{ margin: 0, fontSize: 10, color: "#64748b" }}>{a.kg.toLocaleString()}kg</p>
+                      </div>
+                      <button style={{ ...styles.modalBtn, padding: "3px 8px", fontSize: 10 }} onClick={() => removeFromAquarium(a.id)}>Thả</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button style={{ ...styles.modalBtn, flex: 1 }} onClick={upgradeAquarium}>
+                  Mở rộng ({aquariumCapacity * 300} NC)
+                </button>
+              </div>
+              <p style={{ fontSize: 11, color: "#64748b", margin: "8px 0 0" }}>Tổng khách: {aquariumTotalVisitors.toLocaleString()} | Thu nhập: {aquariumTotalIncome.toLocaleString()} NC</p>
+              <button style={{ ...styles.modalBtn, marginTop: 8, width: "100%" }} onClick={() => setShowAquarium(false)}>{t("close")}</button>
+            </div>
+          </div>
+        )}
+
+        {/* CREW MODAL */}
+        {showCrew && (
+          <div style={styles.overlay} onClick={() => setShowCrew(false)}>
+            <div style={{ ...styles.modal, maxWidth: 480, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 20, color: "#818cf8" }}>{t("crewPanel")} ({ownedCrew.length}/{BOAT_CAPACITY[boatLevel - 1]})</h3>
+              <button style={{ ...styles.modalBtn, marginBottom: 12, background: "linear-gradient(135deg, #0ea5e9, #0369a1)", color: "white" }} onClick={upgradeBoat}>
+                Nâng thuyền ({BOAT_UPGRADE_COSTS[boatLevel]?.toLocaleString() || "MAX"} NC)
+              </button>
+              <div style={{ maxHeight: 400, overflowY: "auto" }}>
+                {CREW_MEMBERS.map(c => {
+                  const owned = ownedCrew.includes(c.id);
+                  return (
+                    <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", opacity: owned ? 0.6 : 1 }}>
+                      <span style={{ fontSize: 28 }}>{c.icon}</span>
+                      <div style={{ flex: 1, textAlign: "left" }}>
+                        <p style={{ margin: 0, fontWeight: 700, color: owned ? "#5eead4" : "#e2e8f0", fontSize: 13 }}>{c.name}</p>
+                        <p style={{ margin: 0, fontSize: 10, color: "#64748b" }}>{c.desc}</p>
+                      </div>
+                      {owned ? (
+                        <span style={{ fontSize: 11, color: "#5eead4" }}>Đã có</span>
+                      ) : (
+                        <button style={{ ...styles.modalBtn, padding: "4px 10px", fontSize: 11, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white" }} onClick={() => buyCrew(c.id)}>
+                          {c.cost.toLocaleString()}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <button style={{ ...styles.modalBtn, marginTop: 12, width: "100%" }} onClick={() => setShowCrew(false)}>{t("close")}</button>
+            </div>
+          </div>
+        )}
+
+        {/* MAP SELECT MODAL */}
+        {showMapSelect && (
+          <div style={styles.overlay} onClick={() => setShowMapSelect(false)}>
+            <div style={{ ...styles.modal, maxWidth: 520, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ margin: "0 0 12px", fontSize: 20, color: "#38bdf8" }}>{t("mapTitle")}</h3>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                {MAP_CATS.map(cat => (
+                  <button
+                    key={cat.id}
+                    style={{
+                      background: mapCatFilter === cat.id ? cat.bg : "rgba(255,255,255,0.05)",
+                      border: mapCatFilter === cat.id ? `1px solid ${cat.border}` : "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 8, padding: "4px 10px", fontSize: 11, color: cat.color, cursor: "pointer",
+                    }}
+                    onClick={() => setMapCatFilter(cat.id)}
+                  >
+                    {cat.icon} {cat.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ maxHeight: 400, overflowY: "auto" }}>
+                {MAP_DATA.filter(m => mapCatFilter === "all" || getMapCat(m.id) === mapCatFilter).map(m => {
+                  const unlocked = unlockedMaps.includes(m.id);
+                  const isCurrent = m.id === currentMapId;
+                  return (
+                    <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", opacity: unlocked ? 1 : 0.5 }}>
+                      <span style={{ fontSize: 24 }}>{m.icon}</span>
+                      <div style={{ flex: 1, textAlign: "left" }}>
+                        <p style={{ margin: 0, fontWeight: 700, color: m.cosmic ? "#c084fc" : "#e2e8f0", fontSize: 13 }}>{m.name} {m.cosmic && "🌌"}</p>
+                        <p style={{ margin: 0, fontSize: 10, color: "#64748b" }}>{m.size}x{m.size} | x{m.fishMult}</p>
+                      </div>
+                      {isCurrent ? (
+                        <span style={{ fontSize: 11, color: "#5eead4" }}>{t("currentMap")}</span>
+                      ) : unlocked ? (
+                        <button style={{ ...styles.modalBtn, padding: "4px 10px", fontSize: 11, background: "linear-gradient(135deg, #059669, #047857)", color: "white" }} onClick={() => travelToMap(m.id)}>
+                          {t("travel")}
+                        </button>
+                      ) : (
+                        <button style={{ ...styles.modalBtn, padding: "4px 10px", fontSize: 11, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "white" }} onClick={() => unlockMap(m.id)}>
+                          {m.unlockCost.toLocaleString()}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <button style={{ ...styles.modalBtn, marginTop: 12, width: "100%" }} onClick={() => setShowMapSelect(false)}>{t("close")}</button>
+            </div>
+          </div>
+        )}
+
+        {/* HELP MODAL */}
+        {showHelp && (
+          <div style={styles.overlay} onClick={() => setShowHelp(false)}>
+            <div style={{ ...styles.modal, maxWidth: 480, maxHeight: "85vh", overflowY: "auto", textAlign: "left" }} onClick={e => e.stopPropagation()}>
+              <div style={{ textAlign: "center", marginBottom: 16 }}>
+                <div style={{ fontSize: 40 }}>🎣</div>
+                <h3 style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 800, color: "#ef4444" }}>CÁCH CHƠI</h3>
+              </div>
+              {[
+                { title: "Di chuyển", color: "#5eead4", items: ["WASD hoặc Arrow keys", "Click ô kế bên để đi", "Click ô đang đứng để câu"] },
+                { title: "Câu cá", color: "#38bdf8", items: ["Đứng trên ô có cá rồi nhấn F/Space", "Cá lớn cần cần câu mạnh hơn"] },
+                { title: "Lựa chọn", color: "#f59e0b", items: ["Ăn = +SM", "Bán = +NC", "Bể = nuôi lớn, bán x3", "Thả = kho báu hoặc đánh quái"] },
+                { title: "Nâng cấp", color: "#fb923c", items: ["U = nâng cần", "H = thuê NPC", "Shop = buff cá chiến"] },
+                { title: "Đêm", color: "#818cf8", items: ["15 lượt = 1 ngày", "Đêm: chiến 5 wave hoặc ngủ"] },
+              ].map((s, i) => (
+                <div key={i} style={{ marginBottom: 14 }}>
+                  <h4 style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: s.color }}>{s.title}</h4>
+                  {s.items.map((item, j) => (
+                    <p key={j} style={{ margin: "3px 0", fontSize: 12, color: "#94a3b8", paddingLeft: 12 }}>- {item}</p>
+                  ))}
+                </div>
+              ))}
+              <button style={{ ...styles.modalBtn, width: "100%", marginTop: 8, background: "linear-gradient(135deg, #ef4444, #dc2626)", color: "white" }} onClick={() => setShowHelp(false)}>
+                Đã hiểu!
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const styles = {
+  container: { minHeight: "100vh", background: "linear-gradient(145deg, #0c1929 0%, #132744 40%, #1a3a5c 100%)", fontFamily: "'Segoe UI', sans-serif", color: "#e0f0ff", display: "flex", alignItems: "center", justifyContent: "center", padding: 12 },
+  menuWrap: { textAlign: "center", maxWidth: 420, padding: "40px 30px" },
+  titleArea: { marginBottom: 30 },
+  bigFish: { fontSize: 64, marginBottom: 8, filter: "drop-shadow(0 4px 12px rgba(94,234,212,0.4))" },
+  title: { fontSize: 36, fontWeight: 800, margin: 0, background: "linear-gradient(135deg, #5eead4, #38bdf8, #818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: 2 },
+  subtitle: { fontSize: 14, color: "#94a3b8", marginTop: 6, letterSpacing: 4, textTransform: "uppercase" },
+  menuInfo: { textAlign: "left", background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: "16px 20px", marginBottom: 24, border: "1px solid rgba(255,255,255,0.08)" },
+  menuText: { margin: "8px 0", fontSize: 14, color: "#cbd5e1" },
+  playBtn: { background: "linear-gradient(135deg, #059669, #0d9488)", color: "white", border: "none", borderRadius: 12, padding: "14px 40px", fontSize: 18, fontWeight: 700, cursor: "pointer", letterSpacing: 1, boxShadow: "0 4px 20px rgba(5,150,105,0.4)" },
+  controls: { marginTop: 20, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" },
+  controlTag: { background: "rgba(255,255,255,0.08)", padding: "4px 10px", borderRadius: 6, fontSize: 11, color: "#94a3b8" },
+  gameWrap: { width: "100%", maxWidth: 820 },
+  header: { background: "rgba(255,255,255,0.04)", borderRadius: 14, padding: "12px 18px", marginBottom: 12, border: "1px solid rgba(255,255,255,0.06)" },
+  headerTitle: { margin: "0 0 8px 0", fontSize: 16, fontWeight: 700, color: "#5eead4" },
+  statsRow: { display: "flex", gap: 12, flexWrap: "wrap" },
+  stat: { display: "flex", flexDirection: "column", alignItems: "center", minWidth: 50 },
+  statLabel: { fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 },
+  statValue: { fontSize: 18, fontWeight: 700, color: "#e2e8f0" },
+  mainArea: { display: "flex", gap: 12, flexWrap: "wrap" },
+  mapSection: { flex: "1 1 320px", display: "flex", flexDirection: "column", alignItems: "center" },
+  grid: { display: "grid", gap: 4, background: "rgba(6,78,130,0.3)", borderRadius: 14, padding: 8, border: "2px solid rgba(94,234,212,0.15)", width: "100%", maxWidth: 400, aspectRatio: "1" },
+  cell: { borderRadius: 10, background: "rgba(15,60,110,0.5)", display: "flex", alignItems: "center", justifyContent: "center", aspectRatio: "1", transition: "all 0.15s", border: "1px solid rgba(255,255,255,0.04)" },
+  playerCell: { background: "rgba(94,234,212,0.15)", border: "2px solid rgba(94,234,212,0.4)", boxShadow: "0 0 16px rgba(94,234,212,0.2)" },
+  fishCell: { background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.2)" },
+  rippleCell: { boxShadow: "0 0 12px rgba(94,234,212,0.3)" },
+  dpad: { marginTop: 12, userSelect: "none" },
+  dpadRow: { display: "flex", justifyContent: "center", gap: 4 },
+  dpadSpacer: { width: 48, height: 48 },
+  dpadBtn: { width: 48, height: 48, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.06)", color: "#94a3b8", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
+  dpadCenter: { background: "rgba(94,234,212,0.15)", border: "1px solid rgba(94,234,212,0.3)", color: "#5eead4" },
+  sidePanel: { flex: "1 1 260px", display: "flex", flexDirection: "column", gap: 10, minWidth: 0 },
+  actionBtns: { display: "flex", flexDirection: "column", gap: 6 },
+  actionBtn: { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", color: "#cbd5e1", fontSize: 13, fontWeight: 600, cursor: "pointer", textAlign: "left", transition: "background 0.15s" },
+  rodInfo: { background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.15)", borderRadius: 10, padding: "10px 14px" },
+  rodTitle: { margin: 0, fontSize: 13, fontWeight: 700, color: "#fb923c" },
+  rodDetail: { margin: "4px 0 8px", fontSize: 11, color: "#94a3b8" },
+  rodBar: { height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 3, overflow: "hidden" },
+  rodFill: { height: "100%", background: "linear-gradient(90deg, #fb923c, #f59e0b)", borderRadius: 3, transition: "width 0.3s" },
+  miniStats: { background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "8px 14px", fontSize: 12, color: "#94a3b8" },
+  logArea: { flex: 1, background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 10, minHeight: 120, maxHeight: 180, overflowY: "auto", border: "1px solid rgba(255,255,255,0.04)" },
+  logEmpty: { fontSize: 12, color: "#475569", fontStyle: "italic", margin: 0 },
+  logMsg: { fontSize: 12, color: "#94a3b8", margin: "3px 0", lineHeight: 1.4 },
+  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 },
+  modal: { background: "linear-gradient(160deg, #132744, #1a3a5c)", borderRadius: 20, padding: "30px 36px", textAlign: "center", border: "2px solid rgba(94,234,212,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", maxWidth: 360, width: "90%" },
+  modalRare: { border: "2px solid rgba(245,158,11,0.5)", boxShadow: "0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(245,158,11,0.15)" },
+  fishEmoji: { fontSize: 56, marginBottom: 8 },
+  fishName: { margin: "0 0 4px", fontSize: 22, fontWeight: 700, color: "#e2e8f0" },
+  fishWeight: { fontSize: 28, fontWeight: 800, color: "#5eead4", margin: "0 0 20px" },
+  rareBadge: { fontSize: 14, color: "#f59e0b", background: "rgba(245,158,11,0.15)", padding: "2px 8px", borderRadius: 6, fontWeight: 700 },
+  tooHeavy: { color: "#f87171", fontSize: 16, fontWeight: 700, margin: "0 0 6px" },
+  tooHeavySub: { color: "#94a3b8", fontSize: 13, margin: "0 0 16px" },
+  modalBtn: { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, padding: "10px 28px", color: "#cbd5e1", fontSize: 14, cursor: "pointer", fontWeight: 600 },
+  choiceRow: { display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" },
+  choiceBtn: { borderRadius: 12, padding: "12px 20px", border: "none", cursor: "pointer", fontSize: 16, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 80, transition: "transform 0.1s" },
+  choiceSub: { fontSize: 11, fontWeight: 500, opacity: 0.8 },
+  eatBtn: { background: "linear-gradient(135deg, #dc2626, #b91c1c)", color: "white" },
+  sellBtn: { background: "linear-gradient(135deg, #059669, #047857)", color: "white" },
+  releaseBtn: { background: "rgba(255,255,255,0.08)", color: "#94a3b8", border: "1px solid rgba(255,255,255,0.1)" },
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<FishingGame />);
+  </script>
+</body>
+</html>

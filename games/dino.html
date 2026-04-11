@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🦕 Sở Thú Khủng Long — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #0a1a05, #052e10);
+      min-height: 100vh;
+    }
+    #root {
+      min-height: 100vh;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(163,230,53,0.3);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // DINO_BASE data
+    const DINO_BASE = [
+      { id:'raptor',  name:'Velociraptor',   icon:'🦖', eggCost:500,      hatchTime:5,  ticketBonus:50,       rarity:'thường',      color:'#4ade80' },
+      { id:'trex',    name:'T-Rex',          icon:'🦕', eggCost:2000,     hatchTime:10, ticketBonus:200,      rarity:'hiếm',        color:'#f59e0b' },
+      { id:'bronto',  name:'Brontosaurus',   icon:'🦴', eggCost:5000,     hatchTime:15, ticketBonus:500,      rarity:'quý',         color:'#60a5fa' },
+      { id:'ptero',   name:'Pterodactyl',    icon:'🦅', eggCost:10000,    hatchTime:20, ticketBonus:1000,     rarity:'siêu quý',    color:'#a855f7' },
+      { id:'spino',   name:'Spinosaurus',    icon:'🐊', eggCost:30000,    hatchTime:30, ticketBonus:3000,     rarity:'huyền thoại', color:'#f87171' },
+      { id:'ankylo',  name:'Ankylosaurus',   icon:'🐢', eggCost:8000,     hatchTime:18, ticketBonus:800,      rarity:'quý',         color:'#6ee7b7' },
+      { id:'stego',   name:'Stegosaurus',    icon:'🦕', eggCost:7000,     hatchTime:16, ticketBonus:700,      rarity:'quý',         color:'#84cc16' },
+      { id:'para',    name:'Parasaurolophus',icon:'🦖', eggCost:6000,     hatchTime:14, ticketBonus:600,      rarity:'hiếm',        color:'#fb923c' },
+      { id:'tricera', name:'Triceratops',    icon:'🦏', eggCost:15000,    hatchTime:25, ticketBonus:1500,     rarity:'siêu quý',    color:'#a3e635' },
+      { id:'diplo',   name:'Diplodocus',     icon:'🐍', eggCost:12000,    hatchTime:22, ticketBonus:1200,     rarity:'siêu quý',    color:'#34d399' },
+      { id:'mammoth', name:'Voi Ma Mút',     icon:'🦣', eggCost:25000,    hatchTime:28, ticketBonus:2500,     rarity:'huyền thoại', color:'#94a3b8' },
+      { id:'sabre',   name:'Hổ Răng Kiếm',  icon:'🐅', eggCost:20000,    hatchTime:25, ticketBonus:2000,     rarity:'huyền thoại', color:'#fbbf24' },
+      { id:'mega',    name:'Megalodon',      icon:'🦈', eggCost:50000,    hatchTime:40, ticketBonus:5000,     rarity:'thần thoại',  color:'#3b82f6' },
+      { id:'dodo',    name:'Chim Dodo',      icon:'🐦', eggCost:1000,     hatchTime:8,  ticketBonus:100,      rarity:'thường',      color:'#fde047' },
+      { id:'thyla',   name:'Hổ Túi',        icon:'🦘', eggCost:18000,    hatchTime:24, ticketBonus:1800,     rarity:'hiếm',        color:'#c084fc' },
+    ];
+
+    // Generate 500 species total
+    function generateDinoSpecies() {
+      const PREFIXES=['Cổ Đại','Khổng Lồ','Bí Ẩn','Huyền Thoại','Thần Thánh','Biến Thể','Băng Hà','Lửa','Vũ Trụ','Bóng Tối','Ánh Sáng','Sấm Sét','Đại Dương','Rừng Rậm','Sa Mạc'];
+      const TYPES=['Raptor','Rex','Saurus','Don','Ceratops','Pteryx','Odon','Saur','Nyx','Vorus','Titan','Dactyl','Gnathus','Lopho','Plax'];
+      const ICONS=['🦖','🦕','🦴','🦅','🐊','🐢','🐍','🦣','🐅','🦈','🦘','🐦','🦏','🦦','🐋','🦬','🦙','🦌','🐆','🦁'];
+      const COLORS=['#4ade80','#f59e0b','#60a5fa','#a855f7','#f87171','#6ee7b7','#84cc16','#fb923c','#a3e635','#34d399','#94a3b8','#fbbf24','#3b82f6','#c084fc','#fde047'];
+      const RARITIES=['thường','hiếm','quý','siêu quý','huyền thoại','thần thoại'];
+      const result=[...DINO_BASE];
+      let id=100;
+      while(result.length<500){
+        const ri=Math.floor(Math.random()*RARITIES.length);
+        const rarity=RARITIES[Math.min(ri,RARITIES.length-1)];
+        const mult=Math.pow(3,ri);
+        const pre=PREFIXES[Math.floor(Math.random()*PREFIXES.length)];
+        const typ=TYPES[Math.floor(Math.random()*TYPES.length)];
+        const icon=ICONS[Math.floor(Math.random()*ICONS.length)];
+        const color=COLORS[Math.floor(Math.random()*COLORS.length)];
+        const base=500*mult;
+        result.push({
+          id:'dino_'+id++,
+          name:`${pre} ${typ}`,
+          icon,rarity,color,
+          eggCost:Math.floor(base*(0.8+Math.random()*0.4)),
+          hatchTime:Math.max(3,Math.floor(5+ri*8+(Math.random()*5))),
+          ticketBonus:Math.floor(base*0.1*(0.8+Math.random()*0.4)),
+        });
+      }
+      return result;
+    }
+    const DINO_SPECIES = generateDinoSpecies();
+
+    const DINO_ENCLOSURES = [
+      { id:'small', name:'Chuồng Nhỏ',     icon:'🌿', cost:1000,    cap:10,  bonus:1.0,  desc:'Sức chứa 10 khủng long' },
+      { id:'medium',name:'Khu Rừng',       icon:'🌳', cost:8000,    cap:30,  bonus:1.5,  desc:'Sức chứa 30 + +50% vé' },
+      { id:'large', name:'Thảo Nguyên',    icon:'🏔️', cost:40000,   cap:80,  bonus:2.0,  desc:'Sức chứa 80 + x2 vé'  },
+      { id:'dome',  name:'Mái Vòm Kính',   icon:'🔮', cost:200000,  cap:150, bonus:4.0,  desc:'Sức chứa 150 + x4 vé'  },
+      { id:'island',name:'Đảo Khủng Long', icon:'🏝️', cost:2000000, cap:500, bonus:10.0, desc:'Sức chứa 500 + x10 vé'  },
+    ];
+
+    function fmtD(n){if(!isFinite(n)||n>=1e99)return'∞';if(n>=1e33)return(n/1e33).toFixed(1)+'D';if(n>=1e30)return(n/1e30).toFixed(1)+'N';if(n>=1e27)return(n/1e27).toFixed(1)+'O';if(n>=1e24)return(n/1e24).toFixed(1)+'Y';if(n>=1e21)return(n/1e21).toFixed(1)+'Z';if(n>=1e18)return(n/1e18).toFixed(1)+'E';if(n>=1e15)return(n/1e15).toFixed(1)+'P';if(n>=1e12)return(n/1e12).toFixed(1)+'T';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return Math.floor(n).toLocaleString();}
+
+    function DinoZooGame({ onBack }) {
+      const [money, setMoney]       = useState(1e100);
+      const [totalEarned, setTotalEarned] = useState(0);
+      const [dinos, setDinos]       = useState([]); // {id,species,name,hatchLeft,hatched}
+      const [enclosures, setEnclosures] = useState([]);
+      const [incubating, setIncubating] = useState([]); // eggs
+      const [visitors, setVisitors] = useState(0);
+      const [tab, setTab]           = useState('zoo');
+      const [dinoSearch, setDinoSearch] = useState('');
+      const [dinoRarityFilter, setDinoRarityFilter] = useState('tất cả');
+      const [log, setLog]           = useState([]);
+      const dinoId = useRef(0);
+      const addLog = m=>setLog(p=>[m,...p].slice(0,12));
+
+      const totalCap = enclosures.reduce((s,e)=>{const enc=DINO_ENCLOSURES.find(x=>x.id===e);return s+(enc?.cap||0);},0);
+      const totalBonusMult = enclosures.length ? enclosures.reduce((s,e)=>{const enc=DINO_ENCLOSURES.find(x=>x.id===e);return s*(enc?.bonus||1);},1) : 1;
+      const hatchedDinos = dinos.filter(d=>d.hatched);
+      const ticketIncome = () => hatchedDinos.reduce((s,d)=>s+d.species.ticketBonus,0) * totalBonusMult;
+
+      // Hatch timer
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          setDinos(prev=>prev.map(d=>{
+            if(d.hatched) return d;
+            if(d.hatchLeft<=1){addLog(`🥚 ${d.species.icon} ${d.species.name} nở thành công!`);return {...d,hatched:true,hatchLeft:0};}
+            return {...d,hatchLeft:d.hatchLeft-1};
+          }));
+        },1000);
+        return()=>clearInterval(iv);
+      },[]);
+
+      // Ticket income every 5 seconds
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          const inc=Math.floor(ticketIncome());
+          if(inc>0){
+            setMoney(m=>m+inc);
+            setTotalEarned(t=>t+inc);
+            const v=Math.floor(inc/100)+Math.floor(Math.random()*10);
+            setVisitors(p=>p+v);
+            addLog(`🎟️ Thu vé ${fmtD(inc)}₫ — ${v} khách thăm`);
+          }
+        },5000);
+        return()=>clearInterval(iv);
+      },[dinos,enclosures]);
+
+      const buyEgg = (sp) => {
+        if(money<sp.eggCost){addLog(`❌ Cần ${fmtD(sp.eggCost)}₫`);return;}
+        if(hatchedDinos.length>=totalCap){addLog('❌ Hết chỗ! Xây thêm chuồng trại');return;}
+        setMoney(m=>m-sp.eggCost);
+        const id=dinoId.current++;
+        setDinos(p=>[...p,{id,species:sp,hatched:false,hatchLeft:sp.hatchTime}]);
+        addLog(`🥚 Mua trứng ${sp.icon}${sp.name}! Ấp ${sp.hatchTime}s...`);
+      };
+
+      const buildEnclosure = (enc) => {
+        if(money<enc.cost){addLog(`❌ Cần ${fmtD(enc.cost)}₫`);return;}
+        setMoney(m=>m-enc.cost);
+        setEnclosures(p=>[...p,enc.id]);
+        addLog(`🏗️ Xây xong ${enc.icon}${enc.name}! Sức chứa +${enc.cap}`);
+      };
+
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0a1a05,#052e10)',display:'flex',flexDirection:'column',padding:10,gap:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <h3 style={{margin:0,color:'#a3e635',fontSize:14,fontWeight:900}}>🦕 Sở Thú Khủng Long</h3>
+            <div style={{textAlign:'right'}}><div style={{color:'#fbbf24',fontWeight:900,fontSize:14}}>💰 {fmtD(money)}₫</div><div style={{fontSize:9,color:'#64748b'}}>👥 {visitors.toLocaleString()} khách</div></div>
+          </div>
+          <div style={{display:'flex',gap:5}}>
+            {[{v:`${hatchedDinos.length}/${totalCap||'?'}`,l:'🦕 KL Đang Sống'},{v:dinos.filter(d=>!d.hatched).length,l:'🥚 Đang Ấp'},{v:fmtD(Math.floor(ticketIncome())),l:'🎟️ /5s'},{v:fmtD(totalEarned),l:'💵 Tổng'}].map((s,i)=>(
+              <div key={i} style={{flex:1,background:'rgba(163,230,53,0.06)',border:'1px solid rgba(163,230,53,0.1)',borderRadius:8,padding:'4px',textAlign:'center'}}>
+                <div style={{color:'#a3e635',fontWeight:900,fontSize:11}}>{s.v}</div>
+                <div style={{color:'#64748b',fontSize:8}}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:4}}>
+            {[['zoo','🦕 Sở Thú'],['eggs','🥚 Mua Trứng'],['build','🏗️ Cơ Sở']].map(([id,l])=>(
+              <button key={id} onClick={()=>setTab(id)} style={{flex:1,background:tab===id?'rgba(163,230,53,0.15)':'rgba(255,255,255,0.04)',border:`1px solid ${tab===id?'rgba(163,230,53,0.4)':'rgba(255,255,255,0.07)'}`,borderRadius:8,padding:'5px 0',color:tab===id?'#a3e635':'#64748b',fontSize:10,fontWeight:700,cursor:'pointer'}}>{l}</button>
+            ))}
+          </div>
+          {tab==='zoo'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              {!dinos.length&&<div style={{textAlign:'center',color:'#475569',padding:30,fontSize:14}}>🥚 Chưa có khủng long! Mua trứng đi!</div>}
+              {dinos.map(d=>(
+                <div key={d.id} style={{background:d.hatched?'rgba(163,230,53,0.08)':'rgba(255,255,255,0.03)',border:`1px solid ${d.hatched?'rgba(163,230,53,0.2)':'rgba(255,255,255,0.05)'}`,borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:30}}>{d.hatched?d.species.icon:'🥚'}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,fontWeight:700,color:d.hatched?'#e2e8f0':'#94a3b8'}}>{d.species.name} <span style={{fontSize:9,color:d.species.color}}>({d.species.rarity})</span></div>
+                    {d.hatched?<div style={{fontSize:9,color:'#a3e635'}}>+{fmtD(d.species.ticketBonus*totalBonusMult)}₫/5s 🎟️</div>:(
+                      <div>
+                        <div style={{height:4,borderRadius:2,background:'rgba(255,255,255,0.08)',marginTop:3}}><div style={{height:'100%',borderRadius:2,background:'#f59e0b',width:`${((d.species.hatchTime-d.hatchLeft)/d.species.hatchTime)*100}%`}}/></div>
+                        <div style={{fontSize:8,color:'#64748b'}}>Nở sau {d.hatchLeft}s</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {tab==='eggs'&&(
+            <div style={{flex:1,display:'flex',flexDirection:'column',gap:5}}>
+              <div style={{display:'flex',gap:6}}>
+                <input placeholder="🔍 Tìm loài khủng long..." onChange={e=>setDinoSearch(e.target.value)} style={{flex:1,background:'rgba(255,255,255,0.06)',border:'1px solid rgba(163,230,53,0.2)',borderRadius:8,padding:'6px 10px',color:'white',fontSize:12,outline:'none'}}/>
+                <button onClick={()=>{
+                  const filtered=DINO_SPECIES.filter(sp=>{
+                    const matchSearch=!dinoSearch||sp.name.toLowerCase().includes(dinoSearch.toLowerCase());
+                    const matchRarity=dinoRarityFilter==='tất cả'||sp.rarity===dinoRarityFilter;
+                    return matchSearch&&matchRarity;
+                  });
+                  let bought=0;
+                  filtered.forEach(sp=>{
+                    if(money>=sp.eggCost&&hatchedDinos.length+bought<totalCap){
+                      buyEgg(sp); bought++;
+                    }
+                  });
+                  addLog(`🥚 Mua hết! Đã đặt ${bought} trứng khủng long!`);
+                }} style={{background:'linear-gradient(135deg,#f59e0b,#d97706)',border:'none',borderRadius:8,padding:'6px 12px',color:'white',fontSize:11,fontWeight:900,cursor:'pointer',whiteSpace:'nowrap'}}>
+                  🥚 Mua Hết
+                </button>
+              </div>
+              <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>
+                {['tất cả','thường','hiếm','quý','siêu quý','huyền thoại','thần thoại'].map(r=>(
+                  <button key={r} onClick={()=>setDinoRarityFilter(r)} style={{fontSize:8,padding:'2px 6px',borderRadius:6,background:dinoRarityFilter===r?'rgba(163,230,53,0.2)':'rgba(255,255,255,0.04)',border:`1px solid ${dinoRarityFilter===r?'#a3e635':'rgba(255,255,255,0.08)'}`,color:dinoRarityFilter===r?'#a3e635':'#64748b',cursor:'pointer',fontWeight:700}}>{r}</button>
+                ))}
+              </div>
+              <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:4}}>
+              {DINO_SPECIES.filter(sp=>{
+                const matchSearch=!dinoSearch||sp.name.toLowerCase().includes(dinoSearch.toLowerCase());
+                const matchRarity=dinoRarityFilter==='tất cả'||sp.rarity===dinoRarityFilter;
+                return matchSearch&&matchRarity;
+              }).map(sp=>{
+                const canBuy=money>=sp.eggCost&&hatchedDinos.length<totalCap;
+                return(<div key={sp.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'7px 10px',display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+                  <span style={{fontSize:26}}>{sp.icon}</span>
+                  <div style={{flex:1,minWidth:0}}><div style={{fontSize:10,fontWeight:700,color:'#e2e8f0',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sp.name} <span style={{fontSize:8,color:sp.color}}>({sp.rarity})</span></div><div style={{fontSize:8,color:'#64748b'}}>🥚{sp.hatchTime}s • +{fmtD(sp.ticketBonus)}₫/5s</div></div>
+                  <button onClick={()=>buyEgg(sp)} disabled={!canBuy} style={{background:canBuy?'linear-gradient(135deg,#a3e635,#65a30d)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'4px 8px',color:canBuy?'#1a2e05':'#475569',fontSize:9,fontWeight:800,cursor:canBuy?'pointer':'default',whiteSpace:'nowrap',flexShrink:0}}>{fmtD(sp.eggCost)}₫</button>
+                </div>);
+              })}
+              </div>
+            </div>
+          )}
+          {tab==='build'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              <p style={{margin:'0 0 4px',fontSize:10,color:'#64748b'}}>Tổng sức chứa: {totalCap} | Hệ số vé: x{totalBonusMult.toFixed(1)}</p>
+              {DINO_ENCLOSURES.map(enc=>{
+                const count=enclosures.filter(e=>e===enc.id).length;
+                const canBuy=money>=enc.cost;
+                return(<div key={enc.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:26}}>{enc.icon}</span>
+                  <div style={{flex:1}}><div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{enc.name}</span><span style={{color:'#a3e635',fontSize:10}}>x{count}</span></div><div style={{fontSize:9,color:'#64748b'}}>{enc.desc}</div></div>
+                  <button onClick={()=>buildEnclosure(enc)} disabled={!canBuy} style={{background:canBuy?'linear-gradient(135deg,#65a30d,#4d7c0f)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'5px 10px',color:canBuy?'white':'#475569',fontSize:10,fontWeight:800,cursor:canBuy?'pointer':'default',whiteSpace:'nowrap'}}>{fmtD(enc.cost)}₫</button>
+                </div>);
+              })}
+            </div>
+          )}
+          <div style={{background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'5px 8px',maxHeight:55,overflowY:'auto'}}>
+            {log.slice(0,3).map((l,i)=><div key={i} style={{fontSize:9,color:'#64748b',lineHeight:1.6}}>{l}</div>)}
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const handleBack = () => {
+        window.location.href = '../index.html';
+      };
+
+      return <DinoZooGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>♟️ Cờ Vua — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(160deg, #1a1a1a, #2d2d2d);
+      min-height: 100vh;
+    }
+    #root {
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ===================== CỜ VUA =====================
+    const INIT_BOARD = () => {
+      const b = Array(8).fill(null).map(()=>Array(8).fill(null));
+      const order = ['R','N','B','Q','K','B','N','R'];
+      for(let c=0;c<8;c++){b[0][c]={p:order[c],color:'b'};b[7][c]={p:order[c],color:'w'};}
+      for(let c=0;c<8;c++){b[1][c]={p:'P',color:'b'};b[6][c]={p:'P',color:'w'};}
+      return b;
+    };
+
+    const PIECE_ICON = {
+      w:{K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙'},
+      b:{K:'♚',Q:'♛',R:'♜',B:'♝',N:'♞',P:'♟'},
+    };
+
+    function inBounds(r,c){return r>=0&&r<8&&c>=0&&c<8;}
+
+    function getMoves(board,r,c,lastMove){
+      const cell=board[r][c]; if(!cell) return [];
+      const {p,color}=cell; const opp=color==='w'?'b':'w';
+      const moves=[]; const dirs={R:[[1,0],[-1,0],[0,1],[0,-1]],B:[[1,1],[1,-1],[-1,1],[-1,-1]],Q:[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]};
+      const slide=(ds)=>ds.forEach(([dr,dc])=>{let nr=r+dr,nc=c+dc;while(inBounds(nr,nc)){if(board[nr][nc]){if(board[nr][nc].color===opp)moves.push([nr,nc]);break;}moves.push([nr,nc]);nr+=dr;nc+=dc;}});
+      if(p==='R'||p==='Q')slide(dirs.R); if(p==='B'||p==='Q')slide(dirs.B);
+      if(p==='N'){[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(inBounds(nr,nc)&&(!board[nr][nc]||board[nr][nc].color===opp))moves.push([nr,nc]);});}
+      if(p==='K'){[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(inBounds(nr,nc)&&(!board[nr][nc]||board[nr][nc].color===opp))moves.push([nr,nc]);});}
+      if(p==='P'){const dir=color==='w'?-1:1;const start=color==='w'?6:1;if(inBounds(r+dir,c)&&!board[r+dir][c]){moves.push([r+dir,c]);if(r===start&&!board[r+2*dir][c])moves.push([r+2*dir,c]);}[-1,1].forEach(dc=>{if(inBounds(r+dir,c+dc)&&board[r+dir][c+dc]?.color===opp)moves.push([r+dir,c+dc]);});}
+      return moves;
+    }
+
+    function aiMove(board,diff){
+      const pieces=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c]?.color==='b')pieces.push([r,c]);
+      const allMoves=[];pieces.forEach(([r,c])=>{getMoves(board,r,c,null).forEach(([nr,nc])=>allMoves.push({fr:r,fc:c,tr:nr,tc:nc,capture:board[nr][nc]?.p}));});
+      if(!allMoves.length) return null;
+      if(diff==='easy'||Math.random()<(diff==='medium'?0.4:0.1)) return allMoves[Math.floor(Math.random()*allMoves.length)];
+      const captures=allMoves.filter(m=>m.capture);
+      const val={Q:9,R:5,B:3,N:3,P:1};
+      captures.sort((a,b)=>(val[b.capture]||0)-(val[a.capture]||0));
+      return captures[0]||allMoves[Math.floor(Math.random()*allMoves.length)];
+    }
+
+    function ChessGame({ onBack }) {
+      const [board, setBoard]       = useState(INIT_BOARD);
+      const [selected, setSelected] = useState(null);
+      const [moves, setMoves]       = useState([]);
+      const [turn, setTurn]         = useState('w');
+      const [status, setStatus]     = useState('');
+      const [diff, setDiff]         = useState('medium');
+      const [captured, setCaptured] = useState({w:[],b:[]});
+      const [phase, setPhase]       = useState('menu');
+      const [thinking, setThinking] = useState(false);
+
+      const doAiMove = (b) => {
+        setThinking(true);
+        setTimeout(()=>{
+          const mv=aiMove(b,diff);
+          if(!mv){setStatus('♟ Bạn thắng!');setThinking(false);return;}
+          const nb=b.map(r=>[...r]);
+          if(nb[mv.tr][mv.tc]) setCaptured(c=>({...c,w:[...c.w,nb[mv.tr][mv.tc].p]}));
+          nb[mv.tr][mv.tc]=nb[mv.fr][mv.fc];
+          nb[mv.fr][mv.fc]=null;
+          if(nb[mv.tr][mv.tc].p==='P'&&mv.tr===7) nb[mv.tr][mv.tc]={p:'Q',color:'b'};
+          setBoard(nb); setTurn('w'); setThinking(false);
+          const wK=nb.flat().some(x=>x?.p==='K'&&x?.color==='w');
+          if(!wK)setStatus('♚ AI thắng!');
+        },500);
+      };
+
+      const clickCell = (r,c) => {
+        if(turn!=='w'||thinking||status) return;
+        const cell=board[r][c];
+        if(selected){
+          if(moves.some(([mr,mc])=>mr===r&&mc===c)){
+            const nb=board.map(row=>[...row]);
+            if(nb[r][c]) setCaptured(cp=>({...cp,b:[...cp.b,nb[r][c].p]}));
+            nb[r][c]=nb[selected[0]][selected[1]];
+            nb[selected[0]][selected[1]]=null;
+            if(nb[r][c].p==='P'&&r===0) nb[r][c]={p:'Q',color:'w'};
+            const bK=nb.flat().some(x=>x?.p==='K'&&x?.color==='b');
+            if(!bK){setStatus('♔ Bạn thắng!');setBoard(nb);setSelected(null);setMoves([]);return;}
+            setBoard(nb); setSelected(null); setMoves([]); setTurn('b');
+            doAiMove(nb); return;
+          }
+          setSelected(null); setMoves([]);
+        }
+        if(cell?.color==='w'){setSelected([r,c]);setMoves(getMoves(board,r,c,null));}
+      };
+
+      const reset=()=>{setBoard(INIT_BOARD());setSelected(null);setMoves([]);setTurn('w');setStatus('');setCaptured({w:[],b:[]});setThinking(false);};
+      const PIECE_VAL={Q:9,R:5,B:3,N:3,P:1};
+      const score=(arr)=>arr.reduce((s,p)=>s+(PIECE_VAL[p]||0),0);
+
+      if(phase==='menu') return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#1a1a1a,#2d2d2d)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:20}}>
+          <div style={{fontSize:64}}>♟️</div>
+          <h2 style={{margin:0,color:'#e2e8f0',fontSize:24,fontWeight:900}}>Cờ Vua</h2>
+          <p style={{color:'#94a3b8',fontSize:12,margin:0,textAlign:'center'}}>Bạn đi quân Trắng ♙ — AI đi quân Đen ♟<br/>Ăn Vua đối phương để thắng!</p>
+          <div style={{display:'flex',gap:8}}>
+            {['easy','medium','hard'].map(d=>(
+              <button key={d} onClick={()=>setDiff(d)} style={{background:diff===d?'rgba(226,232,240,0.2)':'rgba(255,255,255,0.05)',border:`1px solid ${diff===d?'#e2e8f0':'rgba(255,255,255,0.1)'}`,borderRadius:10,padding:'8px 18px',color:diff===d?'white':'#64748b',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                {d==='easy'?'😊 Dễ':d==='medium'?'😐 Vừa':'😈 Khó'}
+              </button>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,padding:'10px 18px',color:'#94a3b8',fontSize:13,cursor:'pointer'}}>← Hub</button>
+            <button onClick={()=>setPhase('playing')} style={{background:'linear-gradient(135deg,#e2e8f0,#cbd5e1)',border:'none',borderRadius:10,padding:'10px 28px',color:'#1a1a1a',fontSize:15,fontWeight:900,cursor:'pointer'}}>♟ Bắt đầu!</button>
+          </div>
+        </div>
+      );
+
+      const cellSize=44;
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#1a1a1a,#2d2d2d)',display:'flex',flexDirection:'column',alignItems:'center',padding:12,gap:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%',maxWidth:360}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <span style={{color:'#e2e8f0',fontWeight:800,fontSize:13}}>♟️ Cờ Vua — {diff==='easy'?'Dễ':diff==='medium'?'Vừa':'Khó'}</span>
+            <button onClick={reset} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>🔄</button>
+          </div>
+          {/* Score */}
+          <div style={{display:'flex',gap:16,fontSize:11}}>
+            <span style={{color:'#e2e8f0'}}>⬜ Bạn: {score(captured.b)}đ — {captured.b.map(p=>PIECE_ICON.b[p]).join('')}</span>
+            <span style={{color:'#94a3b8'}}>⬛ AI: {score(captured.w)}đ — {captured.w.map(p=>PIECE_ICON.w[p]).join('')}</span>
+          </div>
+          {/* Status */}
+          {(status||thinking) && <div style={{color:status.includes('Bạn')?'#4ade80':'#f87171',fontWeight:900,fontSize:15,textAlign:'center'}}>{thinking?'🤔 AI đang suy nghĩ...':status} {status&&<button onClick={reset} style={{marginLeft:8,background:'rgba(255,255,255,0.1)',border:'none',borderRadius:6,padding:'2px 8px',color:'white',cursor:'pointer',fontSize:12}}>Ván mới</button>}</div>}
+          {/* Board */}
+          <div style={{border:'3px solid #475569',borderRadius:4,overflow:'hidden'}}>
+            {board.map((row,r)=>(
+              <div key={r} style={{display:'flex'}}>
+                {row.map((cell,c)=>{
+                  const isLight=(r+c)%2===0;
+                  const isSel=selected&&selected[0]===r&&selected[1]===c;
+                  const isMove=moves.some(([mr,mc])=>mr===r&&mc===c);
+                  return(
+                    <div key={c} onClick={()=>clickCell(r,c)} style={{
+                      width:cellSize,height:cellSize,
+                      background:isSel?'#f59e0b':isMove?(isLight?'rgba(34,197,94,0.5)':'rgba(34,197,94,0.4)'):isLight?'#f0d9b5':'#b58863',
+                      display:'flex',alignItems:'center',justifyContent:'center',
+                      fontSize:cellSize-10,cursor:'pointer',userSelect:'none',
+                      position:'relative',
+                    }}>
+                      {cell&&<span style={{lineHeight:1,filter:cell.color==='w'?'drop-shadow(0 1px 2px rgba(0,0,0,0.5))':'none'}}>{PIECE_ICON[cell.color][cell.p]}</span>}
+                      {isMove&&!cell&&<div style={{width:16,height:16,borderRadius:'50%',background:'rgba(34,197,94,0.6)'}}/>}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:10,color:'#64748b'}}>{turn==='w'&&!status?'Lượt của bạn (♙ Trắng)':''}{ turn==='b'&&!status?'AI đang đi...':''}</div>
+        </div>
+      );
+    }
+
+    function App() {
+      const handleBack = () => {
+        window.location.href = '../index.html';
+      };
+
+      return <ChessGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🃏 Đánh Bài Tiến Lên — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+    function CardGame({ onBack }) {
+      const SUITS = ['♠','♥','♦','♣'];
+      const VALUES = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
+      const makeDecks = () => {
+        const d = [];
+        for (let s of SUITS) for (let v of VALUES) d.push({s,v,val:VALUES.indexOf(v)});
+        return d;
+      };
+      const shuffle = d => { const a=[...d]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+      const [phase, setPhase] = useState('menu'); // menu, playing, result
+      const [playerHand, setPlayerHand] = useState([]);
+      const [cpuHand, setCpuHand] = useState([]);
+      const [table, setTable] = useState([]);
+      const [turn, setTurn] = useState('player');
+      const [selected, setSelected] = useState([]);
+      const [msg, setMsg] = useState('');
+      const [winner, setWinner] = useState(null);
+      const [passed, setPassed] = useState({player:false,cpu:false});
+
+      const deal = () => {
+        const d = shuffle(makeDecks());
+        const ph = d.slice(0,13).sort((a,b)=>a.val-b.val);
+        const ch = d.slice(13,26).sort((a,b)=>a.val-b.val);
+        setPlayerHand(ph); setCpuHand(ch); setTable([]); setSelected([]);
+        setTurn('player'); setMsg('Lượt của bạn!'); setWinner(null); setPassed({player:false,cpu:false});
+        setPhase('playing');
+      };
+
+      const cardStr = c => c.v + c.s;
+      const canPlay = (cards, table) => {
+        if (table.length===0) return true;
+        if (cards.length !== table.length) return false;
+        const maxNew = Math.max(...cards.map(c=>c.val));
+        const maxTbl = Math.max(...table.map(c=>c.val));
+        return maxNew > maxTbl;
+      };
+
+      const playCards = () => {
+        const toPlay = selected.map(i => playerHand[i]);
+        if (!canPlay(toPlay, table)) { setMsg('❌ Bài yếu hơn! Đánh bài mạnh hơn.'); return; }
+        const newHand = playerHand.filter((_,i) => !selected.includes(i));
+        setTable(toPlay); setPlayerHand(newHand); setSelected([]);
+        setPassed(p => ({...p, player:false}));
+        if (newHand.length===0) { setWinner('player'); setPhase('result'); return; }
+        setTurn('cpu'); setMsg('CPU đang suy nghĩ...');
+        setTimeout(() => cpuPlay(toPlay, ch => setCpuHand(ch)), 1000);
+      };
+
+      const cpuPlay = (lastTable, setCH) => {
+        setCpuHand(prev => {
+          const hand = [...prev];
+          // CPU: tìm bài đánh được
+          let best = null, bestIdx = [];
+          if (lastTable.length===1) {
+            for (let i=0;i<hand.length;i++) if (hand[i].val > Math.max(...lastTable.map(c=>c.val))) { best=[hand[i]]; bestIdx=[i]; break; }
+          } else if (lastTable.length===2) {
+            for (let i=0;i<hand.length-1;i++) for(let j=i+1;j<hand.length;j++) {
+              if (hand[i].v===hand[j].v && Math.max(hand[i].val,hand[j].val)>Math.max(...lastTable.map(c=>c.val))) { best=[hand[i],hand[j]]; bestIdx=[i,j]; break; }
+              if (best) break;
+            }
+          }
+          if (best) {
+            const newH = hand.filter((_,i)=>!bestIdx.includes(i));
+            setTable(best); setCH(newH);
+            setPassed(p=>({...p,cpu:false}));
+            if (newH.length===0) { setWinner('cpu'); setPhase('result'); return newH; }
+            setTurn('player'); setMsg('Lượt của bạn!');
+            return newH;
+          } else {
+            setPassed(p=>({...p,cpu:true}));
+            setTable([]); setTurn('player'); setMsg('CPU bỏ! Bạn đánh bài mới.');
+            return hand;
+          }
+        });
+      };
+
+      const pass = () => {
+        if (table.length===0) { setMsg('❌ Không thể bỏ lượt đầu!'); return; }
+        setPassed(p=>({...p,player:true}));
+        setTable([]); setTurn('cpu'); setMsg('CPU đang suy nghĩ...');
+        setTimeout(()=>cpuPlay([],ch=>setCpuHand(ch)),900);
+      };
+
+      const toggleSelect = i => setSelected(s => s.includes(i)?s.filter(x=>x!==i):[...s,i]);
+      const red = s => s==='♥'||s==='♦';
+
+      return (
+        <div style={{minHeight:'100vh',background:'linear-gradient(135deg,#14532d,#166534)',display:'flex',flexDirection:'column',alignItems:'center',padding:12}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%',maxWidth:480,marginBottom:8}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:8,padding:'4px 12px',color:'#bbf7d0',cursor:'pointer',fontSize:13}}>← Quay lại</button>
+            <h2 style={{margin:0,color:'#fbbf24',fontSize:18,fontWeight:800}}>🃏 Đánh Bài</h2>
+            <span style={{color:'#bbf7d0',fontSize:12}}>{phase==='playing'?`${cpuHand.length} bài`:''}</span>
+          </div>
+
+          {phase==='menu' && (
+            <div style={{textAlign:'center',marginTop:60}}>
+              <div style={{fontSize:64,marginBottom:16}}>🃏</div>
+              <h3 style={{color:'#fbbf24',fontSize:22,fontWeight:800,margin:'0 0 8px'}}>Tiến Lên</h3>
+              <p style={{color:'#bbf7d0',fontSize:13,margin:'0 0 24px'}}>Đánh bài mạnh hơn bài trên bàn<br/>Ai hết bài trước thắng!</p>
+              <button onClick={deal} style={{background:'linear-gradient(135deg,#dc2626,#b91c1c)',border:'none',borderRadius:12,padding:'12px 32px',color:'white',fontSize:16,fontWeight:800,cursor:'pointer'}}>🎴 Chia Bài</button>
+            </div>
+          )}
+
+          {phase==='result' && (
+            <div style={{textAlign:'center',marginTop:60}}>
+              <div style={{fontSize:64}}>{winner==='player'?'🏆':'😢'}</div>
+              <h3 style={{color:winner==='player'?'#fbbf24':'#f87171',fontSize:22,fontWeight:800,margin:'8px 0'}}>{winner==='player'?'BẠN THẮNG!':'CPU THẮNG!'}</h3>
+              <button onClick={deal} style={{background:'linear-gradient(135deg,#dc2626,#b91c1c)',border:'none',borderRadius:12,padding:'12px 32px',color:'white',fontSize:16,fontWeight:800,cursor:'pointer',marginTop:16}}>🔄 Ván Mới</button>
+            </div>
+          )}
+
+          {phase==='playing' && (
+            <div style={{width:'100%',maxWidth:480,display:'flex',flexDirection:'column',gap:10}}>
+              {/* CPU hand */}
+              <div style={{background:'rgba(0,0,0,0.2)',borderRadius:12,padding:10,textAlign:'center'}}>
+                <p style={{margin:'0 0 6px',color:'#86efac',fontSize:11,fontWeight:700}}>🤖 CPU ({cpuHand.length} bài)</p>
+                <div style={{display:'flex',flexWrap:'wrap',gap:3,justifyContent:'center'}}>
+                  {cpuHand.map((_,i)=><div key={i} style={{width:32,height:44,background:'#1e40af',borderRadius:5,border:'1px solid rgba(255,255,255,0.2)'}}/>)}
+                </div>
+              </div>
+              {/* Table */}
+              <div style={{background:'rgba(0,0,0,0.15)',borderRadius:12,padding:10,minHeight:80,textAlign:'center'}}>
+                <p style={{margin:'0 0 4px',color:'#fbbf24',fontSize:11,fontWeight:700}}>🃏 Trên bàn</p>
+                {table.length===0 ? <p style={{color:'#64748b',fontSize:12,margin:0}}>Bàn trống — đánh bài bất kỳ</p> : (
+                  <div style={{display:'flex',gap:4,justifyContent:'center',flexWrap:'wrap'}}>
+                    {table.map((c,i)=><div key={i} style={{width:38,height:52,background:'white',borderRadius:6,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:red(c.s)?'#dc2626':'#1e293b',boxShadow:'0 2px 8px rgba(0,0,0,0.3)'}}><span>{c.v}</span><span>{c.s}</span></div>)}
+                  </div>
+                )}
+              </div>
+              {/* Message */}
+              <div style={{textAlign:'center',color:'#fbbf24',fontWeight:700,fontSize:13,minHeight:20}}>{msg}</div>
+              {/* Player hand */}
+              <div style={{background:'rgba(0,0,0,0.2)',borderRadius:12,padding:10}}>
+                <p style={{margin:'0 0 6px',color:'#86efac',fontSize:11,fontWeight:700}}>👤 Bài của bạn ({playerHand.length} bài)</p>
+                <div style={{display:'flex',flexWrap:'wrap',gap:4,justifyContent:'center'}}>
+                  {playerHand.map((c,i)=>(
+                    <div key={i} onClick={()=>turn==='player'&&toggleSelect(i)}
+                      style={{width:38,height:52,background:selected.includes(i)?'#fef08a':'white',borderRadius:6,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:red(c.s)?'#dc2626':'#1e293b',cursor:'pointer',boxShadow:selected.includes(i)?'0 0 12px #fbbf24':'0 2px 6px rgba(0,0,0,0.3)',transform:selected.includes(i)?'translateY(-8px)':'none',transition:'all 0.15s',border:selected.includes(i)?'2px solid #fbbf24':'2px solid transparent'}}>
+                      <span>{c.v}</span><span>{c.s}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Action buttons */}
+              {turn==='player' && (
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={playCards} disabled={selected.length===0} style={{flex:1,background:selected.length>0?'linear-gradient(135deg,#dc2626,#b91c1c)':'rgba(255,255,255,0.05)',border:'none',borderRadius:10,padding:'10px 0',color:selected.length>0?'white':'#64748b',fontSize:14,fontWeight:800,cursor:selected.length>0?'pointer':'default'}}>
+                    ▶ Đánh ({selected.length} lá)
+                  </button>
+                  <button onClick={pass} style={{flex:1,background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,padding:'10px 0',color:'#94a3b8',fontSize:14,fontWeight:700,cursor:'pointer'}}>
+                    ⏭ Bỏ Lượt
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const handleBack = () => {
+        window.location.href = "../index.html";
+      };
+
+      return <CardGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

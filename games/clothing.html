@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>👗 Công Ty May Đồ — Game Hub</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  </style>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ===================== CÔNG TY MAY ĐỒ =====================
+    const CLOTHING_PRODUCTS = [
+      { id:'tshirt',   name:'Áo Thun',          icon:'👕', tier:1, mat:{cotton:5,thread:3},              time:3,  price:80,        desc:'Áo thun cơ bản' },
+      { id:'jeans',    name:'Quần Jeans',        icon:'👖', tier:1, mat:{denim:8,thread:4,zipper:1},      time:5,  price:200,       desc:'Quần bò thời trang' },
+      { id:'dress',    name:'Váy Đầm',           icon:'👗', tier:2, mat:{silk:6,thread:5,button:3},       time:7,  price:500,       desc:'Váy đầm duyên dáng' },
+      { id:'jacket',   name:'Áo Khoác',          icon:'🧥', tier:2, mat:{leather:5,thread:6,zipper:2},    time:10, price:1200,      desc:'Áo khoác da cao cấp' },
+      { id:'suit',     name:'Bộ Vest',           icon:'🤵', tier:3, mat:{wool:10,thread:8,button:5,lining:3}, time:15, price:5000,  desc:'Vest doanh nhân' },
+      { id:'wedding',  name:'Váy Cưới',          icon:'👰', tier:3, mat:{silk:20,lace:10,thread:15,diamond_button:2}, time:25, price:20000, desc:'Váy cưới xa hoa' },
+      { id:'sportswear',name:'Đồ Thể Thao',      icon:'🏃', tier:2, mat:{nylon:8,elastic:5,thread:4},    time:8,  price:800,       desc:'Thoáng mát, co dãn' },
+      { id:'designer', name:'Hàng Hiệu Designer',icon:'✨', tier:4, mat:{silk:30,gold_thread:10,diamond_button:5,lace:15}, time:40, price:200000, desc:'Thương hiệu đỉnh cao' },
+      { id:'couture',  name:'Haute Couture',     icon:'👑', tier:5, mat:{silk:100,gold_thread:50,diamond_button:20,exotic:10}, time:90, price:5000000, desc:'Thời trang hoàng gia' },
+    ];
+
+    const CLOTHING_MATS = [
+      {id:'cotton',    name:'Vải Bông',       icon:'🌸', base:3,    mult:1.2},
+      {id:'thread',    name:'Chỉ May',        icon:'🧵', base:1,    mult:1.15},
+      {id:'denim',     name:'Vải Denim',      icon:'🔵', base:6,    mult:1.25},
+      {id:'zipper',    name:'Khoá Kéo',       icon:'🔗', base:8,    mult:1.2},
+      {id:'silk',      name:'Lụa Cao Cấp',   icon:'✨', base:20,   mult:1.35},
+      {id:'button',    name:'Cúc Áo',         icon:'⚪', base:2,    mult:1.15},
+      {id:'leather',   name:'Da Thuộc',       icon:'🟤', base:25,   mult:1.3},
+      {id:'wool',      name:'Len Merino',     icon:'🐑', base:15,   mult:1.3},
+      {id:'lining',    name:'Vải Lót',        icon:'🪡', base:10,   mult:1.25},
+      {id:'lace',      name:'Ren Bỉ',        icon:'🌺', base:30,   mult:1.4},
+      {id:'nylon',     name:'Vải Nylon',      icon:'💠', base:8,    mult:1.2},
+      {id:'elastic',   name:'Thun Co Dãn',   icon:'🔄', base:5,    mult:1.2},
+      {id:'gold_thread',name:'Chỉ Vàng',    icon:'🟡', base:200,  mult:1.6},
+      {id:'diamond_button',name:'Cúc Kim Cương',icon:'💎',base:1000,mult:1.8},
+      {id:'exotic',    name:'Vật Liệu Hiếm', icon:'🌌', base:50000,mult:2.5},
+    ];
+
+    const CLOTHING_MACHINES = [
+      {id:'sewing',   name:'Máy May',         icon:'🪡', cost:2000,    mult:1.4, tier:1, desc:'Tự động may tier 1'},
+      {id:'cutter',   name:'Máy Cắt Vải',    icon:'✂️', cost:10000,   mult:1.5, tier:2, desc:'Tự động tier 2'},
+      {id:'embroid',  name:'Máy Thêu',        icon:'🌸', cost:80000,   mult:1.6, tier:3, desc:'Tự động tier 3+'},
+      {id:'robot_tailor',name:'Robot Thợ May',icon:'🤖',cost:5000000, mult:2.0, tier:0, desc:'Tự động tất cả ×2'},
+    ];
+
+    const FASHION_BRANDS = [
+      {id:'local',   name:'Thương Hiệu Địa Phương',  mult:1.0,  unlock:0},
+      {id:'national',name:'Thương Hiệu Quốc Gia',     mult:2.0,  unlock:50000},
+      {id:'regional',name:'Thương Hiệu Khu Vực',      mult:5.0,  unlock:500000},
+      {id:'global',  name:'Thương Hiệu Toàn Cầu',     mult:15.0, unlock:10000000},
+      {id:'luxury',  name:'Nhãn Hiệu Luxury',          mult:50.0, unlock:500000000},
+      {id:'legend',  name:'Huyền Thoại Thời Trang',   mult:200.0,unlock:50000000000},
+    ];
+
+    function fmtC(n){if(!isFinite(n)||n>1e99)return'∞';if(n>=1e12)return(n/1e12).toFixed(1)+'T';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return Math.floor(n).toLocaleString();}
+
+    function ClothingFactory({ onBack }) {
+      const [money, setMoney]       = useState(1e50);
+      const [totalEarned, setTotalEarned] = useState(0);
+      const [mats, setMats]         = useState({});
+      const [matCounts, setMatCounts] = useState({});
+      const [inventory, setInventory] = useState({});
+      const [machines, setMachines] = useState({});
+      const [making, setMaking]     = useState(null);
+      const [makeProgress, setMakeProgress] = useState(0);
+      const [brandIdx, setBrandIdx] = useState(0);
+      const [tab, setTab]           = useState('sew');
+      const [log, setLog]           = useState([]);
+      const [fame, setFame]         = useState(0); // fashion fame points
+      const [season, setSeason]     = useState('Xuân Hè'); // fashion season
+      const addLog = m=>setLog(p=>[m,...p].slice(0,10));
+
+      const brand = FASHION_BRANDS[brandIdx];
+      const brandMult = brand.mult;
+      const machineMult = () => { let m=1; Object.entries(machines).forEach(([id,c])=>{const mc=CLOTHING_MACHINES.find(x=>x.id===id);if(mc)m*=Math.pow(mc.mult,c);}); return Math.min(m,100); };
+      const canMake = (prod) => Object.entries(prod.mat).every(([id,qty])=>(mats[id]||0)>=qty);
+      const matCost = (mat,cnt) => Math.floor(mat.base*Math.pow(mat.mult,cnt));
+      const calcBuy = (mat,qty) => Array.from({length:qty}).reduce((s,_,i)=>s+matCost(mat,(matCounts[mat.id]||0)+i),0);
+
+      // Making timer
+      useEffect(()=>{
+        if(!making) return;
+        const prod=CLOTHING_PRODUCTS.find(p=>p.id===making);
+        if(!prod) return;
+        const iv=setInterval(()=>{
+          setMakeProgress(p=>{
+            if(p>=100){
+              setInventory(inv=>({...inv,[prod.id]:(inv[prod.id]||0)+1}));
+              setFame(f=>f+prod.tier*10);
+              addLog(`✅ ${prod.icon}${prod.name} hoàn thành! +${prod.tier*10} danh tiếng`);
+              setMaking(null); setMakeProgress(0); return 0;
+            }
+            return p+10;
+          });
+        }, prod.time*100);
+        return()=>clearInterval(iv);
+      },[making]);
+
+      // Machine auto-production every 8s
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          Object.entries(machines).forEach(([mid,cnt])=>{
+            if(!cnt) return;
+            const mc=CLOTHING_MACHINES.find(x=>x.id===mid);
+            const prods=CLOTHING_PRODUCTS.filter(p=>mc.tier===0||p.tier<=mc.tier);
+            prods.forEach(prod=>{
+              for(let i=0;i<cnt;i++){
+                if(canMake(prod)){
+                  setMats(prev=>{const n={...prev};Object.entries(prod.mat).forEach(([id,qty])=>n[id]=(n[id]||0)-qty);return n;});
+                  setInventory(inv=>({...inv,[prod.id]:(inv[prod.id]||0)+1}));
+                }
+              }
+            });
+          });
+        },8000);
+        return()=>clearInterval(iv);
+      },[machines,mats]);
+
+      // Brand unlock check
+      useEffect(()=>{
+        const nextIdx=FASHION_BRANDS.findIndex(b=>b.unlock>totalEarned)-1;
+        const maxBrand=FASHION_BRANDS.filter(b=>totalEarned>=b.unlock).length-1;
+        if(maxBrand>brandIdx){
+          setBrandIdx(maxBrand);
+          addLog(`🎉 Mở khoá thương hiệu: ${FASHION_BRANDS[maxBrand].name}! ×${FASHION_BRANDS[maxBrand].mult}`);
+        }
+      },[totalEarned]);
+
+      const startMake=(prod)=>{
+        if(making){addLog('⚠️ Đang may!');return;}
+        if(!canMake(prod)){addLog(`❌ Thiếu vật liệu`);return;}
+        setMats(prev=>{const n={...prev};Object.entries(prod.mat).forEach(([id,qty])=>n[id]=(n[id]||0)-qty);return n;});
+        setMaking(prod.id); setMakeProgress(0);
+        addLog(`✂️ Đang may ${prod.icon}${prod.name}...`);
+      };
+
+      const buyMat=(mat,qty)=>{
+        const cost=calcBuy(mat,qty);
+        if(money<cost){addLog(`❌ Cần ${fmtC(cost)}₫`);return;}
+        setMoney(m=>m-cost);
+        setMats(p=>({...p,[mat.id]:(p[mat.id]||0)+qty}));
+        setMatCounts(p=>({...p,[mat.id]:(p[mat.id]||0)+qty}));
+      };
+
+      const sellAll=()=>{
+        let total=0;
+        Object.entries(inventory).forEach(([id,qty])=>{
+          const p=CLOTHING_PRODUCTS.find(x=>x.id===id);
+          if(p) total+=p.price*qty*brandMult*machineMult();
+        });
+        total=Math.floor(total);
+        if(!total){addLog('❌ Kho trống');return;}
+        setMoney(m=>m+total);setTotalEarned(t=>t+total);setInventory({});
+        addLog(`💰 Bán hết: +${fmtC(total)}₫`);
+      };
+
+      const buyMachine=(mc)=>{
+        const cnt=machines[mc.id]||0;
+        const cost=Math.floor(mc.cost*Math.pow(1.6,cnt));
+        if(money<cost){addLog(`❌ Cần ${fmtC(cost)}₫`);return;}
+        setMoney(m=>m-cost);setMachines(p=>({...p,[mc.id]:(p[mc.id]||0)+1}));
+        addLog(`${mc.icon} Mua ${mc.name} thứ ${cnt+1}!`);
+      };
+
+      const invValue=Object.entries(inventory).reduce((s,[id,qty])=>{const p=CLOTHING_PRODUCTS.find(x=>x.id===id);return s+(p?p.price*qty*brandMult*machineMult():0);},0);
+      const TIER_COLORS={1:'#94a3b8',2:'#4ade80',3:'#f59e0b',4:'#f0abfc',5:'#fbbf24'};
+
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#1a0a30,#2d1b69)',display:'flex',flexDirection:'column',padding:10,gap:8}}>
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <div style={{textAlign:'center'}}>
+              <div style={{color:'#d8b4fe',fontWeight:900,fontSize:13}}>👗 {brand.name}</div>
+              <div style={{fontSize:9,color:'#64748b'}}>×{brandMult} giá • ⭐{fmtC(fame)} danh tiếng</div>
+            </div>
+            <div style={{textAlign:'right'}}><div style={{color:'#fbbf24',fontWeight:900,fontSize:13}}>💰 {fmtC(money)}₫</div><div style={{fontSize:9,color:'#64748b'}}>Kho: {fmtC(Math.floor(invValue))}₫</div></div>
+          </div>
+
+          {/* Brand progress */}
+          <div style={{background:'rgba(216,180,254,0.06)',border:'1px solid rgba(216,180,254,0.15)',borderRadius:8,padding:'5px 10px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+              <span style={{fontSize:9,color:'#d8b4fe',fontWeight:700}}>{brand.name}</span>
+              {brandIdx<FASHION_BRANDS.length-1&&<span style={{fontSize:9,color:'#64748b'}}>Tiếp: {fmtC(FASHION_BRANDS[brandIdx+1].unlock)}₫</span>}
+            </div>
+            <div style={{display:'flex',gap:2}}>
+              {FASHION_BRANDS.map((_,i)=><div key={i} style={{flex:1,height:4,borderRadius:2,background:i<=brandIdx?'#a855f7':'rgba(255,255,255,0.08)'}}/>)}
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div style={{display:'flex',gap:4}}>
+            {[['sew','✂️ May'],['mats','🧵 Vải'],['sell','💰 Bán'],['machine','⚙️ Máy']].map(([id,l])=>(
+              <button key={id} onClick={()=>setTab(id)} style={{flex:1,background:tab===id?'rgba(216,180,254,0.15)':'rgba(255,255,255,0.04)',border:`1px solid ${tab===id?'rgba(216,180,254,0.4)':'rgba(255,255,255,0.07)'}`,borderRadius:8,padding:'5px 0',color:tab===id?'#d8b4fe':'#64748b',fontSize:10,fontWeight:700,cursor:'pointer'}}>{l}</button>
+            ))}
+          </div>
+
+          {/* Making progress */}
+          {making&&(
+            <div style={{background:'rgba(216,180,254,0.08)',border:'1px solid rgba(216,180,254,0.2)',borderRadius:8,padding:'6px 10px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+                <span style={{color:'#d8b4fe',fontSize:11}}>✂️ Đang may...</span>
+                <span style={{color:'#d8b4fe',fontSize:11}}>{makeProgress}%</span>
+              </div>
+              <div style={{height:6,borderRadius:3,background:'rgba(255,255,255,0.08)'}}>
+                <div style={{height:'100%',borderRadius:3,background:'linear-gradient(90deg,#a855f7,#ec4899)',width:`${makeProgress}%`,transition:'width 0.2s'}}/>
+              </div>
+            </div>
+          )}
+
+          {/* Sew tab */}
+          {tab==='sew'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:4}}>
+              {[1,2,3,4,5].map(tier=>{
+                const prods=CLOTHING_PRODUCTS.filter(p=>p.tier===tier);
+                return(<div key={tier}><div style={{fontSize:9,color:TIER_COLORS[tier],fontWeight:800,marginBottom:3}}>TIER {tier}</div>
+                {prods.map(prod=>{
+                  const ok=canMake(prod);
+                  const sellPrc=Math.floor(prod.price*brandMult*machineMult());
+                  return(<div key={prod.id} style={{background:ok?'rgba(168,85,247,0.08)':'rgba(0,0,0,0.2)',border:`1px solid ${ok?'rgba(168,85,247,0.25)':'rgba(255,255,255,0.04)'}`,borderRadius:10,padding:'7px 10px',display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                    <span style={{fontSize:26}}>{prod.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:10,fontWeight:700,color:ok?'#e2e8f0':'#64748b'}}>{prod.name}</div>
+                      <div style={{fontSize:8,color:'#64748b',display:'flex',gap:3,flexWrap:'wrap'}}>
+                        {Object.entries(prod.mat).map(([id,qty])=>{const m=CLOTHING_MATS.find(x=>x.id===id);const h=(mats[id]||0)>=qty;return<span key={id} style={{color:h?'#5eead4':'#f87171'}}>{m?.icon}{id.slice(0,4)}:{mats[id]||0}/{qty}</span>;})}
+                      </div>
+                    </div>
+                    <div style={{textAlign:'right'}}>
+                      <div style={{fontSize:9,color:'#fbbf24',fontWeight:700}}>{fmtC(sellPrc)}₫</div>
+                      <div style={{fontSize:8,color:'#64748b'}}>kho:{inventory[prod.id]||0}</div>
+                      <button onClick={()=>startMake(prod)} disabled={!ok||!!making} style={{background:ok&&!making?'linear-gradient(135deg,#a855f7,#7c3aed)':'rgba(255,255,255,0.04)',border:'none',borderRadius:6,padding:'3px 8px',color:ok&&!making?'white':'#475569',fontSize:8,fontWeight:800,cursor:ok&&!making?'pointer':'default',marginTop:2}}>{prod.time}s</button>
+                    </div>
+                  </div>);
+                })}</div>);
+              })}
+            </div>
+          )}
+
+          {/* Materials tab */}
+          {tab==='mats'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:4}}>
+              {CLOTHING_MATS.map(mat=>{
+                const c1=matCost(mat,matCounts[mat.id]||0);
+                const c10=calcBuy(mat,10);
+                const h1=money>=c1,h10=money>=c10;
+                return(<div key={mat.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:9,padding:'6px 10px',display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:22}}>{mat.icon}</span>
+                  <div style={{flex:1}}><div style={{fontSize:10,fontWeight:700,color:'#e2e8f0'}}>{mat.name}</div><div style={{fontSize:8,color:'#5eead4'}}>Có: {mats[mat.id]||0}</div></div>
+                  <div style={{display:'flex',gap:4}}>
+                    <button onClick={()=>buyMat(mat,1)} disabled={!h1} style={{background:h1?'rgba(168,85,247,0.2)':'rgba(255,255,255,0.03)',border:`1px solid ${h1?'#a855f7':'rgba(255,255,255,0.05)'}`,borderRadius:6,padding:'3px 7px',color:h1?'#d8b4fe':'#475569',fontSize:8,fontWeight:700,cursor:h1?'pointer':'default',whiteSpace:'nowrap'}}>×1 {fmtC(c1)}₫</button>
+                    <button onClick={()=>buyMat(mat,10)} disabled={!h10} style={{background:h10?'rgba(168,85,247,0.2)':'rgba(255,255,255,0.03)',border:`1px solid ${h10?'#a855f7':'rgba(255,255,255,0.05)'}`,borderRadius:6,padding:'3px 7px',color:h10?'#d8b4fe':'#475569',fontSize:8,fontWeight:700,cursor:h10?'pointer':'default',whiteSpace:'nowrap'}}>×10 {fmtC(c10)}₫</button>
+                  </div>
+                </div>);
+              })}
+            </div>
+          )}
+
+          {/* Sell tab */}
+          {tab==='sell'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div><div style={{fontSize:11,color:'#d8b4fe',fontWeight:700}}>Hệ số: ×{brandMult} thương hiệu × ×{machineMult().toFixed(1)} máy</div><div style={{fontSize:9,color:'#64748b'}}>Tổng thu: {fmtC(totalEarned)}₫</div></div>
+                <button onClick={sellAll} style={{background:'linear-gradient(135deg,#22c55e,#16a34a)',border:'none',borderRadius:8,padding:'6px 14px',color:'white',fontSize:11,fontWeight:800,cursor:'pointer'}}>💰 Bán Hết</button>
+              </div>
+              {CLOTHING_PRODUCTS.map(prod=>{const qty=inventory[prod.id]||0;if(!qty)return null;const val=Math.floor(prod.price*qty*brandMult*machineMult());return(<div key={prod.id} style={{background:'rgba(34,197,94,0.07)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:10,padding:'7px 12px',display:'flex',alignItems:'center',gap:10}}>
+                <span style={{fontSize:24}}>{prod.icon}</span>
+                <div style={{flex:1}}><div style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{prod.name}</div><div style={{fontSize:9,color:'#64748b'}}>×{qty} • {fmtC(Math.floor(prod.price*brandMult*machineMult()))}₫/cái</div></div>
+                <div style={{color:'#22c55e',fontWeight:800,fontSize:11}}>+{fmtC(val)}₫</div>
+              </div>);})}
+              {!Object.values(inventory).some(v=>v>0)&&<div style={{textAlign:'center',color:'#475569',padding:30}}>Kho trống! May đồ đi! ✂️</div>}
+            </div>
+          )}
+
+          {/* Machines tab */}
+          {tab==='machine'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              <p style={{margin:'0 0 4px',fontSize:10,color:'#64748b'}}>Máy tự động may mỗi 8 giây</p>
+              {CLOTHING_MACHINES.map(mc=>{
+                const cnt=machines[mc.id]||0;
+                const cost=Math.floor(mc.cost*Math.pow(1.6,cnt));
+                const canBuy=money>=cost;
+                return(<div key={mc.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:28}}>{mc.icon}</span>
+                  <div style={{flex:1}}><div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{mc.name}</span><span style={{color:'#d8b4fe',fontSize:10}}>×{cnt}</span></div><div style={{fontSize:9,color:'#64748b'}}>{mc.desc}</div></div>
+                  <button onClick={()=>buyMachine(mc)} disabled={!canBuy} style={{background:canBuy?'linear-gradient(135deg,#a855f7,#7c3aed)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'5px 10px',color:canBuy?'white':'#475569',fontSize:9,fontWeight:800,cursor:canBuy?'pointer':'default',whiteSpace:'nowrap'}}>{fmtC(cost)}₫</button>
+                </div>);
+              })}
+              <div style={{background:'rgba(216,180,254,0.05)',border:'1px solid rgba(216,180,254,0.1)',borderRadius:10,padding:'10px',marginTop:4}}>
+                <div style={{fontSize:10,color:'#d8b4fe',fontWeight:700,marginBottom:6}}>🏆 Thương Hiệu (tự mở khoá)</div>
+                {FASHION_BRANDS.map((b,i)=>(
+                  <div key={b.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'3px 0',opacity:i>brandIdx?0.4:1}}>
+                    <span style={{fontSize:10,color:i<=brandIdx?'#d8b4fe':'#475569',fontWeight:i===brandIdx?700:400}}>{i===brandIdx?'▶ ':''}{b.name}</span>
+                    <span style={{fontSize:9,color:'#fbbf24'}}>×{b.mult} — {i===0?'Miễn phí':fmtC(b.unlock)+'₫'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Log */}
+          <div style={{background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'4px 8px',maxHeight:50,overflowY:'auto'}}>
+            {log.slice(0,2).map((l,i)=><div key={i} style={{fontSize:9,color:'#64748b',lineHeight:1.6}}>{l}</div>)}
+            {!log.length&&<div style={{fontSize:9,color:'#475569'}}>Bắt đầu may đồ! ✂️</div>}
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const handleBack = () => {
+        window.location.href = "../index.html";
+      };
+
+      return <ClothingFactory onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

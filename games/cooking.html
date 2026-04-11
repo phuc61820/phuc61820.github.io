@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>👨‍🍳 Đầu Bếp Huyền Thoại — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(160deg, #1c0a00, #3b1a00);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #root {
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Data constants
+    const RECIPES = [
+      { id:'pho',    name:'Phở Bò',      icon:'🍜', time:25, steps:['thịt','bánh phở','nước dùng'], reward:80,  color:'#f59e0b' },
+      { id:'com',    name:'Cơm Chiên',   icon:'🍳', time:20, steps:['cơm','trứng','rau'], reward:60,  color:'#84cc16' },
+      { id:'bun',    name:'Bún Bò Huế',  icon:'🥣', time:30, steps:['bún','thịt','mắm ruốc'], reward:100, color:'#ef4444' },
+      { id:'banh',   name:'Bánh Mì',     icon:'🥖', time:15, steps:['bánh','pate','rau'], reward:50,  color:'#a78bfa' },
+      { id:'lau',    name:'Lẩu',         icon:'🫕', time:35, steps:['nước lẩu','thịt','rau','mì'], reward:120, color:'#f97316' },
+      { id:'suon',   name:'Sườn Nướng',  icon:'🍖', time:28, steps:['sườn','ướp','nướng'], reward:90,  color:'#ec4899' },
+      { id:'banh_xeo',name:'Bánh Xèo',  icon:'🫓', time:22, steps:['bột','tôm','giá'], reward:70,  color:'#06b6d4' },
+      { id:'che',    name:'Chè Đậu',     icon:'🍮', time:18, steps:['đậu','đường','nước cốt dừa'], reward:55, color:'#8b5cf6' },
+    ];
+
+    const INGREDIENTS = [
+      {id:'thịt',icon:'🥩'},{id:'bánh phở',icon:'🍜'},{id:'nước dùng',icon:'🫙'},
+      {id:'cơm',icon:'🍚'},{id:'trứng',icon:'🥚'},{id:'rau',icon:'🥬'},
+      {id:'bún',icon:'🌾'},{id:'mắm ruốc',icon:'🦐'},{id:'bánh',icon:'🥖'},
+      {id:'pate',icon:'🧈'},{id:'nước lẩu',icon:'🥘'},{id:'mì',icon:'🍝'},
+      {id:'sườn',icon:'🍖'},{id:'ướp',icon:'🧂'},{id:'nướng',icon:'🔥'},
+      {id:'bột',icon:'🌾'},{id:'tôm',icon:'🦐'},{id:'giá',icon:'🌱'},
+      {id:'đậu',icon:'🫘'},{id:'đường',icon:'🍬'},{id:'nước cốt dừa',icon:'🥥'},
+    ];
+
+    function CookingGame({ onBack }) {
+      const [score, setScore] = useState(0);
+      const [day, setDay] = useState(1);
+      const [orders, setOrders] = useState([]);
+      const [selected, setSelected] = useState([]); // ingredients in hand
+      const [cooking, setCooking] = useState(false);
+      const [cookProgress, setCookProgress] = useState(0);
+      const [msg, setMsg] = useState('');
+      const [msgType, setMsgType] = useState('');
+      const [started, setStarted] = useState(false);
+      const [completedToday, setCompletedToday] = useState(0);
+      const orderIdRef = useRef(0);
+      const timerRefs = useRef({});
+
+      const showMsg = (text, type='ok') => {
+        setMsg(text); setMsgType(type);
+        setTimeout(()=>setMsg(''), 1800);
+      };
+
+      const spawnOrder = () => {
+        const recipe = RECIPES[Math.floor(Math.random()*RECIPES.length)];
+        const id = orderIdRef.current++;
+        const timeLimit = recipe.time + Math.max(0, 10 - day*2); // harder each day
+        const order = { id, recipe, timeLeft: timeLimit, maxTime: timeLimit };
+        setOrders(prev => prev.length < 5 ? [...prev, order] : prev);
+        // Auto-expire
+        timerRefs.current[id] = setInterval(() => {
+          setOrders(prev => {
+            const o = prev.find(x=>x.id===id);
+            if (!o) { clearInterval(timerRefs.current[id]); return prev; }
+            if (o.timeLeft <= 1) {
+              clearInterval(timerRefs.current[id]);
+              showMsg(`💔 ${o.recipe.name} bị huỷ!`, 'bad');
+              return prev.filter(x=>x.id!==id);
+            }
+            return prev.map(x=>x.id===id?{...x,timeLeft:x.timeLeft-1}:x);
+          });
+        }, 1000);
+        return order;
+      };
+
+      useEffect(() => {
+        if (!started) return;
+        // Spawn orders periodically
+        spawnOrder();
+        const spawnInt = setInterval(() => spawnOrder(), Math.max(4000, 8000 - day*500));
+        return () => { clearInterval(spawnInt); Object.values(timerRefs.current).forEach(clearInterval); };
+      }, [started, day]);
+
+      const toggleIngredient = (ing) => {
+        if (cooking) return;
+        setSelected(prev => {
+          if (prev.includes(ing.id)) return prev.filter(x=>x!==ing.id);
+          if (prev.length >= 4) { showMsg('Tay đầy rồi! Max 4 nguyên liệu','bad'); return prev; }
+          return [...prev, ing.id];
+        });
+      };
+
+      const serve = (orderId) => {
+        const order = orders.find(o=>o.id===orderId);
+        if (!order) return;
+        const recipe = order.recipe;
+        const needed = [...recipe.steps].sort();
+        const have = [...selected].sort();
+        const match = needed.length===have.length && needed.every((s,i)=>s===have[i]);
+        if (!match) {
+          showMsg(`❌ Thiếu nguyên liệu! Cần: ${recipe.steps.map(s=>INGREDIENTS.find(i=>i.id===s)?.icon||s).join(' ')}`, 'bad');
+          return;
+        }
+        // Cook animation
+        setCooking(true); setCookProgress(0);
+        const cookTime = 80;
+        let prog = 0;
+        const cookInt = setInterval(()=>{
+          prog += 5;
+          setCookProgress(prog);
+          if (prog >= 100) {
+            clearInterval(cookInt);
+            setCooking(false); setCookProgress(0);
+            clearInterval(timerRefs.current[orderId]);
+            const timeBonus = Math.floor(order.timeLeft / order.maxTime * 30);
+            const earned = recipe.reward + timeBonus;
+            setScore(s=>s+earned);
+            setOrders(prev=>prev.filter(o=>o.id!==orderId));
+            setSelected([]);
+            setCompletedToday(c=>c+1);
+            showMsg(`✅ ${recipe.icon} ${recipe.name} +${earned}đ! (thưởng nhanh +${timeBonus})`, 'ok');
+          }
+        }, 40);
+      };
+
+      const nextDay = () => {
+        Object.values(timerRefs.current).forEach(clearInterval);
+        timerRefs.current = {};
+        setOrders([]); setSelected([]); setCompletedToday(0);
+        setDay(d=>d+1);
+        showMsg(`☀️ Ngày ${day+1} bắt đầu! Khách đến nhanh hơn...`, 'ok');
+      };
+
+      const availableIngredients = INGREDIENTS.filter(i =>
+        RECIPES.some(r => r.steps.includes(i.id))
+      );
+
+      if (!started) return (
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#78350f,#92400e)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:20}}>
+          <div style={{fontSize:64}}>👨‍🍳</div>
+          <h2 style={{margin:0,color:'#fde68a',fontSize:24,fontWeight:900,textAlign:'center'}}>Đầu Bếp Huyền Thoại</h2>
+          <div style={{background:'rgba(0,0,0,0.2)',borderRadius:14,padding:'14px 20px',maxWidth:360,textAlign:'center'}}>
+            <p style={{color:'#fef3c7',margin:'0 0 6px',fontSize:13,fontWeight:700}}>Cách chơi:</p>
+            <p style={{color:'#fcd34d',margin:'0 0 4px',fontSize:12}}>1. Khách đặt món — xem công thức cần gì</p>
+            <p style={{color:'#fcd34d',margin:'0 0 4px',fontSize:12}}>2. Chọn nguyên liệu đúng ở bảng dưới</p>
+            <p style={{color:'#fcd34d',margin:'0 0 4px',fontSize:12}}>3. Nhấn vào đơn hàng để nấu &amp; phục vụ</p>
+            <p style={{color:'#f87171',margin:'0',fontSize:12}}>⚠️ Phục vụ nhanh = thưởng thêm! Để hết giờ = mất đơn!</p>
+          </div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center',maxWidth:400}}>
+            {RECIPES.slice(0,4).map(r=>(
+              <div key={r.id} style={{background:'rgba(0,0,0,0.2)',borderRadius:10,padding:'8px 12px',textAlign:'center'}}>
+                <div style={{fontSize:24}}>{r.icon}</div>
+                <div style={{color:'#fde68a',fontSize:11,fontWeight:700}}>{r.name}</div>
+                <div style={{color:'#fcd34d',fontSize:9}}>{r.steps.map(s=>INGREDIENTS.find(i=>i.id===s)?.icon).join('')}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:10,padding:'10px 20px',color:'white',fontSize:14,cursor:'pointer'}}>← Quay lại</button>
+            <button onClick={()=>setStarted(true)} style={{background:'linear-gradient(135deg,#f59e0b,#d97706)',border:'none',borderRadius:10,padding:'10px 28px',color:'white',fontSize:15,fontWeight:800,cursor:'pointer'}}>👨‍🍳 Bắt đầu!</button>
+          </div>
+        </div>
+      );
+
+      return (
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#1c0a00,#3b1a00)',display:'flex',flexDirection:'column',padding:10,gap:8}}>
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <div style={{textAlign:'center'}}>
+              <span style={{color:'#fde68a',fontWeight:900,fontSize:16}}>👨‍🍳 Ngày {day}</span>
+              <span style={{color:'#94a3b8',fontSize:11,marginLeft:8}}>✅ {completedToday} món</span>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{color:'#fbbf24',fontWeight:800,fontSize:16}}>💰 {score}đ</div>
+              <button onClick={nextDay} style={{background:'rgba(251,191,36,0.15)',border:'1px solid #fbbf2444',borderRadius:6,padding:'2px 8px',color:'#fbbf24',fontSize:10,cursor:'pointer',fontWeight:700}}>Ngày mới ▶</button>
+            </div>
+          </div>
+
+          {/* Message */}
+          {msg && (
+            <div style={{textAlign:'center',padding:'6px 12px',borderRadius:10,fontSize:13,fontWeight:700,
+              background:msgType==='ok'?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.2)',
+              color:msgType==='ok'?'#4ade80':'#f87171',
+              border:`1px solid ${msgType==='ok'?'rgba(34,197,94,0.3)':'rgba(239,68,68,0.3)'}`}}>
+              {msg}
+            </div>
+          )}
+
+          {/* Orders */}
+          <div>
+            <p style={{margin:'0 0 4px',color:'#fcd34d',fontSize:11,fontWeight:700}}>📋 Đơn Hàng ({orders.length}/5)</p>
+            {orders.length===0
+              ? <div style={{textAlign:'center',color:'#64748b',fontSize:12,padding:'12px 0'}}>Chưa có khách... đang chờ 🍳</div>
+              : <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+              {orders.map(o=>{
+                const pct = o.timeLeft/o.maxTime;
+                const barColor = pct>0.5?'#22c55e':pct>0.25?'#f59e0b':'#ef4444';
+                const ing = o.recipe.steps.map(s=>INGREDIENTS.find(i=>i.id===s)?.icon||s).join(' ');
+                const canServe = o.recipe.steps.slice().sort().every((s,idx)=>[...selected].sort()[idx]===s) && selected.length===o.recipe.steps.length;
+                return (
+                  <div key={o.id}
+                    onClick={()=>serve(o.id)}
+                    style={{
+                      background: canServe?'rgba(34,197,94,0.15)':'rgba(255,255,255,0.05)',
+                      border:`2px solid ${canServe?'#22c55e':o.recipe.color+'55'}`,
+                      borderRadius:12, padding:'8px 10px', cursor:'pointer', minWidth:120, flex:'0 0 auto',
+                      boxShadow: canServe?'0 0 16px rgba(34,197,94,0.3)':'none',
+                      transition:'all 0.2s',
+                    }}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:3}}>
+                      <span style={{fontSize:20}}>{o.recipe.icon}</span>
+                      <span style={{fontSize:10,color:barColor,fontWeight:700}}>⏱{o.timeLeft}s</span>
+                    </div>
+                    <div style={{fontSize:11,color:'#fde68a',fontWeight:700,marginBottom:3}}>{o.recipe.name}</div>
+                    <div style={{fontSize:13,marginBottom:4}}>{ing}</div>
+                    {/* Timer bar */}
+                    <div style={{height:4,borderRadius:2,background:'rgba(255,255,255,0.1)'}}>
+                      <div style={{height:'100%',borderRadius:2,background:barColor,width:`${pct*100}%`,transition:'width 1s linear'}}/>
+                    </div>
+                    <div style={{fontSize:9,color:'#64748b',marginTop:2}}>+{o.recipe.reward}đ {canServe?'→ NHẤN NẤU!':''}</div>
+                  </div>
+                );
+              })}
+            </div>}
+          </div>
+
+          {/* Cooking progress */}
+          {cooking && (
+            <div style={{background:'rgba(251,191,36,0.1)',border:'1px solid #fbbf2444',borderRadius:10,padding:'8px 12px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                <span style={{color:'#fbbf24',fontSize:12,fontWeight:700}}>🍳 Đang nấu...</span>
+                <span style={{color:'#fbbf24',fontSize:12}}>{cookProgress}%</span>
+              </div>
+              <div style={{height:8,borderRadius:4,background:'rgba(255,255,255,0.1)'}}>
+                <div style={{height:'100%',borderRadius:4,background:'linear-gradient(90deg,#f59e0b,#ef4444)',width:`${cookProgress}%`,transition:'width 0.04s'}}/>
+              </div>
+            </div>
+          )}
+
+          {/* Ingredients in hand */}
+          <div style={{background:'rgba(0,0,0,0.2)',borderRadius:10,padding:'8px 10px'}}>
+            <p style={{margin:'0 0 4px',color:'#94a3b8',fontSize:11}}>🤲 Tay bạn ({selected.length}/4): {selected.length===0?'Chưa chọn gì':''}
+              {selected.map(id=>{const i=INGREDIENTS.find(x=>x.id===id);return i?<span key={id} style={{marginLeft:4}}>{i.icon}</span>:null})}
+              {selected.length>0 && <button onClick={()=>setSelected([])} style={{marginLeft:8,background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:11}}>✕ Bỏ hết</button>}
+            </p>
+          </div>
+
+          {/* Ingredient grid */}
+          <div>
+            <p style={{margin:'0 0 4px',color:'#fcd34d',fontSize:11,fontWeight:700}}>🧺 Nguyên Liệu — nhấn để chọn</p>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {availableIngredients.map(ing=>{
+                const isSelected = selected.includes(ing.id);
+                const isNeeded = orders.some(o=>o.recipe.steps.includes(ing.id));
+                return (
+                  <button key={ing.id} onClick={()=>toggleIngredient(ing)} style={{
+                    background: isSelected?'rgba(251,191,36,0.25)':isNeeded?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.03)',
+                    border:`1px solid ${isSelected?'#fbbf24':isNeeded?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.08)'}`,
+                    borderRadius:10, padding:'6px 8px', cursor:'pointer',
+                    display:'flex',flexDirection:'column',alignItems:'center',gap:1,
+                    transform:isSelected?'scale(1.1)':'scale(1)',
+                    transition:'all 0.15s',
+                    boxShadow:isSelected?'0 0 12px rgba(251,191,36,0.4)':'none',
+                  }}>
+                    <span style={{fontSize:22}}>{ing.icon}</span>
+                    <span style={{fontSize:8,color:isSelected?'#fbbf24':'#64748b',whiteSpace:'nowrap'}}>{ing.id}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Recipe book */}
+          <div style={{background:'rgba(0,0,0,0.2)',borderRadius:10,padding:'8px 10px'}}>
+            <p style={{margin:'0 0 6px',color:'#fcd34d',fontSize:11,fontWeight:700}}>📖 Sổ Công Thức</p>
+            <div style={{display:'flex',gap:6,overflowX:'auto',paddingBottom:4}}>
+              {RECIPES.map(r=>(
+                <div key={r.id} style={{background:'rgba(255,255,255,0.04)',border:`1px solid ${r.color}33`,borderRadius:8,padding:'5px 8px',flexShrink:0,minWidth:90}}>
+                  <div style={{fontSize:16,textAlign:'center'}}>{r.icon}</div>
+                  <div style={{fontSize:9,color:r.color,fontWeight:700,textAlign:'center'}}>{r.name}</div>
+                  <div style={{fontSize:11,textAlign:'center'}}>{r.steps.map(s=>INGREDIENTS.find(i=>i.id===s)?.icon).join('')}</div>
+                  <div style={{fontSize:8,color:'#64748b',textAlign:'center'}}>+{r.reward}đ</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // App wrapper
+    function App() {
+      const handleBack = () => {
+        window.location.href = "../index.html";
+      };
+
+      return <CookingGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

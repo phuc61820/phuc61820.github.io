@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💧 Nhà Máy Nước — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(160deg, #0c1929, #0c4a6e);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #root {
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Format numbers
+    function fmt(n) {
+      if (n >= 1e12) return (n/1e12).toFixed(2)+'T';
+      if (n >= 1e9)  return (n/1e9).toFixed(2)+'B';
+      if (n >= 1e6)  return (n/1e6).toFixed(2)+'M';
+      if (n >= 1e3)  return (n/1e3).toFixed(1)+'K';
+      return Math.floor(n).toLocaleString();
+    }
+
+    const WATER_BUILDINGS = [
+      { id:'pump',    name:'Máy Bơm',          icon:'🚰', desc:'Bơm nước ngầm lên bồn chứa',         baseCost:15,      mult:1.15, waterPS:1,    moneyPS:0    },
+      { id:'worker',  name:'Công Nhân',         icon:'👷', desc:'Tự động bơm + đóng chai cơ bản',     baseCost:100,     mult:1.15, waterPS:5,    moneyPS:1    },
+      { id:'filter',  name:'Máy Lọc',           icon:'🧪', desc:'Lọc sạch nước, tăng giá trị x2',     baseCost:500,     mult:1.17, waterPS:0,    moneyPS:0, filterMult:2 },
+      { id:'bottler', name:'Máy Đóng Chai',     icon:'🍶', desc:'Đóng chai tự động, bán được ngay',   baseCost:2000,    mult:1.15, waterPS:-20,  moneyPS:15   },
+      { id:'truck',   name:'Xe Tải Giao Hàng',  icon:'🚛', desc:'Giao hàng x3 thu nhập tiền',         baseCost:10000,   mult:1.2,  waterPS:0,    moneyPS:0, truckMult:3  },
+      { id:'spring',  name:'Mạch Nước Ngầm',    icon:'⛲', desc:'Nguồn nước khổng lồ 200L/s',         baseCost:50000,   mult:1.15, waterPS:200,  moneyPS:0    },
+      { id:'mineral', name:'Nhà Máy Nước Khoáng',icon:'💎',desc:'Nước khoáng cao cấp x5 doanh thu',  baseCost:300000,  mult:1.2,  waterPS:0,    moneyPS:0, mineralMult:5 },
+      { id:'ocean',   name:'Máy Khử Muối Biển', icon:'🌊', desc:'Nước biển → nước uống 2000L/s',     baseCost:2000000, mult:1.15, waterPS:2000, moneyPS:0    },
+      { id:'cosmic',  name:'Máy Lọc Vũ Trụ',   icon:'🌌', desc:'Nước vũ trụ, x50 tất cả thu nhập', baseCost:50000000,mult:1.25, waterPS:0,    moneyPS:0, cosmicMult:50 },
+    ];
+
+    const MILESTONES = [
+      { money:1000,    text:'🥉 Tiểu Thương Nước', reward:'Click +5L' },
+      { money:10000,   text:'🥈 Chủ Xưởng',        reward:'Click +20L' },
+      { money:100000,  text:'🥇 Doanh Nhân',        reward:'Click +100L' },
+      { money:1000000, text:'💎 Đại Gia Nước',       reward:'Click +500L' },
+      { money:1e8,     text:'👑 Tỷ Phú Nước',        reward:'Click +5000L' },
+      { money:1e10,    text:'🌌 Huyền Thoại',        reward:'Click +∞' },
+    ];
+
+    function WaterFactory({ onBack }) {
+      const [water, setWater]     = useState(0);
+      const [money, setMoney]         = useState(0);
+      const [totalEarned, setTotalEarned] = useState(0);
+      const [counts, setCounts]   = useState({pump:0,worker:0,filter:0,bottler:0,truck:0,spring:0,mineral:0,ocean:0,cosmic:0});
+      const [clickPow, setClickPow] = useState(1);
+      const [milestones, setMilestones] = useState([]);
+      const [splash, setSplash]   = useState('');
+      const [drops, setDrops]     = useState([]);
+      const dropId = useRef(0);
+      const MAX_WATER = 10000;
+
+      // calc per-second rates
+      const calcRates = (c) => {
+        const filterMult  = Math.pow(2, c.filter||0);
+        const truckMult   = Math.pow(3, c.truck||0);
+        const mineralMult = Math.pow(5, c.mineral||0);
+        const cosmicMult  = Math.pow(50,c.cosmic||0);
+        const totalMult   = filterMult * mineralMult * cosmicMult;
+        const wps = ((c.pump||0)*1 + (c.worker||0)*5 + (c.spring||0)*200 + (c.ocean||0)*2000) * filterMult;
+        const rawMps = ((c.worker||0)*1 + (c.bottler||0)*15) * totalMult * truckMult;
+        const waterUsed = (c.bottler||0) * 20;
+        return { wps, mps: rawMps, waterUsed };
+      };
+
+      const { wps, mps, waterUsed } = calcRates(counts);
+
+      useEffect(() => {
+        const iv = setInterval(() => {
+          setWater(w => {
+            const newW = Math.min(MAX_WATER, w + wps);
+            const actualBottlerUse = Math.min(waterUsed, newW);
+            return Math.max(0, newW - actualBottlerUse);
+          });
+          setMoney(m => {
+            const earned = mps;
+            if (earned > 0) {
+              setTotalEarned(t => {
+                const newTotal = t + earned;
+                MILESTONES.forEach(ms => {
+                  if (t < ms.money && newTotal >= ms.money) {
+                    setSplash(ms.text + ' 🎉');
+                    setTimeout(()=>setSplash(''),3000);
+                    setClickPow(p => {
+                      const bonus = ms.money>=1e10?9999:ms.money>=1e8?5000:ms.money>=1e6?500:ms.money>=1e5?100:ms.money>=1e4?20:5;
+                      return p + bonus;
+                    });
+                    setMilestones(prev => [...prev, ms.text]);
+                  }
+                });
+                return newTotal;
+              });
+            }
+            return m + earned;
+          });
+        }, 1000);
+        return () => clearInterval(iv);
+      }, [wps, mps, waterUsed]);
+
+      const buildCost = (b) => Math.floor(b.baseCost * Math.pow(b.mult, counts[b.id]||0));
+
+      const buy = (b) => {
+        const cost = buildCost(b);
+        if (money < cost) return;
+        setMoney(m => m - cost);
+        setCounts(c => ({...c, [b.id]:(c[b.id]||0)+1}));
+      };
+
+      const clickWater = (e) => {
+        const gained = Math.min(clickPow, MAX_WATER - water);
+        setWater(w => Math.min(MAX_WATER, w + clickPow));
+        // show drop animation
+        const id = dropId.current++;
+        const rect = e.currentTarget.getBoundingClientRect();
+        setDrops(d => [...d, {id, x: e.clientX - rect.left, y: e.clientY - rect.top}]);
+        setTimeout(() => setDrops(d => d.filter(x => x.id !== id)), 700);
+      };
+
+      const waterPct = water / MAX_WATER;
+      const barColor = waterPct > 0.7 ? '#3b82f6' : waterPct > 0.3 ? '#0ea5e9' : '#7dd3fc';
+
+      return (
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0c1929,#0c4a6e)',display:'flex',flexDirection:'column',padding:10,gap:8}}>
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <h3 style={{margin:0,color:'#7dd3fc',fontSize:15,fontWeight:900}}>💧 Nhà Máy Nước</h3>
+            <div style={{textAlign:'right'}}>
+              <div style={{color:'#fbbf24',fontWeight:800,fontSize:14}}>💰 {fmt(money)}₫</div>
+              <div style={{color:'#64748b',fontSize:9}}>Tổng: {fmt(totalEarned)}₫</div>
+            </div>
+          </div>
+
+          {/* Milestone splash */}
+          {splash && <div style={{textAlign:'center',background:'rgba(251,191,36,0.2)',border:'1px solid #fbbf24',borderRadius:10,padding:'8px',color:'#fbbf24',fontWeight:900,fontSize:15}}>{splash}</div>}
+
+          {/* Water tank + click */}
+          <div style={{display:'flex',gap:10,alignItems:'stretch'}}>
+            {/* Tank */}
+            <div style={{flex:1,background:'rgba(0,0,0,0.3)',border:'2px solid rgba(56,189,248,0.3)',borderRadius:14,padding:'10px',textAlign:'center'}}>
+              <div style={{fontSize:11,color:'#7dd3fc',marginBottom:4}}>🪣 Bồn Chứa</div>
+              <div style={{fontSize:20,fontWeight:900,color:'#38bdf8'}}>{fmt(water)}L</div>
+              <div style={{height:8,borderRadius:4,background:'rgba(255,255,255,0.08)',margin:'6px 0'}}>
+                <div style={{height:'100%',borderRadius:4,background:barColor,width:`${waterPct*100}%`,transition:'width 0.5s'}}/>
+              </div>
+              <div style={{fontSize:9,color:'#64748b'}}>Max: {fmt(MAX_WATER)}L</div>
+              <div style={{fontSize:10,color:'#5eead4',marginTop:4}}>
+                +{fmt(wps)}L/s &nbsp; -{fmt(waterUsed)}L/s
+              </div>
+            </div>
+            {/* Click button */}
+            <div style={{display:'flex',flexDirection:'column',gap:6,minWidth:90}}>
+              <div
+                onClick={clickWater}
+                style={{flex:1,background:'linear-gradient(135deg,#0369a1,#0ea5e9)',border:'2px solid #38bdf8',borderRadius:14,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',userSelect:'none',position:'relative',overflow:'hidden',boxShadow:'0 0 20px rgba(14,165,233,0.3)'}}
+              >
+                <div style={{fontSize:40,pointerEvents:'none'}}>💧</div>
+                <div style={{fontSize:10,color:'white',fontWeight:800,pointerEvents:'none'}}>+{fmt(clickPow)}L</div>
+                {drops.map(d=>(
+                  <div key={d.id} style={{position:'absolute',left:d.x-12,top:d.y-12,fontSize:18,pointerEvents:'none',animation:'none',color:'#7dd3fc',fontWeight:900,opacity:0.9,transform:'translateY(-30px)',transition:'all 0.7s ease-out'}}>+{fmt(clickPow)}</div>
+                ))}
+              </div>
+              <div style={{background:'rgba(0,0,0,0.2)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'5px',textAlign:'center'}}>
+                <div style={{fontSize:9,color:'#64748b'}}>Thu nhập</div>
+                <div style={{fontSize:11,color:'#22c55e',fontWeight:700}}>+{fmt(mps)}₫/s</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Milestones */}
+          {milestones.length > 0 && (
+            <div style={{background:'rgba(251,191,36,0.06)',border:'1px solid rgba(251,191,36,0.15)',borderRadius:10,padding:'6px 10px'}}>
+              <div style={{fontSize:10,color:'#fbbf24',fontWeight:700,marginBottom:3}}>🏆 Thành Tích</div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                {milestones.map((m,i)=><span key={i} style={{fontSize:9,color:'#fbbf24',background:'rgba(251,191,36,0.1)',borderRadius:6,padding:'2px 6px'}}>{m}</span>)}
+              </div>
+            </div>
+          )}
+
+          {/* Buildings */}
+          <div style={{display:'flex',flexDirection:'column',gap:5,overflowY:'auto',flex:1}}>
+            <div style={{fontSize:11,color:'#7dd3fc',fontWeight:700}}>🏗️ Xây Dựng</div>
+            {WATER_BUILDINGS.map(b => {
+              const cost = buildCost(b);
+              const owned = counts[b.id]||0;
+              const canBuy = money >= cost;
+              const rates = calcRates({...counts, [b.id]:owned+1});
+              const {wps:newWps, mps:newMps} = rates;
+              return (
+                <div key={b.id} style={{
+                  background: canBuy ? 'rgba(14,165,233,0.08)' : 'rgba(0,0,0,0.2)',
+                  border:`1px solid ${canBuy?'rgba(14,165,233,0.3)':'rgba(255,255,255,0.05)'}`,
+                  borderRadius:12,padding:'8px 10px',
+                  display:'flex',alignItems:'center',gap:10,
+                  opacity: cost > money*100 ? 0.35 : 1,
+                }}>
+                  <span style={{fontSize:28,flexShrink:0}}>{b.icon}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:'flex',justifyContent:'space-between'}}>
+                      <span style={{fontSize:12,fontWeight:700,color:canBuy?'#e2e8f0':'#64748b'}}>{b.name}</span>
+                      <span style={{fontSize:10,color:'#fbbf24',fontWeight:700}}>x{owned}</span>
+                    </div>
+                    <div style={{fontSize:9,color:'#64748b'}}>{b.desc}</div>
+                    {owned > 0 && (
+                      <div style={{fontSize:9,color:'#5eead4'}}>
+                        {b.waterPS > 0 ? `+${fmt(b.waterPS * owned)}L/s` : ''}
+                        {b.waterPS < 0 ? `-${fmt(Math.abs(b.waterPS)*owned)}L/s` : ''}
+                        {b.filterMult ? ` ×${Math.pow(b.filterMult,owned)} lọc` : ''}
+                        {b.truckMult  ? ` ×${Math.pow(b.truckMult,owned)} giao hàng` : ''}
+                        {b.mineralMult? ` ×${Math.pow(b.mineralMult,owned)} doanh thu` : ''}
+                        {b.cosmicMult ? ` ×${Math.pow(b.cosmicMult,owned)} vũ trụ` : ''}
+                      </div>
+                    )}
+                  </div>
+                  <button onClick={()=>buy(b)} disabled={!canBuy} style={{
+                    background: canBuy ? 'linear-gradient(135deg,#0369a1,#0ea5e9)' : 'rgba(255,255,255,0.04)',
+                    border: canBuy ? 'none' : '1px solid rgba(255,255,255,0.06)',
+                    borderRadius:8,padding:'5px 10px',
+                    color: canBuy ? 'white' : '#475569',
+                    fontSize:10,fontWeight:800,cursor:canBuy?'pointer':'default',
+                    whiteSpace:'nowrap',
+                  }}>
+                    {fmt(cost)}₫
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const handleBack = () => {
+        window.location.href = '../index.html';
+      };
+
+      return <WaterFactory onBack={handleBack} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

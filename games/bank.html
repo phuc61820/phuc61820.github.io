@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏦 Ngân Hàng Tỷ Phú — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(160deg, #0a1a0a, #052e16);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #root {
+      min-height: 100vh;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(34,197,94,0.3);
+      border-radius: 3px;
+    }
+    button {
+      transition: all 0.2s ease;
+    }
+    button:hover:not(:disabled) {
+      transform: scale(1.02);
+      filter: brightness(1.1);
+    }
+    button:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ===================== NGÂN HÀNG TỶ PHÚ =====================
+    const LOAN_PRODUCTS = [
+      { id:'personal', name:'Vay Cá Nhân',    icon:'👤', amount:1000,    rate:0.05, term:30, risk:0.02, desc:'Vay tiêu dùng cơ bản' },
+      { id:'business', name:'Vay Kinh Doanh', icon:'🏪', amount:10000,   rate:0.08, term:60, risk:0.05, desc:'Vốn cho tiểu thương' },
+      { id:'mortgage', name:'Vay Mua Nhà',    icon:'🏠', amount:100000,  rate:0.06, term:120,risk:0.03, desc:'Vay thế chấp bất động sản' },
+      { id:'corporate',name:'Vay Doanh Nghiệp',icon:'🏢',amount:500000,  rate:0.10, term:60, risk:0.08, desc:'Tín dụng doanh nghiệp lớn' },
+      { id:'mega',     name:'Vay Tập Đoàn',   icon:'🌐', amount:5000000, rate:0.12, term:90, risk:0.10, desc:'Tài trợ tập đoàn' },
+    ];
+
+    const BANK_UPGRADES = [
+      { id:'staff',    name:'Thuê Nhân Viên',  icon:'👔', cost:2000,    desc:'+2 khoản vay/lúc',    effect:'loans+2'   },
+      { id:'branch',   name:'Mở Chi Nhánh',    icon:'🏦', cost:20000,   desc:'+20% thu nhập',        effect:'income+20' },
+      { id:'atm',      name:'Lắp ATM',         icon:'🏧', cost:8000,    desc:'+5% lãi suất',          effect:'rate+5'    },
+      { id:'vault',    name:'Két Sắt Khổng Lồ',icon:'🔐',cost:50000,   desc:'Tăng giới hạn tiền gửi',effect:'limit+50'  },
+      { id:'crypto',   name:'Tiền Điện Tử',    icon:'₿',  cost:200000,  desc:'+50% thu nhập',        effect:'income+50' },
+      { id:'global',   name:'Ngân Hàng Quốc Tế',icon:'🌍',cost:2000000, desc:'×3 tất cả thu nhập',  effect:'income×3'  },
+    ];
+
+    function fmtB(n){if(n>=1e12)return(n/1e12).toFixed(1)+'T';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return Math.floor(n).toLocaleString();}
+
+    function BankGame({ onBack }) {
+      const [money, setMoney]         = useState(3e6);
+      const [deposits, setDeposits] = useState(20000);
+      const [loans, setLoans]     = useState([]); // {id,product,amount,remaining,dayLeft}
+      const [upgrades, setUpgrades] = useState({});
+      const [tab, setTab]         = useState('loans');
+      const [log, setLog]         = useState([]);
+      const [totalEarned, setTotalEarned] = useState(0);
+      const [day, setDay]         = useState(1);
+      const [maxLoans, setMaxLoans] = useState(3);
+      const loanId = useRef(0);
+      const addLog = m => setLog(p=>[m,...p].slice(0,12));
+
+      const incomeMult = () => {
+        let m=1;
+        if(upgrades.branch) m+=0.20*(upgrades.branch||0);
+        if(upgrades.crypto) m+=0.50*(upgrades.crypto||0);
+        if(upgrades.global) m*=3*(upgrades.global||0)||1;
+        return Math.max(1,m);
+      };
+      const rateMult = () => 1+(0.05*(upgrades.atm||0));
+
+      // Interest income every 5 seconds
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          let interest=0;
+          loans.forEach(l=>{ interest+=l.amount*(l.product.rate/100)*rateMult()*incomeMult(); });
+          interest=Math.floor(interest);
+          // Random default risk
+          setLoans(prev=>prev.map(l=>{
+            if(Math.random()<l.product.risk/100){
+              addLog(`⚠️ Khoản vay ${l.product.icon}${l.product.name} bị nợ xấu! Mất ${fmtB(l.amount*0.1)}₫`);
+              setMoney(m=>Math.max(0,m-l.amount*0.1));
+              return {...l,remaining:l.remaining-l.amount*0.1};
+            }
+            return l;
+          }));
+          if(interest>0){
+            setMoney(m=>m+interest);
+            setTotalEarned(t=>t+interest);
+            addLog(`💰 Thu lãi ${fmtB(interest)}₫ từ ${loans.length} khoản vay`);
+          }
+          // Deposits grow
+          setDeposits(d=>Math.floor(d*1.001));
+        },5000);
+        return()=>clearInterval(iv);
+      },[loans,upgrades]);
+
+      const issueLoan = (prod) => {
+        if(loans.length>=maxLoans){addLog('❌ Đã đạt giới hạn khoản vay');return;}
+        if(money<prod.amount){addLog(`❌ Không đủ vốn cho vay ${fmtB(prod.amount)}₫`);return;}
+        setMoney(m=>m-prod.amount);
+        const nl={id:loanId.current++,product:prod,amount:prod.amount,remaining:prod.amount,daysLeft:prod.term};
+        setLoans(p=>[...p,nl]);
+        addLog(`✅ Cho vay ${prod.icon}${prod.name}: ${fmtB(prod.amount)}₫ | Lãi ${(prod.rate*rateMult()).toFixed(1)}%/5s`);
+      };
+
+      const collectLoan = (id) => {
+        const l=loans.find(x=>x.id===id);
+        if(!l) return;
+        const collected=l.amount*1.2;
+        setMoney(m=>m+collected);
+        setTotalEarned(t=>t+collected*0.2);
+        setLoans(p=>p.filter(x=>x.id!==id));
+        addLog(`🏦 Thu hồi ${l.product.icon}${l.product.name}: +${fmtB(collected)}₫`);
+      };
+
+      const buyUpgrade = (upg) => {
+        const cost=upg.cost*Math.pow(1.5,upgrades[upg.id]||0);
+        if(money<cost){addLog(`❌ Cần ${fmtB(cost)}₫`);return;}
+        setMoney(m=>m-cost);
+        setUpgrades(p=>({...p,[upg.id]:(p[upg.id]||0)+1}));
+        if(upg.effect==='loans+2') setMaxLoans(p=>p+2);
+        addLog(`${upg.icon} Nâng cấp ${upg.name}!`);
+      };
+
+      const totalAssets = money + loans.reduce((s,l)=>s+l.amount,0);
+
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0a1a0a,#052e16)',display:'flex',flexDirection:'column',padding:10,gap:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <h3 style={{margin:0,color:'#22c55e',fontSize:14,fontWeight:900}}>🏦 Ngân Hàng Tỷ Phú</h3>
+            <div style={{textAlign:'right'}}><div style={{color:'#fbbf24',fontWeight:900,fontSize:14}}>💵 {fmtB(money)}₫</div><div style={{fontSize:9,color:'#64748b'}}>Tổng TS: {fmtB(totalAssets)}₫</div></div>
+          </div>
+          <div style={{display:'flex',gap:5}}>
+            {[{v:fmtB(deposits),l:'💰 Tiền Gửi'},{v:loans.length+'/'+maxLoans,l:'📋 Khoản Vay'},{v:fmtB(totalEarned),l:'📈 Tổng Lãi'},{v:incomeMult().toFixed(1)+'×',l:'⚡ Hệ Số'}].map((s,i)=>(
+              <div key={i} style={{flex:1,background:'rgba(34,197,94,0.06)',border:'1px solid rgba(34,197,94,0.1)',borderRadius:8,padding:'4px',textAlign:'center'}}>
+                <div style={{color:'#22c55e',fontWeight:900,fontSize:11}}>{s.v}</div>
+                <div style={{color:'#64748b',fontSize:8}}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:4}}>
+            {[['loans','📋 Cho Vay'],['active','💼 Đang Vay'],['upgrade','⬆️ Nâng Cấp']].map(([id,l])=>(
+              <button key={id} onClick={()=>setTab(id)} style={{flex:1,background:tab===id?'rgba(34,197,94,0.15)':'rgba(255,255,255,0.04)',border:`1px solid ${tab===id?'rgba(34,197,94,0.4)':'rgba(255,255,255,0.07)'}`,borderRadius:8,padding:'5px 0',color:tab===id?'#22c55e':'#64748b',fontSize:10,fontWeight:700,cursor:'pointer'}}>{l}</button>
+            ))}
+          </div>
+          {tab==='loans'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              {LOAN_PRODUCTS.map(prod=>{
+                const canLend=money>=prod.amount&&loans.length<maxLoans;
+                return(<div key={prod.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:28}}>{prod.icon}</span>
+                  <div style={{flex:1}}><div style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{prod.name}</div><div style={{fontSize:9,color:'#64748b'}}>{prod.desc} • Lãi {(prod.rate*rateMult()*incomeMult()).toFixed(1)}%/5s</div></div>
+                  <button onClick={()=>issueLoan(prod)} disabled={!canLend} style={{background:canLend?'linear-gradient(135deg,#22c55e,#16a34a)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'5px 10px',color:canLend?'white':'#475569',fontSize:10,fontWeight:800,cursor:canLend?'pointer':'default',whiteSpace:'nowrap'}}>{fmtB(prod.amount)}₫</button>
+                </div>);
+              })}
+            </div>
+          )}
+          {tab==='active'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              {!loans.length&&<div style={{textAlign:'center',color:'#475569',padding:30}}>Chưa có khoản vay. Bắt đầu cho vay!</div>}
+              {loans.map(l=>(
+                <div key={l.id} style={{background:'rgba(34,197,94,0.07)',border:'1px solid rgba(34,197,94,0.15)',borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:26}}>{l.product.icon}</span>
+                  <div style={{flex:1}}><div style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{l.product.name}</div><div style={{fontSize:9,color:'#64748b'}}>Vốn: {fmtB(l.amount)}₫ • Lãi/5s: {fmtB(Math.floor(l.amount*l.product.rate/100*rateMult()*incomeMult()))}₫</div></div>
+                  <button onClick={()=>collectLoan(l.id)} style={{background:'linear-gradient(135deg,#f59e0b,#d97706)',border:'none',borderRadius:8,padding:'5px 10px',color:'white',fontSize:10,fontWeight:800,cursor:'pointer'}}>Thu Hồi</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {tab==='upgrade'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              {BANK_UPGRADES.map(upg=>{
+                const count=upgrades[upg.id]||0;
+                const cost=Math.floor(upg.cost*Math.pow(1.5,count));
+                const canBuy=money>=cost;
+                return(<div key={upg.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:26}}>{upg.icon}</span>
+                  <div style={{flex:1}}><div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{upg.name}</span><span style={{color:'#22c55e',fontSize:10}}>×{count}</span></div><div style={{fontSize:9,color:'#64748b'}}>{upg.desc}</div></div>
+                  <button onClick={()=>buyUpgrade(upg)} disabled={!canBuy} style={{background:canBuy?'linear-gradient(135deg,#22c55e,#16a34a)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'5px 10px',color:canBuy?'white':'#475569',fontSize:10,fontWeight:800,cursor:canBuy?'pointer':'default',whiteSpace:'nowrap'}}>{fmtB(cost)}₫</button>
+                </div>);
+              })}
+            </div>
+          )}
+          <div style={{background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'5px 8px',maxHeight:55,overflowY:'auto'}}>
+            {log.slice(0,3).map((l,i)=><div key={i} style={{fontSize:9,color:'#64748b',lineHeight:1.6}}>{l}</div>)}
+          </div>
+        </div>
+      );
+    }
+
+    // App wrapper
+    function App() {
+      const handleBack = () => {
+        window.location.href = '../index.html';
+      };
+
+      return <BankGame onBack={handleBack} />;
+    }
+
+    // Render
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

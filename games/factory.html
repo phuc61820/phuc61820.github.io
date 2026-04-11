@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏭 Công Ty Vạn Năng — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(160deg, #0c0a09, #1c1917);
+      min-height: 100vh;
+      color: #e2e8f0;
+    }
+    #root {
+      min-height: 100vh;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.15);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.25);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ===================== FACTORY GAME DATA =====================
+    const PRODUCTS = [
+      { id:'nail',    name:'Đinh Vít',       icon:'📎', tier:1, matCost:{iron:5},        makeTime:2,  sellPrice:3,   desc:'Sản phẩm cơ bản nhất' },
+      { id:'hammer',  name:'Búa Thợ',        icon:'🔨', tier:1, matCost:{iron:10,wood:5}, makeTime:4,  sellPrice:12,  desc:'Công cụ thông dụng' },
+      { id:'wrench',  name:'Cờ Lê',          icon:'🔧', tier:1, matCost:{iron:15},        makeTime:5,  sellPrice:18,  desc:'Dụng cụ sửa chữa' },
+      { id:'pipe',    name:'Ống Thép',        icon:'🪜', tier:2, matCost:{iron:20,coal:5}, makeTime:6,  sellPrice:30,  desc:'Vật liệu xây dựng' },
+      { id:'gear',    name:'Bánh Răng',       icon:'⚙️', tier:2, matCost:{iron:25,coal:8}, makeTime:8,  sellPrice:55,  desc:'Linh kiện máy móc' },
+      { id:'engine',  name:'Động Cơ',         icon:'🚂', tier:2, matCost:{iron:40,coal:15,gear:2}, makeTime:12, sellPrice:150, desc:'Trái tim máy móc' },
+      { id:'circuit', name:'Mạch Điện',       icon:'💡', tier:3, matCost:{copper:30,silicon:10},   makeTime:10, sellPrice:200, desc:'Linh kiện điện tử' },
+      { id:'cpu',     name:'Vi Xử Lý',        icon:'🖥️', tier:3, matCost:{silicon:50,copper:20,circuit:2}, makeTime:15, sellPrice:500, desc:'Não của máy tính' },
+      { id:'robot',   name:'Robot Công Nghiệp',icon:'🤖', tier:3, matCost:{iron:100,cpu:3,engine:2}, makeTime:25, sellPrice:2000, desc:'Tự động hoá dây chuyền' },
+      { id:'car',     name:'Ô Tô',            icon:'🚗', tier:4, matCost:{iron:200,engine:5,cpu:2,rubber:50}, makeTime:40, sellPrice:8000, desc:'Phương tiện hiện đại' },
+      { id:'plane',   name:'Máy Bay',         icon:'✈️', tier:4, matCost:{iron:500,engine:20,cpu:10,aluminum:200}, makeTime:80, sellPrice:50000, desc:'Chinh phục bầu trời' },
+      { id:'rocket',  name:'Tên Lửa',         icon:'🚀', tier:5, matCost:{iron:1000,engine:50,cpu:30,fuel:500}, makeTime:150, sellPrice:500000, desc:'Vươn ra vũ trụ' },
+      { id:'satellite',name:'Vệ Tinh',        icon:'🛰️', tier:5, matCost:{cpu:100,solar:200,rocket:1}, makeTime:200, sellPrice:2000000, desc:'Thống trị không gian' },
+      { id:'nuke',    name:'Vũ Khí Hạt Nhân', icon:'☢️', tier:6, matCost:{uranium:100,rocket:2,cpu:500}, makeTime:300, sellPrice:99999999, desc:'Đỉnh cao sản xuất vũ trang' },
+    ];
+
+    const MATERIALS = [
+      { id:'iron',     name:'Sắt',      icon:'🪨', baseCost:5,   mult:1.3  },
+      { id:'wood',     name:'Gỗ',       icon:'🌲', baseCost:3,   mult:1.25 },
+      { id:'coal',     name:'Than',     icon:'⬛', baseCost:8,   mult:1.3  },
+      { id:'copper',   name:'Đồng',     icon:'🟤', baseCost:10,  mult:1.35 },
+      { id:'silicon',  name:'Silicon',  icon:'💠', baseCost:20,  mult:1.4  },
+      { id:'rubber',   name:'Cao Su',   icon:'⚫', baseCost:15,  mult:1.3  },
+      { id:'aluminum', name:'Nhôm',     icon:'🔲', baseCost:25,  mult:1.35 },
+      { id:'fuel',     name:'Nhiên Liệu',icon:'⛽', baseCost:30,  mult:1.4  },
+      { id:'solar',    name:'Pin Mặt Trời',icon:'☀️',baseCost:50, mult:1.5  },
+      { id:'uranium',  name:'Uranium',  icon:'☢️', baseCost:500, mult:2.0  },
+    ];
+
+    // Calculate a product's material cost value (using baseCost of raw materials)
+    function calcMatValue(matCost) {
+      let total = 0;
+      Object.entries(matCost).forEach(([mid, qty]) => {
+        const mat = MATERIALS.find(m => m.id === mid);
+        if (mat) { total += mat.baseCost * qty; }
+        else {
+          // It's a product - find its own material cost recursively
+          const subProd = PRODUCTS.find(p => p.id === mid);
+          if (subProd) total += calcMatValue(subProd.matCost) * 1.5 * qty;
+        }
+      });
+      return total;
+    }
+
+    // Override sellPrice = material cost + 50% profit
+    PRODUCTS.forEach(p => {
+      const matVal = calcMatValue(p.matCost);
+      if (matVal > 0) p.sellPrice = Math.floor(matVal * 1.5);
+    });
+
+    const MACHINES = [
+      { id:'forge',    name:'Lò Rèn',         icon:'🔥', desc:'Tự động SX sản phẩm Tier 1',  baseCost:200,   mult:1.5, tier:1 },
+      { id:'press',    name:'Máy Ép',          icon:'🏗️', desc:'Tự động SX sản phẩm Tier 2',  baseCost:2000,  mult:1.6, tier:2 },
+      { id:'lab',      name:'Phòng Lab',        icon:'🔬', desc:'Tự động SX sản phẩm Tier 3',  baseCost:20000, mult:1.7, tier:3 },
+      { id:'assembly', name:'Dây Chuyền Robot', icon:'🤖', desc:'Tự động SX sản phẩm Tier 4',  baseCost:500000,mult:1.8, tier:4 },
+      { id:'launchpad',name:'Bãi Phóng Tên Lửa',icon:'🚀',desc:'Tự động SX sản phẩm Tier 5+',baseCost:50000000,mult:2.0,tier:5},
+    ];
+
+    const TIER_COLORS = {1:'#94a3b8',2:'#4ade80',3:'#60a5fa',4:'#a855f7',5:'#fbbf24',6:'#f87171'};
+    const TIER_NAMES  = {1:'Cơ Bản',2:'Công Nghiệp',3:'Điện Tử',4:'Hiện Đại',5:'Vũ Trụ',6:'Hạt Nhân ☢️'};
+
+    function fmtF(n){
+      if(n>=1e12)return(n/1e12).toFixed(1)+'T';
+      if(n>=1e9)return(n/1e9).toFixed(1)+'B';
+      if(n>=1e6)return(n/1e6).toFixed(1)+'M';
+      if(n>=1e3)return(n/1e3).toFixed(1)+'K';
+      return Math.floor(n).toString();
+    }
+
+    function FactoryGame({ onBack }) {
+      const [money, setMoney]         = useState(3e6);
+      const [totalEarned, setTotalEarned] = useState(0);
+      const [mats, setMats]           = useState({iron:0,wood:0,coal:0,copper:0,silicon:0,rubber:0,aluminum:0,fuel:0,solar:0,uranium:0});
+      const [matCounts, setMatCounts] = useState({iron:0,wood:0,coal:0,copper:0,silicon:0,rubber:0,aluminum:0,fuel:0,solar:0,uranium:0});
+      const [inventory, setInventory] = useState({});
+      const [machines, setMachines]   = useState({});
+      const [making, setMaking]       = useState(null); // {productId, progress, total}
+      const [tab, setTab]             = useState('factory'); // factory | market | machines
+      const [log, setLog]             = useState([]);
+      const [workers, setWorkers]     = useState(1);
+      const [workerCost, setWorkerCost] = useState(100);
+      const [prestige, setPrestige]   = useState(0);
+
+      const addLog = (msg) => setLog(p => [msg, ...p].slice(0,20));
+
+      const matCost = (m, currentCount) => Math.floor(m.baseCost * Math.pow(m.mult, currentCount));
+
+      const calcBuyCost = (mat, qty) => {
+        let total = 0;
+        const cur = matCounts[mat.id] || 0;
+        for(let i = 0; i < qty; i++) total += matCost(mat, cur + i);
+        return total;
+      };
+
+      const buyMat = (mat, qty=1) => {
+        const cost = calcBuyCost(mat, qty);
+        if(money < cost){ addLog(`❌ Không đủ tiền mua ${mat.name} (cần ${fmtF(cost)}₫)`); return; }
+        setMoney(p=>p-cost);
+        setMats(p=>({...p,[mat.id]:(p[mat.id]||0)+qty}));
+        setMatCounts(p=>({...p,[mat.id]:(p[mat.id]||0)+qty}));
+        const newPrice = matCost(mat, (matCounts[mat.id]||0) + qty);
+        addLog(`📦 Mua ${qty}x ${mat.icon}${mat.name} (-${fmtF(cost)}₫) | Giá tiếp theo: ${fmtF(newPrice)}₫`);
+      };
+
+      const canMake = (prod) => {
+        return Object.entries(prod.matCost).every(([mid,qty])=>{
+          if(MATERIALS.find(m=>m.id===mid)) return (mats[mid]||0)>=qty;
+          return (inventory[mid]||0)>=qty;
+        });
+      };
+
+      const startMake = (prod) => {
+        if(making){ addLog('⚠️ Đang sản xuất rồi!'); return; }
+        if(!canMake(prod)){ addLog(`❌ Thiếu nguyên liệu cho ${prod.name}`); return; }
+        // consume materials
+        setMats(p=>{
+          const n={...p};
+          Object.entries(prod.matCost).forEach(([mid,qty])=>{ if(MATERIALS.find(m=>m.id===mid)) n[mid]=(n[mid]||0)-qty; });
+          return n;
+        });
+        setInventory(p=>{
+          const n={...p};
+          Object.entries(prod.matCost).forEach(([mid,qty])=>{ if(!MATERIALS.find(m=>m.id===mid)) n[mid]=(n[mid]||0)-qty; });
+          return n;
+        });
+        const total = Math.max(1, Math.ceil(prod.makeTime / workers));
+        setMaking({productId:prod.id, progress:0, total});
+        addLog(`🔨 Bắt đầu SX: ${prod.icon}${prod.name} (${total}s)`);
+      };
+
+      // Production timer
+      useEffect(()=>{
+        if(!making) return;
+        const iv=setInterval(()=>{
+          setMaking(m=>{
+            if(!m) return null;
+            if(m.progress>=m.total-1){
+              const prod=PRODUCTS.find(p=>p.id===m.productId);
+              setInventory(inv=>({...inv,[m.productId]:(inv[m.productId]||0)+1}));
+              addLog(`✅ Hoàn thành: ${prod.icon}${prod.name}`);
+              return null;
+            }
+            return {...m,progress:m.progress+1};
+          });
+        },1000);
+        return()=>clearInterval(iv);
+      },[making]);
+
+      // Machine auto-production
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          Object.entries(machines).forEach(([mid,count])=>{
+            if(!count) return;
+            const machine=MACHINES.find(m=>m.id===mid);
+            const tierProds=PRODUCTS.filter(p=>p.tier===machine.tier);
+            if(!tierProds.length) return;
+            tierProds.forEach(prod=>{
+              for(let i=0;i<count;i++){
+                if(canMake(prod)){
+                  setMats(p=>{
+                    const n={...p};
+                    Object.entries(prod.matCost).forEach(([mid2,qty])=>{ if(MATERIALS.find(m=>m.id===mid2)) n[mid2]=(n[mid2]||0)-qty; });
+                    return n;
+                  });
+                  setInventory(p=>({...p,[prod.id]:(p[prod.id]||0)+1}));
+                }
+              }
+            });
+          });
+        }, 5000);
+        return()=>clearInterval(iv);
+      },[machines,mats,inventory]);
+
+      const sellProduct = (prod) => {
+        const qty=inventory[prod.id]||0;
+        if(!qty){ addLog(`❌ Không có ${prod.name} để bán`); return; }
+        const earned=prod.sellPrice*qty;
+        setMoney(p=>p+earned);
+        setTotalEarned(p=>p+earned);
+        setInventory(p=>({...p,[prod.id]:0}));
+        addLog(`💰 Bán ${qty}x ${prod.icon}${prod.name} → +${fmtF(earned)}₫`);
+      };
+
+      const buyMachine = (machine) => {
+        const count=machines[machine.id]||0;
+        const cost=Math.floor(machine.baseCost*Math.pow(machine.mult,count));
+        if(money<cost){ addLog(`❌ Cần ${fmtF(cost)}₫ để mua ${machine.name}`); return; }
+        setMoney(p=>p-cost);
+        setMachines(p=>({...p,[machine.id]:(p[machine.id]||0)+1}));
+        addLog(`🏭 Mua ${machine.icon}${machine.name} (×${count+1})`);
+      };
+
+      const buyWorker = () => {
+        if(money<workerCost){ addLog('❌ Không đủ tiền thuê công nhân'); return; }
+        setMoney(p=>p-workerCost);
+        setWorkers(p=>p+1);
+        setWorkerCost(p=>Math.floor(p*2));
+        addLog(`👷 Thuê thêm công nhân! Hiện có ${workers+1} người. SX nhanh hơn!`);
+      };
+
+      const totalInventoryValue = PRODUCTS.reduce((s,p)=>(s+(inventory[p.id]||0)*p.sellPrice),0);
+      const makingProd = making ? PRODUCTS.find(p=>p.id===making.productId) : null;
+
+      return (
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0c0a09,#1c1917)',display:'flex',flexDirection:'column',padding:10,gap:8}}>
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <h3 style={{margin:0,color:'#fbbf24',fontSize:14,fontWeight:900}}>🏭 Công Ty Vạn Năng</h3>
+            <div style={{textAlign:'right'}}>
+              <div style={{color:'#fbbf24',fontWeight:900,fontSize:15}}>💰 {fmtF(money)}₫</div>
+              <div style={{fontSize:9,color:'#64748b'}}>Tổng: {fmtF(totalEarned)}₫</div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div style={{display:'flex',gap:4}}>
+            {[['factory','🔨 SX'],['market','🛒 Kho'],['machines','⚙️ Máy'],['buy','📦 NL']].map(([id,label])=>(
+              <button key={id} onClick={()=>setTab(id)} style={{
+                flex:1, background:tab===id?'rgba(251,191,36,0.15)':'rgba(255,255,255,0.04)',
+                border:`1px solid ${tab===id?'rgba(251,191,36,0.4)':'rgba(255,255,255,0.08)'}`,
+                borderRadius:8,padding:'6px 0',color:tab===id?'#fbbf24':'#64748b',
+                fontSize:11,fontWeight:700,cursor:'pointer',
+              }}>{label}</button>
+            ))}
+          </div>
+
+          {/* Making progress */}
+          {making && makingProd && (
+            <div style={{background:'rgba(251,191,36,0.08)',border:'1px solid rgba(251,191,36,0.2)',borderRadius:10,padding:'8px 12px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                <span style={{color:'#fbbf24',fontSize:12,fontWeight:700}}>🔨 {makingProd.icon}{makingProd.name}</span>
+                <span style={{color:'#fbbf24',fontSize:11}}>{making.progress}/{making.total}s</span>
+              </div>
+              <div style={{height:8,borderRadius:4,background:'rgba(255,255,255,0.08)'}}>
+                <div style={{height:'100%',borderRadius:4,background:'linear-gradient(90deg,#f59e0b,#ef4444)',width:`${(making.progress/making.total)*100}%`,transition:'width 1s'}}/>
+              </div>
+              <div style={{fontSize:9,color:'#64748b',marginTop:3}}>👷 {workers} công nhân • còn {making.total-making.progress}s</div>
+            </div>
+          )}
+
+          {/* Tab: Factory */}
+          {tab==='factory' && (
+            <div style={{display:'flex',flexDirection:'column',gap:5,overflowY:'auto',flex:1}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <span style={{fontSize:11,color:'#a8a29e',fontWeight:700}}>Chọn sản phẩm để sản xuất:</span>
+                <button onClick={buyWorker} style={{background:'rgba(99,102,241,0.15)',border:'1px solid rgba(99,102,241,0.3)',borderRadius:8,padding:'3px 10px',color:'#818cf8',fontSize:10,cursor:'pointer',fontWeight:700}}>
+                  👷 +Nhân Công ({fmtF(workerCost)}₫) [{workers} người]
+                </button>
+              </div>
+              {[1,2,3,4,5,6].map(tier=>{
+                const tierProds=PRODUCTS.filter(p=>p.tier===tier);
+                return(
+                  <div key={tier} style={{marginBottom:4}}>
+                    <div style={{fontSize:9,color:TIER_COLORS[tier],fontWeight:800,marginBottom:3,letterSpacing:1}}>{TIER_NAMES[tier].toUpperCase()}</div>
+                    {tierProds.map(prod=>{
+                      const ok=canMake(prod);
+                      const qty=inventory[prod.id]||0;
+                      return(
+                        <div key={prod.id} style={{
+                          background:ok?`rgba(${tier===1?'148,163,184':tier===2?'74,222,128':tier===3?'96,165,250':tier===4?'168,85,247':tier===5?'251,191,36':'248,113,113'},0.06)`:'rgba(0,0,0,0.2)',
+                          border:`1px solid ${ok?TIER_COLORS[tier]+'44':'rgba(255,255,255,0.04)'}`,
+                          borderRadius:10,padding:'7px 10px',marginBottom:4,
+                          display:'flex',alignItems:'center',gap:8,
+                          opacity:1,
+                        }}>
+                          <span style={{fontSize:26,flexShrink:0}}>{prod.icon}</span>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{display:'flex',justifyContent:'space-between'}}>
+                              <span style={{fontSize:11,fontWeight:700,color:ok?'#e2e8f0':'#64748b'}}>{prod.name}</span>
+                              <span style={{fontSize:10,color:'#fbbf24'}}>🏷️{fmtF(prod.sellPrice)}₫</span>
+                            </div>
+                            <div style={{fontSize:9,color:'#64748b',marginTop:1}}>{prod.desc}</div>
+                            <div style={{fontSize:9,color:'#475569',marginTop:1,display:'flex',gap:4,flexWrap:'wrap'}}>
+                              {Object.entries(prod.matCost).map(([mid,qty2])=>{
+                                const mat=MATERIALS.find(m=>m.id===mid);
+                                const prod2=PRODUCTS.find(p=>p.id===mid);
+                                const have=mat?(mats[mid]||0):(inventory[mid]||0);
+                                const ok2=have>=qty2;
+                                return <span key={mid} style={{color:ok2?'#5eead4':'#f87171'}}>{mat?mat.icon:prod2?.icon}{mid}:{have}/{qty2}</span>;
+                              })}
+                            </div>
+                          </div>
+                          <div style={{display:'flex',flexDirection:'column',gap:3,alignItems:'flex-end'}}>
+                            <button onClick={()=>startMake(prod)} disabled={!ok||!!making} style={{
+                              background:ok&&!making?`linear-gradient(135deg,${TIER_COLORS[tier]},${TIER_COLORS[tier]}88)`:'rgba(255,255,255,0.04)',
+                              border:'none',borderRadius:7,padding:'5px 10px',
+                              color:ok&&!making?'white':'#475569',fontSize:10,fontWeight:800,cursor:ok&&!making?'pointer':'default',whiteSpace:'nowrap',
+                            }}>⏱{prod.makeTime}s</button>
+                            {qty>0 && <span style={{fontSize:9,color:'#22c55e',fontWeight:700}}>kho: {qty}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Tab: Market (sell) */}
+          {tab==='market' && (
+            <div style={{display:'flex',flexDirection:'column',gap:5,overflowY:'auto',flex:1}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                <span style={{fontSize:11,color:'#a8a29e',fontWeight:700}}>Kho hàng — bấm để bán tất cả:</span>
+                <span style={{fontSize:10,color:'#22c55e',fontWeight:700}}>Tổng: {fmtF(totalInventoryValue)}₫</span>
+              </div>
+              {PRODUCTS.map(prod=>{
+                const qty=inventory[prod.id]||0;
+                if(!qty) return null;
+                return(
+                  <div key={prod.id} onClick={()=>sellProduct(prod)} style={{
+                    background:'rgba(34,197,94,0.07)',border:'1px solid rgba(34,197,94,0.2)',
+                    borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10,cursor:'pointer',
+                  }}>
+                    <span style={{fontSize:28}}>{prod.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,fontWeight:700,color:'#e2e8f0'}}>{prod.name}</div>
+                      <div style={{fontSize:10,color:'#64748b'}}>×{qty} con • {fmtF(prod.sellPrice)}₫/cái</div>
+                    </div>
+                    <div style={{color:'#22c55e',fontWeight:900,fontSize:13}}>+{fmtF(prod.sellPrice*qty)}₫</div>
+                  </div>
+                );
+              })}
+              {PRODUCTS.every(p=>!(inventory[p.id]||0)) && (
+                <div style={{textAlign:'center',color:'#475569',fontSize:12,padding:'30px 0'}}>Kho trống — hãy sản xuất trước! 🔨</div>
+              )}
+            </div>
+          )}
+
+          {/* Tab: Machines */}
+          {tab==='machines' && (
+            <div style={{display:'flex',flexDirection:'column',gap:5,overflowY:'auto',flex:1}}>
+              <p style={{margin:'0 0 4px',fontSize:11,color:'#a8a29e',fontWeight:700}}>Máy tự động SX mỗi 5 giây:</p>
+              {MACHINES.map(machine=>{
+                const count=machines[machine.id]||0;
+                const cost=Math.floor(machine.baseCost*Math.pow(machine.mult,count));
+                const canBuy=money>=cost;
+                return(
+                  <div key={machine.id} style={{
+                    background:count?'rgba(251,191,36,0.07)':'rgba(0,0,0,0.2)',
+                    border:`1px solid ${count?'rgba(251,191,36,0.2)':'rgba(255,255,255,0.05)'}`,
+                    borderRadius:12,padding:'8px 12px',display:'flex',alignItems:'center',gap:10,
+                  }}>
+                    <span style={{fontSize:30}}>{machine.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:12,fontWeight:700,color:'#e2e8f0'}}>{machine.name}</span>
+                        <span style={{fontSize:10,color:'#fbbf24',fontWeight:700}}>×{count}</span>
+                      </div>
+                      <div style={{fontSize:9,color:'#64748b'}}>{machine.desc}</div>
+                      <div style={{fontSize:9,color:TIER_COLORS[machine.tier]}}>SX Tier {machine.tier}: {TIER_NAMES[machine.tier]}</div>
+                    </div>
+                    <button onClick={()=>buyMachine(machine)} disabled={!canBuy} style={{
+                      background:canBuy?'linear-gradient(135deg,#f59e0b,#d97706)':'rgba(255,255,255,0.04)',
+                      border:'none',borderRadius:8,padding:'5px 10px',
+                      color:canBuy?'white':'#475569',fontSize:10,fontWeight:800,cursor:canBuy?'pointer':'default',whiteSpace:'nowrap',
+                    }}>{fmtF(cost)}₫</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Tab: Buy materials */}
+          {tab==='buy' && (
+            <div style={{display:'flex',flexDirection:'column',gap:5,overflowY:'auto',flex:1}}>
+              <p style={{margin:'0 0 4px',fontSize:11,color:'#a8a29e',fontWeight:700}}>Mua nguyên liệu thô:</p>
+              {MATERIALS.map(mat=>{
+                const cost1 = matCost(mat, matCounts[mat.id]||0);
+                const cost10 = calcBuyCost(mat, 10);
+                const have = mats[mat.id]||0;
+                const canBuy1m = money>=cost1, canBuy10m = money>=cost10;
+                return(
+                  <div key={mat.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'7px 10px',display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{fontSize:24}}>{mat.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{mat.name}</div>
+                      <div style={{fontSize:9,color:'#5eead4'}}>Có: {have} &nbsp;|&nbsp; Đã mua: {matCounts[mat.id]||0} lần</div>
+                    </div>
+                    <div style={{display:'flex',gap:5}}>
+                      <button onClick={()=>buyMat(mat,1)} disabled={!canBuy1m} style={{background:canBuy1m?'rgba(14,165,233,0.2)':'rgba(255,255,255,0.03)',border:`1px solid ${canBuy1m?'#0ea5e9':'rgba(255,255,255,0.05)'}`,borderRadius:7,padding:'4px 8px',color:canBuy1m?'#7dd3fc':'#475569',fontSize:9,fontWeight:700,cursor:canBuy1m?'pointer':'default'}}>×1 {fmtF(cost1)}₫</button>
+                      <button onClick={()=>buyMat(mat,10)} disabled={!canBuy10m} style={{background:canBuy10m?'rgba(14,165,233,0.2)':'rgba(255,255,255,0.03)',border:`1px solid ${canBuy10m?'#0ea5e9':'rgba(255,255,255,0.05)'}`,borderRadius:7,padding:'4px 8px',color:canBuy10m?'#7dd3fc':'#475569',fontSize:9,fontWeight:700,cursor:canBuy10m?'pointer':'default'}}>×10 {fmtF(cost10)}₫</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Log */}
+          <div style={{background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'6px 8px',maxHeight:70,overflowY:'auto'}}>
+            {log.slice(0,4).map((l,i)=><div key={i} style={{fontSize:9,color:'#64748b',lineHeight:1.6}}>{l}</div>)}
+          </div>
+        </div>
+      );
+    }
+
+    // App wrapper
+    function App() {
+      const handleBack = () => {
+        window.location.href = "../index.html";
+      };
+
+      return <FactoryGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

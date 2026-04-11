@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🥤 Nha May Nuoc Ngot — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(160deg, #3b0000, #7c0000);
+      min-height: 100vh;
+    }
+    #root { min-height: 100vh; }
+    button { font-family: inherit; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ===================== NHA MAY NUOC NGOT =====================
+    const SODA_RECIPES = [
+      { id:'cola',    name:'Cola Đỏ',         icon:'🥤', ing:{sugar:5,water:10,flavor:2},  time:3,  price:30,   tier:1, desc:'Nước ngọt cổ điển' },
+      { id:'lemon',   name:'Chanh Leo',        icon:'🍋', ing:{sugar:4,water:8,lemon:3},     time:4,  price:50,   tier:1, desc:'Vị chanh sảng khoái' },
+      { id:'orange',  name:'Cam Soda',         icon:'🍊', ing:{sugar:5,water:8,orange:4},    time:5,  price:70,   tier:1, desc:'Hương cam tươi mát' },
+      { id:'grape',   name:'Nho Tím',          icon:'🍇', ing:{sugar:6,water:10,grape:5},    time:6,  price:100,  tier:2, desc:'Vị nho ngọt đậm' },
+      { id:'energy',  name:'Energy Bomb',      icon:'⚡', ing:{sugar:10,water:5,caffeine:3}, time:8,  price:200,  tier:2, desc:'Tăng lực siêu mạnh' },
+      { id:'tropical',name:'Tropical Mix',     icon:'🌺', ing:{sugar:8,water:12,tropical:6}, time:10, price:350,  tier:2, desc:'Hỗn hợp nhiệt đới' },
+      { id:'diamond', name:'Diamond Water',    icon:'💎', ing:{sugar:3,water:20,mineral:10}, time:15, price:1000, tier:3, desc:'Nước khoáng cao cấp' },
+      { id:'gold',    name:'Gold Rush',        icon:'✨', ing:{sugar:15,water:15,gold:2},    time:20, price:5000, tier:3, desc:'Phiên bản vàng xa xỉ' },
+      { id:'cosmic',  name:'Cosmic Blast',     icon:'🌌', ing:{sugar:20,water:20,cosmic:5},  time:30, price:50000,tier:4, desc:'Vị vũ trụ huyền bí' },
+    ];
+    const SODA_INGS = [
+      {id:'sugar',   name:'Đường',       icon:'🍬', base:2,   mult:1.2},
+      {id:'water',   name:'Nước',        icon:'💧', base:1,   mult:1.1},
+      {id:'flavor',  name:'Hương Liệu',  icon:'🧪', base:5,   mult:1.3},
+      {id:'lemon',   name:'Chanh',       icon:'🍋', base:4,   mult:1.25},
+      {id:'orange',  name:'Cam',         icon:'🍊', base:4,   mult:1.25},
+      {id:'grape',   name:'Nho',         icon:'🍇', base:5,   mult:1.3},
+      {id:'caffeine',name:'Caffeine',    icon:'☕', base:10,  mult:1.4},
+      {id:'tropical',name:'Trái Cây Nhiệt Đới',icon:'🥭',base:8,mult:1.35},
+      {id:'mineral', name:'Khoáng Chất', icon:'💠', base:15,  mult:1.5},
+      {id:'gold',    name:'Vàng Thực Phẩm',icon:'🏆',base:50, mult:1.8},
+      {id:'cosmic',  name:'Chất Vũ Trụ', icon:'🌌', base:200, mult:2.0},
+    ];
+    const SODA_MACHINES = [
+      {id:'mixer',   name:'Máy Trộn',      icon:'🔄', cost:1000,   mult:1.4, desc:'Tự động SX Cola, Chanh, Cam'},
+      {id:'bottler', name:'Máy Đóng Chai', icon:'🍾', cost:8000,   mult:1.5, desc:'Tự động tier 2'},
+      {id:'lab',     name:'Phòng Lab',     icon:'🔬', cost:50000,  mult:1.6, desc:'Tự động tier 3'},
+      {id:'cosmic_m',name:'Máy Vũ Trụ',   icon:'🌌', cost:5000000,mult:2.0, desc:'Tự động tất cả x 2'},
+    ];
+    function fmtW(n){if(!isFinite(n)||n>1e99)return'∞';if(n>=1e12)return(n/1e12).toFixed(1)+'T';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return Math.floor(n).toLocaleString();}
+
+    function SodaFactory({ onBack }) {
+      const [money, setMoney]         = useState(100);
+      const [totalEarned, setTotalEarned] = useState(0);
+      const [ings, setIngs]         = useState({});
+      const [ingCounts, setIngCounts] = useState({});
+      const [inventory, setInventory] = useState({});
+      const [machines, setMachines] = useState({});
+      const [making, setMaking]     = useState(null);
+      const [makeProgress, setMakeProgress] = useState(0);
+      const [tab, setTab]           = useState('brew');
+      const [log, setLog]           = useState([]);
+      const [brand, setBrand]       = useState('Cola Factory');
+      const [brandBonus, setBrandBonus] = useState(1);
+      const addLog = m=>setLog(p=>[m,...p].slice(0,10));
+
+      const ingCost=(ing)=>Math.floor(ing.base*Math.pow(ing.mult,ingCounts[ing.id]||0));
+      const canBrew=(rec)=>Object.entries(rec.ing).every(([id,qty])=>(ings[id]||0)>=qty);
+      const machineMult=()=>{ let m=1; Object.entries(machines).forEach(([id,c])=>{const mc=SODA_MACHINES.find(x=>x.id===id);if(mc)m*=Math.pow(mc.mult,c);}); return Math.min(m,50); };
+
+      useEffect(()=>{
+        if(!making) return;
+        const rec=SODA_RECIPES.find(r=>r.id===making);
+        if(!rec) return;
+        const iv=setInterval(()=>{
+          setMakeProgress(p=>{
+            if(p>=100){
+              setInventory(inv=>({...inv,[rec.id]:(inv[rec.id]||0)+1}));
+              addLog(`✅ ${rec.icon}${rec.name} hoan thanh!`);
+              setMaking(null); setMakeProgress(0); return 0;
+            }
+            return p+10;
+          });
+        },rec.time*100);
+        return()=>clearInterval(iv);
+      },[making]);
+
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          Object.entries(machines).forEach(([mid,cnt])=>{
+            if(!cnt) return;
+            const mc=SODA_MACHINES.find(x=>x.id===mid);
+            const tierRecs=SODA_RECIPES.filter(r=>mid==='cosmic_m'||(mid==='mixer'&&r.tier===1)||(mid==='bottler'&&r.tier===2)||(mid==='lab'&&r.tier===3));
+            tierRecs.forEach(rec=>{
+              if(canBrew(rec)){
+                setIngs(prev=>{const n={...prev};Object.entries(rec.ing).forEach(([id,qty])=>n[id]=(n[id]||0)-qty);return n;});
+                setInventory(inv=>({...inv,[rec.id]:(inv[rec.id]||0)+cnt}));
+              }
+            });
+          });
+        },5000);
+        return()=>clearInterval(iv);
+      },[machines,ings]);
+
+      const brew=(rec)=>{
+        if(making){addLog('⚠️ Đang pha chế!');return;}
+        if(!canBrew(rec)){addLog(`❌ Thiếu nguyên liệu cho ${rec.name}`);return;}
+        setIngs(prev=>{const n={...prev};Object.entries(rec.ing).forEach(([id,qty])=>n[id]=(n[id]||0)-qty);return n;});
+        setMaking(rec.id); setMakeProgress(0);
+        addLog(`🥤 Đang pha ${rec.icon}${rec.name}...`);
+      };
+
+      const buyIng=(ing,qty=1)=>{
+        let total=0,cur=ingCounts[ing.id]||0;
+        for(let i=0;i<qty;i++) total+=ingCost({...ing,id:ing.id,base:ing.base,mult:ing.mult});
+        if(money<total){addLog(`❌ Cần ${fmtW(total)}₫`);return;}
+        setMoney(m=>m-total);
+        setIngs(p=>({...p,[ing.id]:(p[ing.id]||0)+qty}));
+        setIngCounts(p=>({...p,[ing.id]:(p[ing.id]||0)+qty}));
+        addLog(`📦 Mua ${qty}x ${ing.icon}${ing.name}`);
+      };
+
+      const sellAll=()=>{
+        let total=0;
+        Object.entries(inventory).forEach(([id,qty])=>{const r=SODA_RECIPES.find(x=>x.id===id);if(r)total+=r.price*qty*brandBonus*machineMult();});
+        total=Math.floor(total);
+        if(!total){addLog('❌ Kho trống');return;}
+        setMoney(m=>m+total);setTotalEarned(t=>t+total);setInventory({});
+        addLog(`💰 Bán hết nước ngọt: +${fmtW(total)}₫`);
+      };
+
+      const buyMachine=(mc)=>{
+        const cnt=machines[mc.id]||0;
+        const cost=Math.floor(mc.cost*Math.pow(1.5,cnt));
+        if(money<cost){addLog(`❌ Cần ${fmtW(cost)}₫`);return;}
+        setMoney(m=>m-cost);setMachines(p=>({...p,[mc.id]:(p[mc.id]||0)+1}));
+        addLog(`${mc.icon} Mua ${mc.name}!`);
+      };
+
+      const upgradeBrand=()=>{
+        const cost=Math.floor(5000*brandBonus*brandBonus);
+        if(money<cost){addLog(`❌ Cần ${fmtW(cost)}₫`);return;}
+        setMoney(m=>m-cost);setBrandBonus(b=>b*1.5);
+        addLog(`🏆 Nâng cấp thương hiệu! Giá bán x${(brandBonus*1.5).toFixed(1)}`);
+      };
+
+      const invValue=Object.entries(inventory).reduce((s,[id,qty])=>{const r=SODA_RECIPES.find(x=>x.id===id);return s+(r?r.price*qty*brandBonus*machineMult():0);},0);
+
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#3b0000,#7c0000)',display:'flex',flexDirection:'column',padding:10,gap:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <h3 style={{margin:0,color:'#fca5a5',fontSize:13,fontWeight:900}}>🥤 {brand}</h3>
+            <div style={{textAlign:'right'}}><div style={{color:'#fbbf24',fontWeight:900,fontSize:13}}>💰 {fmtW(money)}₫</div><div style={{fontSize:9,color:'#64748b'}}>x{brandBonus.toFixed(1)} thương hiệu</div></div>
+          </div>
+          <div style={{display:'flex',gap:4}}>
+            {[['brew','🥤 Pha Chế'],['ings','🧪 Nguyên Liệu'],['sell','💰 Bán Hàng'],['machine','⚙️ Máy']].map(([id,l])=>(
+              <button key={id} onClick={()=>setTab(id)} style={{flex:1,background:tab===id?'rgba(252,165,165,0.15)':'rgba(255,255,255,0.04)',border:`1px solid ${tab===id?'rgba(252,165,165,0.4)':'rgba(255,255,255,0.07)'}`,borderRadius:8,padding:'5px 0',color:tab===id?'#fca5a5':'#64748b',fontSize:9,fontWeight:700,cursor:'pointer'}}>{l}</button>
+            ))}
+          </div>
+          {making&&<div style={{background:'rgba(252,165,165,0.1)',border:'1px solid rgba(252,165,165,0.25)',borderRadius:8,padding:'6px 10px'}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}><span style={{color:'#fca5a5',fontSize:11}}>🥤 Đang pha chế...</span><span style={{color:'#fca5a5',fontSize:11}}>{makeProgress}%</span></div><div style={{height:6,borderRadius:3,background:'rgba(255,255,255,0.08)'}}><div style={{height:'100%',borderRadius:3,background:'linear-gradient(90deg,#ef4444,#f97316)',width:`${makeProgress}%`,transition:'width 0.3s'}}/></div></div>}
+          {tab==='brew'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              {[1,2,3,4].map(tier=>{
+                const recs=SODA_RECIPES.filter(r=>r.tier===tier);
+                if(!recs.length) return null;
+                return(<div key={tier}><div style={{fontSize:9,color:['#94a3b8','#4ade80','#f59e0b','#a855f7'][tier-1],fontWeight:800,marginBottom:3}}>TIER {tier}</div>
+                {recs.map(rec=>{
+                  const ok=canBrew(rec);
+                  return(<div key={rec.id} style={{background:ok?'rgba(252,165,165,0.07)':'rgba(0,0,0,0.2)',border:`1px solid ${ok?'rgba(252,165,165,0.2)':'rgba(255,255,255,0.04)'}`,borderRadius:10,padding:'7px 10px',display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                    <span style={{fontSize:26}}>{rec.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,fontWeight:700,color:ok?'#e2e8f0':'#64748b'}}>{rec.name}</div>
+                      <div style={{fontSize:8,color:'#64748b',display:'flex',gap:4,flexWrap:'wrap'}}>
+                        {Object.entries(rec.ing).map(([id,qty])=>{const ing=SODA_INGS.find(x=>x.id===id);const have=(ings[id]||0)>=qty;return <span key={id} style={{color:have?'#5eead4':'#f87171'}}>{ing?.icon}{id}:{ings[id]||0}/{qty}</span>;})}
+                      </div>
+                    </div>
+                    <div style={{textAlign:'right'}}>
+                      <div style={{fontSize:9,color:'#fbbf24'}}>{fmtW(Math.floor(rec.price*brandBonus*machineMult()))}₫</div>
+                      <button onClick={()=>brew(rec)} disabled={!ok||!!making} style={{background:ok&&!making?'linear-gradient(135deg,#ef4444,#dc2626)':'rgba(255,255,255,0.04)',border:'none',borderRadius:7,padding:'3px 8px',color:ok&&!making?'white':'#475569',fontSize:9,fontWeight:800,cursor:ok&&!making?'pointer':'default'}}>{rec.time}s</button>
+                    </div>
+                  </div>);
+                })}</div>);
+              })}
+            </div>
+          )}
+          {tab==='ings'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:4}}>
+              {SODA_INGS.map(ing=>{
+                const c1=ingCost(ing),c10=Array.from({length:10}).reduce((s,_,i)=>s+ingCost({...ing,base:ing.base*Math.pow(ing.mult,i+(ingCounts[ing.id]||0))}),0);
+                const h1=money>=c1,h10=money>=c10;
+                return(<div key={ing.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:9,padding:'6px 10px',display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:22}}>{ing.icon}</span>
+                  <div style={{flex:1}}><div style={{fontSize:10,fontWeight:700,color:'#e2e8f0'}}>{ing.name}</div><div style={{fontSize:8,color:'#5eead4'}}>Có: {ings[ing.id]||0}</div></div>
+                  <div style={{display:'flex',gap:4}}>
+                    <button onClick={()=>buyIng(ing,1)} disabled={!h1} style={{background:h1?'rgba(252,165,165,0.2)':'rgba(255,255,255,0.03)',border:`1px solid ${h1?'#fca5a5':'rgba(255,255,255,0.05)'}`,borderRadius:6,padding:'3px 7px',color:h1?'#fca5a5':'#475569',fontSize:8,fontWeight:700,cursor:h1?'pointer':'default'}}>x1 {fmtW(c1)}₫</button>
+                    <button onClick={()=>buyIng(ing,10)} disabled={!h10} style={{background:h10?'rgba(252,165,165,0.2)':'rgba(255,255,255,0.03)',border:`1px solid ${h10?'#fca5a5':'rgba(255,255,255,0.05)'}`,borderRadius:6,padding:'3px 7px',color:h10?'#fca5a5':'#475569',fontSize:8,fontWeight:700,cursor:h10?'pointer':'default'}}>x10 {fmtW(c10)}₫</button>
+                  </div>
+                </div>);
+              })}
+            </div>
+          )}
+          {tab==='sell'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <span style={{fontSize:11,color:'#e2e8f0',fontWeight:700}}>Kho: {fmtW(Math.floor(invValue))}₫</span>
+                <div style={{display:'flex',gap:6}}>
+                  <button onClick={upgradeBrand} style={{background:'rgba(251,191,36,0.15)',border:'1px solid rgba(251,191,36,0.3)',borderRadius:8,padding:'4px 10px',color:'#fbbf24',fontSize:10,cursor:'pointer',fontWeight:700}}>🏆 Brand ({fmtW(Math.floor(5000*brandBonus*brandBonus))}₫)</button>
+                  <button onClick={sellAll} style={{background:'linear-gradient(135deg,#22c55e,#16a34a)',border:'none',borderRadius:8,padding:'4px 12px',color:'white',fontSize:11,fontWeight:800,cursor:'pointer'}}>💰 Bán Hết</button>
+                </div>
+              </div>
+              {SODA_RECIPES.map(r=>{const qty=inventory[r.id]||0;if(!qty) return null;return(<div key={r.id} style={{background:'rgba(34,197,94,0.07)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:10,padding:'7px 12px',display:'flex',alignItems:'center',gap:10}}>
+                <span style={{fontSize:26}}>{r.icon}</span><div style={{flex:1}}><div style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{r.name}</div><div style={{fontSize:9,color:'#64748b'}}>x{qty} • {fmtW(Math.floor(r.price*brandBonus*machineMult()))}₫/chai</div></div>
+                <div style={{color:'#22c55e',fontWeight:800,fontSize:11}}>+{fmtW(Math.floor(r.price*qty*brandBonus*machineMult()))}₫</div>
+              </div>);})}
+              {!Object.values(inventory).some(v=>v>0)&&<div style={{textAlign:'center',color:'#475569',padding:30}}>Kho trống! Pha chế đi! 🥤</div>}
+            </div>
+          )}
+          {tab==='machine'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              {SODA_MACHINES.map(mc=>{const cnt=machines[mc.id]||0;const cost=Math.floor(mc.cost*Math.pow(1.5,cnt));const canBuyMc=money>=cost;return(<div key={mc.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                <span style={{fontSize:28}}>{mc.icon}</span><div style={{flex:1}}><div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{mc.name}</span><span style={{color:'#fca5a5',fontSize:10}}>x{cnt}</span></div><div style={{fontSize:9,color:'#64748b'}}>{mc.desc}</div></div>
+                <button onClick={()=>buyMachine(mc)} disabled={!canBuyMc} style={{background:canBuyMc?'linear-gradient(135deg,#ef4444,#dc2626)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'5px 10px',color:canBuyMc?'white':'#475569',fontSize:9,fontWeight:800,cursor:canBuyMc?'pointer':'default',whiteSpace:'nowrap'}}>{fmtW(cost)}₫</button>
+              </div>);})}
+            </div>
+          )}
+          <div style={{background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'4px 8px',maxHeight:50,overflowY:'auto'}}>
+            {log.slice(0,2).map((l,i)=><div key={i} style={{fontSize:9,color:'#64748b',lineHeight:1.6}}>{l}</div>)}
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const handleBack = () => {
+        window.location.href = "../index.html";
+      };
+      return <SodaFactory onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

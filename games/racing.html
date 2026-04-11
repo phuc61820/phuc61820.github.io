@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏎️ Đua Xe Siêu Tốc — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #1a0a00;
+      min-height: 100vh;
+    }
+    #root {
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function RacingGame({ onBack }) {
+      const W=360, H=500, LANE_W=80, LANES=4;
+      const [carLane, setCarLane]     = useState(1);
+      const [obstacles, setObstacles] = useState([]);
+      const [nitros, setNitros]       = useState([]);
+      const [coins, setCoins]         = useState([]);
+      const [score, setScore]         = useState(0);
+      const [best, setBest]           = useState(0);
+      const [speed, setSpeed]         = useState(4);
+      const [nitro, setNitro]         = useState(0);
+      const [nitroActive, setNitroActive] = useState(false);
+      const [started, setStarted]     = useState(false);
+      const [dead, setDead]           = useState(false);
+      const [roadOffset, setRoadOffset] = useState(0);
+      const idRef = useRef(0);
+      const frameRef = useRef(null);
+      const stateRef = useRef({obstacles:[],nitros:[],coins:[],score:0,speed:4,nitro:0,nitroActive:false,carLane:1,dead:false});
+
+      const OBS = ['🚗','🚕','🚙','🚌','🏍️','🚛'];
+      const NITRO_ICON = '🔵';
+      const COIN_ICON  = '🪙';
+
+      useEffect(()=>{
+        stateRef.current={obstacles,nitros,coins,score,speed,nitro,nitroActive,carLane,dead};
+      },[obstacles,nitros,coins,score,speed,nitro,nitroActive,carLane,dead]);
+
+      useEffect(()=>{
+        if(!started||dead) return;
+        let tick=0;
+        const loop=()=>{
+          const s=stateRef.current;
+          if(s.dead){return;}
+          tick++;
+          const spd=s.nitroActive?s.speed*2:s.speed;
+
+          // Move obstacles
+          let newObs=s.obstacles.map(o=>({...o,y:o.y+spd})).filter(o=>o.y<H+80);
+          let newNitros=s.nitros.map(n=>({...n,y:n.y+spd})).filter(n=>n.y<H+80);
+          let newCoins=s.coins.map(c=>({...c,y:c.y+spd})).filter(c=>c.y<H+80);
+
+          // Collision detection (car is at y=380, lane=carLane)
+          const carX=s.carLane*LANE_W+LANE_W/2;
+          const carY=380;
+          let died=false;
+          newObs=newObs.filter(o=>{
+            const ox=o.lane*LANE_W+LANE_W/2;
+            if(Math.abs(ox-carX)<50&&Math.abs(o.y-carY)<55){died=true;return false;}
+            return true;
+          });
+          let nitroGained=0;
+          newNitros=newNitros.filter(n=>{
+            const nx=n.lane*LANE_W+LANE_W/2;
+            if(Math.abs(nx-carX)<40&&Math.abs(n.y-carY)<50){nitroGained+=30;return false;}
+            return true;
+          });
+          let coinGained=0;
+          newCoins=newCoins.filter(c=>{
+            const cx=c.lane*LANE_W+LANE_W/2;
+            if(Math.abs(cx-carX)<35&&Math.abs(c.y-carY)<45){coinGained+=10;return false;}
+            return true;
+          });
+
+          if(died){
+            setDead(true); setBest(b=>Math.max(b,s.score)); cancelAnimationFrame(frameRef.current); return;
+          }
+
+          // Spawn
+          if(tick%Math.max(20,60-s.score/100)===0){
+            const lane=Math.floor(Math.random()*LANES);
+            newObs.push({id:idRef.current++,lane,y:-60,icon:OBS[Math.floor(Math.random()*OBS.length)]});
+          }
+          if(tick%90===0) newNitros.push({id:idRef.current++,lane:Math.floor(Math.random()*LANES),y:-40});
+          if(tick%60===0) newCoins.push({id:idRef.current++,lane:Math.floor(Math.random()*LANES),y:-40});
+
+          const newScore=s.score+1+coinGained;
+          const newNitro=Math.min(100,s.nitro+(nitroGained>0?nitroGained:0)-(s.nitroActive?1:0));
+          const newSpeed=4+Math.floor(newScore/500)*0.5;
+          const newNA=s.nitroActive&&newNitro>0?true:false;
+
+          setObstacles(newObs); setNitros(newNitros); setCoins(newCoins);
+          setScore(newScore); setSpeed(newSpeed);
+          setNitro(Math.max(0,newNitro)); setNitroActive(newNA);
+          setRoadOffset(p=>(p+spd)%100);
+
+          frameRef.current=requestAnimationFrame(loop);
+        };
+        frameRef.current=requestAnimationFrame(loop);
+        return()=>cancelAnimationFrame(frameRef.current);
+      },[started,dead]);
+
+      const moveLeft=()=>{ if(!started||dead) return; setCarLane(l=>Math.max(0,l-1)); };
+      const moveRight=()=>{ if(!started||dead) return; setCarLane(l=>Math.min(LANES-1,l+1)); };
+      const activateNitro=()=>{ if(nitro>=30){setNitroActive(true);setNitro(n=>n-30);} };
+
+      useEffect(()=>{
+        const onKey=e=>{
+          if(e.key==='ArrowLeft'||e.key==='a')moveLeft();
+          if(e.key==='ArrowRight'||e.key==='d')moveRight();
+          if(e.key==='f'||e.key===' ')activateNitro();
+        };
+        window.addEventListener('keydown',onKey);
+        return()=>window.removeEventListener('keydown',onKey);
+      },[nitro]);
+
+      const reset=()=>{setObstacles([]);setNitros([]);setCoins([]);setScore(0);setSpeed(4);setNitro(0);setNitroActive(false);setCarLane(1);setDead(false);setStarted(false);};
+
+      return(
+        <div style={{minHeight:'100vh',background:'#1a0a00',display:'flex',flexDirection:'column',alignItems:'center',padding:12,gap:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:W}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>&larr; Hub</button>
+            <span style={{color:'#fb923c',fontWeight:900,fontSize:14}}>🏎️ Đua Xe</span>
+            <div style={{textAlign:'right'}}>
+              <div style={{color:'#fbbf24',fontWeight:800,fontSize:13}}>⭐ {score}</div>
+              <div style={{fontSize:9,color:'#64748b'}}>Best: {best}</div>
+            </div>
+          </div>
+
+          {/* Game area */}
+          <div style={{position:'relative',width:W,height:H,background:'#374151',overflow:'hidden',borderRadius:8,border:'2px solid #4b5563'}}>
+            {/* Road lines */}
+            {[1,2,3].map(l=>(
+              <div key={l} style={{position:'absolute',left:l*LANE_W,top:0,width:2,height:H,background:'rgba(255,255,255,0.15)',zIndex:1}}/>
+            ))}
+            {[-1,0,1,2,3,4,5].map(i=>(
+              <div key={i} style={{position:'absolute',left:W/2-2,top:(i*100+roadOffset)%H-50,width:4,height:40,background:'rgba(255,255,255,0.3)',zIndex:1}}/>
+            ))}
+
+            {/* Obstacles */}
+            {obstacles.map(o=>(
+              <div key={o.id} style={{position:'absolute',left:o.lane*LANE_W+LANE_W/2-24,top:o.y-24,fontSize:44,zIndex:5,filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.5))'}}>
+                {o.icon}
+              </div>
+            ))}
+            {/* Nitros */}
+            {nitros.map(n=>(
+              <div key={n.id} style={{position:'absolute',left:n.lane*LANE_W+LANE_W/2-18,top:n.y-18,fontSize:32,zIndex:5}}>
+                {NITRO_ICON}
+              </div>
+            ))}
+            {/* Coins */}
+            {coins.map(c=>(
+              <div key={c.id} style={{position:'absolute',left:c.lane*LANE_W+LANE_W/2-16,top:c.y-16,fontSize:28,zIndex:5}}>
+                {COIN_ICON}
+              </div>
+            ))}
+
+            {/* Player car */}
+            <div style={{position:'absolute',left:carLane*LANE_W+LANE_W/2-26,top:355,fontSize:52,zIndex:10,filter:nitroActive?'drop-shadow(0 0 12px #3b82f6)':'none'}}>
+              🏎️
+              {nitroActive&&<div style={{position:'absolute',bottom:-10,left:'50%',transform:'translateX(-50%)',fontSize:20}}>🔥</div>}
+            </div>
+
+            {/* Nitro bar */}
+            <div style={{position:'absolute',top:8,left:8,width:80,zIndex:20}}>
+              <div style={{fontSize:9,color:'#93c5fd',fontWeight:700}}>⚡ NITRO</div>
+              <div style={{height:8,borderRadius:4,background:'rgba(255,255,255,0.15)'}}>
+                <div style={{height:'100%',borderRadius:4,background:'#3b82f6',width:`${nitro}%`,transition:'width 0.1s'}}/>
+              </div>
+            </div>
+            <div style={{position:'absolute',top:8,right:8,fontSize:11,color:'#fbbf24',fontWeight:900,zIndex:20}}>⭐{score}</div>
+
+            {/* Overlays */}
+            {!started&&!dead&&(
+              <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.7)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12,zIndex:30}}>
+                <div style={{fontSize:48}}>🏎️</div>
+                <p style={{color:'white',fontSize:18,fontWeight:800,margin:0}}>Đua Xe Siêu Tốc</p>
+                <p style={{color:'#94a3b8',fontSize:11,margin:0,textAlign:'center'}}>&larr; &rarr; hoặc nút bên dưới để lái<br/>🔵 Nitro (F/Space) &bull; 🪙 +10 điểm</p>
+                <button onClick={()=>setStarted(true)} style={{background:'linear-gradient(135deg,#f97316,#dc2626)',border:'none',borderRadius:10,padding:'10px 28px',color:'white',fontSize:15,fontWeight:800,cursor:'pointer'}}>🏁 Bắt đầu!</button>
+              </div>
+            )}
+            {dead&&(
+              <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.8)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:10,zIndex:30}}>
+                <div style={{fontSize:48}}>💥</div>
+                <p style={{color:'#f87171',fontSize:20,fontWeight:900,margin:0}}>VA CHẠM!</p>
+                <p style={{color:'#fbbf24',fontSize:16,fontWeight:800,margin:0}}>{score} điểm</p>
+                {score>=best&&best>0&&<p style={{color:'#4ade80',fontSize:13,margin:0}}>🎉 Kỷ lục mới!</p>}
+                <button onClick={reset} style={{background:'linear-gradient(135deg,#f97316,#dc2626)',border:'none',borderRadius:10,padding:'10px 28px',color:'white',fontSize:15,fontWeight:800,cursor:'pointer'}}>🔄 Chơi lại</button>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile controls */}
+          <div style={{display:'flex',gap:10,width:W,justifyContent:'center'}}>
+            <button onPointerDown={moveLeft} style={{flex:1,background:'rgba(249,115,22,0.15)',border:'1px solid rgba(249,115,22,0.3)',borderRadius:12,padding:'14px 0',color:'#fb923c',fontSize:24,fontWeight:800,cursor:'pointer'}}>◄</button>
+            <button onPointerDown={activateNitro} disabled={nitro<30} style={{flex:1,background:nitro>=30?'rgba(59,130,246,0.2)':'rgba(255,255,255,0.04)',border:`1px solid ${nitro>=30?'#3b82f6':'rgba(255,255,255,0.08)'}`,borderRadius:12,padding:'14px 0',color:nitro>=30?'#93c5fd':'#475569',fontSize:16,fontWeight:800,cursor:nitro>=30?'pointer':'default'}}>⚡NITRO</button>
+            <button onPointerDown={moveRight} style={{flex:1,background:'rgba(249,115,22,0.15)',border:'1px solid rgba(249,115,22,0.3)',borderRadius:12,padding:'14px 0',color:'#fb923c',fontSize:24,fontWeight:800,cursor:'pointer'}}>►</button>
+          </div>
+          <p style={{color:'#475569',fontSize:10,margin:0}}>🚗 Né xe &bull; 🔵 Nitro &bull; 🪙 +10pt</p>
+        </div>
+      );
+    }
+
+    function App() {
+      const handleBack = () => {
+        window.location.href = '../index.html';
+      };
+
+      return <RacingGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

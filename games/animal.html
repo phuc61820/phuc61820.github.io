@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐱 Mèo Vuông Gacha — Game Hub</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(160deg, #0a0010, #1a0a2e, #0a1a0a);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #root {
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ===================== GACHA DATA =====================
+    const GACHA_TIERS = [
+      { id:'common',    name:'Thường',       pct:50,              color:'#94a3b8', bg:'rgba(30,41,59,0.9)',  glow:'#64748b',  icon:'⬜', coinMult:1,      label:'50%'           },
+      { id:'uncommon',  name:'Không Thường', pct:25,              color:'#4ade80', bg:'rgba(5,46,22,0.9)',   glow:'#22c55e',  icon:'🟩', coinMult:3,      label:'25%'           },
+      { id:'rare',      name:'Hiếm',         pct:10,              color:'#60a5fa', bg:'rgba(12,26,74,0.9)',  glow:'#3b82f6',  icon:'🟦', coinMult:10,     label:'10%'           },
+      { id:'epic',      name:'Sử Thi',       pct:5,               color:'#c084fc', bg:'rgba(30,27,75,0.9)', glow:'#7c3aed',  icon:'🟪', coinMult:30,     label:'5%'            },
+      { id:'legendary', name:'Huyền Thoại',  pct:1,               color:'#fbbf24', bg:'rgba(66,32,6,0.9)',  glow:'#f59e0b',  icon:'🟨', coinMult:100,    label:'1%'            },
+      { id:'mythic',    name:'Thần Thoại',   pct:0.3,             color:'#f87171', bg:'rgba(69,10,10,0.9)', glow:'#ef4444',  icon:'🔶', coinMult:500,    label:'0.3%'          },
+      { id:'divine',    name:'⚡ THẦN THÁNH',pct:0.00000000001,   color:'#ffffff', bg:'rgba(5,5,5,0.97)',   glow:'#ffffff',  icon:'✨', coinMult:9999999,label:'0.00000000001%'},
+    ];
+
+    const GACHA_ANIMALS = {
+      common:    [{icon:'🐶',n:'Chó'},{icon:'🐱',n:'Mèo'},{icon:'🐰',n:'Thỏ'},{icon:'🐸',n:'Ếch'},{icon:'🐔',n:'Gà'},{icon:'🐷',n:'Heo'},{icon:'🦆',n:'Vịt'},{icon:'🐢',n:'Rùa'},{icon:'🐹',n:'Hamster'},{icon:'🐭',n:'Chuột'}],
+      uncommon:  [{icon:'🐼',n:'Gấu Trúc'},{icon:'🦊',n:'Cáo'},{icon:'🦝',n:'Gấu Mèo'},{icon:'🐨',n:'Koala'},{icon:'🦦',n:'Rái Cá'},{icon:'🦥',n:'Lười'},{icon:'🦔',n:'Nhím'}],
+      rare:      [{icon:'🐯',n:'Hổ'},{icon:'🦁',n:'Sư Tử'},{icon:'🐺',n:'Sói'},{icon:'🦌',n:'Nai Sừng Tấm'},{icon:'🐻',n:'Gấu Nâu'},{icon:'🦘',n:'Kangaroo'}],
+      epic:      [{icon:'🦋',n:'Bướm Phượng'},{icon:'🦚',n:'Công Hoàng'},{icon:'🦜',n:'Vẹt Thần'},{icon:'🦩',n:'Hồng Hạc'},{icon:'🦅',n:'Đại Bàng'}],
+      legendary: [{icon:'🦄',n:'Kỳ Lân'},{icon:'🐉',n:'Rồng Vàng'},{icon:'🌙',n:'Thỏ Ngọc Hằng Nga'},{icon:'🔱',n:'Thần Biển'}],
+      mythic:    [{icon:'⚡🦁',n:'Sư Tử Sét'},{icon:'🌋🐉',n:'Rồng Núi Lửa'},{icon:'🌌🦄',n:'Kỳ Lân Vũ Trụ'}],
+      divine:    [{icon:'🌈🌟✨',n:'THẦN TỐI THƯỢNG — Đấng Tạo Hóa'}],
+    };
+
+    function rollGacha() {
+      const r = Math.random() * 100;
+      // divine is so rare we need to check separately
+      if (Math.random() < 0.0000000000001) {
+        const pool = GACHA_ANIMALS.divine;
+        return { tier: GACHA_TIERS[6], animal: pool[0] };
+      }
+      const normalTiers = GACHA_TIERS.slice(0,6);
+      const total = normalTiers.reduce((s,t)=>s+t.pct,0);
+      let acc=0, rv=Math.random()*total;
+      for (const tier of normalTiers) {
+        acc+=tier.pct;
+        if(rv<acc){
+          const pool=GACHA_ANIMALS[tier.id];
+          return {tier,animal:pool[Math.floor(Math.random()*pool.length)]};
+        }
+      }
+      return {tier:GACHA_TIERS[0],animal:GACHA_ANIMALS.common[0]};
+    }
+
+    // ===================== ANIMAL TAP GAME =====================
+    function AnimalTapGame({ onBack }) {
+      const [coins, setCoins]         = useState(0);
+      const [totalCoins, setTotalCoins] = useState(0);
+      const [taps, setTaps]           = useState(0);
+      const [coinsPerTap, setCoinsPerTap] = useState(1);
+      const [passiveIncome, setPassiveIncome] = useState(0);
+      const [collection, setCollection] = useState([]);
+      const [lastRoll, setLastRoll]   = useState(null);
+      const [rolling, setRolling]     = useState(false);
+      const [showCollection, setShowCollection] = useState(false);
+      const [pops, setPops]           = useState([]);
+      const [catScale, setCatScale]   = useState(1);
+      const [selectedPet, setSelectedPet] = useState({icon:'🐱', n:'Mèo', tier:null});
+      const [eggAnim, setEggAnim]     = useState(false);
+      const [eggCost, setEggCost]     = useState(10);
+      const [divineAlert, setDivineAlert] = useState(false);
+      const popId = useRef(0);
+
+      // Passive income tick
+      useEffect(()=>{
+        if(passiveIncome<=0) return;
+        const iv=setInterval(()=>{
+          setCoins(c=>c+passiveIncome);
+          setTotalCoins(t=>t+passiveIncome);
+        },1000);
+        return()=>clearInterval(iv);
+      },[passiveIncome]);
+
+      const tapCat = (e) => {
+        const earned = coinsPerTap;
+        setCoins(c=>c+earned);
+        setTotalCoins(t=>t+earned);
+        setTaps(t=>t+1);
+        setCatScale(0.85);
+        setTimeout(()=>setCatScale(1),100);
+        const pid=popId.current++;
+        const rect=e.currentTarget.getBoundingClientRect();
+        setPops(p=>[...p,{id:pid,x:e.clientX-rect.left,y:e.clientY-rect.top,text:`+${earned}`}]);
+        setTimeout(()=>setPops(p=>p.filter(x=>x.id!==pid)),700);
+      };
+
+      const buyEgg = (multi=1) => {
+        const cost=eggCost*multi;
+        if(coins<cost||rolling) return;
+        setCoins(c=>c-cost);
+        setRolling(true);
+        setEggAnim(true);
+        setTimeout(()=>setEggAnim(false),400);
+        setTimeout(()=>{
+          const results=Array.from({length:multi},()=>rollGacha());
+          const last=results[results.length-1];
+          setLastRoll(last);
+          if(last.tier.id==='divine'){setDivineAlert(true);setTimeout(()=>setDivineAlert(false),5000);}
+          // Auto-select if higher tier than current
+          const tierOrder=['common','uncommon','rare','epic','legendary','mythic','divine'];
+          const currentTierIdx = selectedPet.tier ? tierOrder.indexOf(selectedPet.tier.id) : -1;
+          const newTierIdx = tierOrder.indexOf(last.tier.id);
+          if (newTierIdx > currentTierIdx) {
+            setSelectedPet({icon:last.animal.icon, n:last.animal.n, tier:last.tier});
+          }
+          setCollection(prev=>{
+            let updated=[...prev];
+            for(const res of results){
+              const key=res.tier.id+res.animal.n;
+              const idx=updated.findIndex(x=>x.key===key);
+              if(idx>=0) updated[idx]={...updated[idx],count:updated[idx].count+1};
+              else updated.push({key,tier:res.tier,animal:res.animal,count:1});
+            }
+            // update passive income & coinsPerTap
+            const totalMult=updated.reduce((s,x)=>s+x.tier.coinMult*x.count,0);
+            setPassiveIncome(Math.floor(totalMult/10));
+            setCoinsPerTap(Math.max(1,Math.floor(1+updated.length*0.5+updated.filter(x=>x.tier.id!=='common').length*2)));
+            return updated;
+          });
+          setRolling(false);
+        },600);
+      };
+
+      const totalAnimals=collection.reduce((s,x)=>s+x.count,0);
+      const canBuy1=coins>=eggCost&&!rolling;
+      const canBuy10=coins>=eggCost*10&&!rolling;
+      const canBuy100=coins>=eggCost*100&&!rolling;
+
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0a0010,#1a0a2e,#0a1a0a)',display:'flex',flexDirection:'column',alignItems:'center',padding:12,gap:10,overflowY:'auto'}}>
+
+          {/* Divine alert */}
+          {divineAlert&&(
+            <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:999,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12,cursor:'pointer'}} onClick={()=>setDivineAlert(false)}>
+              <div style={{fontSize:80}}>🌈🌟✨</div>
+              <div style={{color:'white',fontSize:28,fontWeight:900,textAlign:'center',textShadow:'0 0 40px white'}}>⚡ THẦN THÁNH ⚡</div>
+              <div style={{color:'#fbbf24',fontSize:16,fontWeight:700}}>Xác suất: 0.00000000001%</div>
+              <div style={{color:'white',fontSize:22,fontWeight:800}}>THẦN TỐI THƯỢNG</div>
+              <div style={{color:'#94a3b8',fontSize:12}}>Bấm để đóng</div>
+            </div>
+          )}
+
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%',maxWidth:380}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <h3 style={{margin:0,color:'#fbbf24',fontSize:15,fontWeight:900}}>🐱 Mèo Vuông Gacha</h3>
+            <div style={{textAlign:'right'}}>
+              <div style={{color:'#fbbf24',fontWeight:900,fontSize:16}}>🪙 {coins.toLocaleString()}</div>
+              {passiveIncome>0&&<div style={{fontSize:9,color:'#22c55e'}}>+{passiveIncome}/giây 💤</div>}
+            </div>
+          </div>
+
+          {/* Cat/Pet clicker */}
+          <div style={{position:'relative'}} onClick={tapCat}>
+            <div style={{
+              width:180,height:180,
+              background: selectedPet.tier
+                ? `linear-gradient(135deg,${selectedPet.tier.bg.replace('rgba(','rgba(').replace(',0.9)',',1)')},${selectedPet.tier.glow}33)`
+                : 'linear-gradient(135deg,#f97316,#fb923c,#fbbf24)',
+              borderRadius:28,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontSize:110, cursor:'pointer',
+              transform:`scale(${catScale})`,
+              transition:'transform 0.1s cubic-bezier(.36,.07,.19,.97)',
+              boxShadow: selectedPet.tier
+                ? `0 8px 40px ${selectedPet.tier.glow}66, 0 0 0 6px ${selectedPet.tier.glow}22`
+                : '0 8px 40px rgba(251,146,60,0.5), 0 0 0 6px rgba(251,191,36,0.15)',
+              border: selectedPet.tier
+                ? `4px solid ${selectedPet.tier.glow}88`
+                : '4px solid rgba(251,191,36,0.5)',
+              userSelect:'none', position:'relative', overflow:'hidden',
+            }}>
+              {selectedPet.icon}
+              {selectedPet.tier && (
+                <div style={{position:'absolute',bottom:6,left:'50%',transform:'translateX(-50%)',fontSize:9,color:selectedPet.tier.color,fontWeight:800,background:'rgba(0,0,0,0.6)',borderRadius:6,padding:'1px 6px',whiteSpace:'nowrap'}}>
+                  {selectedPet.tier.icon} {selectedPet.n}
+                </div>
+              )}
+              <div style={{position:'absolute',top:8,right:16,fontSize:18,opacity:0.4}}>✨</div>
+            </div>
+            {pops.map(p=>(
+              <div key={p.id} style={{position:'absolute',left:p.x-16,top:p.y-24,pointerEvents:'none',color: selectedPet.tier ? selectedPet.tier.color : '#fbbf24',fontSize:16,fontWeight:900,zIndex:20,transform:'translateY(-35px)',opacity:0.95,textShadow:`0 0 8px ${selectedPet.tier?.glow||'#f59e0b'}`,transition:'all 0.7s ease-out'}}>
+                +{p.text}🪙
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:11,color:'#64748b',textAlign:'center'}}>
+            Bấm vào <span style={{color:selectedPet.tier?.color||'#fb923c',fontWeight:700}}>{selectedPet.n}</span> để lấy 🪙
+            {selectedPet.tier && <span style={{color:selectedPet.tier.color,marginLeft:4}}>{selectedPet.tier.icon}</span>}
+          </div>
+
+          {/* Egg section */}
+          <div style={{background:'rgba(255,255,255,0.04)',border:'2px solid rgba(251,191,36,0.2)',borderRadius:20,padding:'14px 16px',textAlign:'center',width:'100%',maxWidth:380}}>
+            <div style={{fontSize:eggAnim?70:60,transition:'font-size 0.2s',marginBottom:6}}>🥚</div>
+            <p style={{margin:'0 0 4px',color:'#fde68a',fontSize:13,fontWeight:800}}>Trứng Bí Ẩn</p>
+            <p style={{margin:'0 0 8px',color:'#64748b',fontSize:10}}>Mua trứng → nhận thú ngẫu nhiên!</p>
+
+            {/* Rarity bars */}
+            <div style={{display:'flex',flexDirection:'column',gap:3,marginBottom:10,textAlign:'left'}}>
+              {GACHA_TIERS.map(t=>(
+                <div key={t.id} style={{display:'flex',alignItems:'center',gap:6}}>
+                  <span style={{width:8,height:8,borderRadius:2,background:t.glow,display:'inline-block',flexShrink:0}}/>
+                  <span style={{fontSize:9,color:t.color,fontWeight:700,minWidth:85}}>{t.name}</span>
+                  <div style={{flex:1,height:5,borderRadius:3,background:'rgba(255,255,255,0.06)'}}>
+                    <div style={{height:'100%',borderRadius:3,background:t.glow,width:`${Math.min(100,(t.pct/50)*100)}%`,opacity:0.7}}/>
+                  </div>
+                  <span style={{fontSize:9,color:t.color,minWidth:70,textAlign:'right'}}>{t.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{display:'flex',gap:8,justifyContent:'center'}}>
+              <button onClick={()=>buyEgg(1)} disabled={!canBuy1} style={{
+                background:canBuy1?'linear-gradient(135deg,#f59e0b,#d97706)':'rgba(255,255,255,0.05)',
+                border:'none',borderRadius:12,padding:'10px 20px',
+                color:canBuy1?'white':'#475569',fontSize:14,fontWeight:900,
+                cursor:canBuy1?'pointer':'default',
+                boxShadow:canBuy1?'0 0 20px rgba(245,158,11,0.4)':'none',
+              }}>
+                🥚 ×1 ({eggCost}🪙)
+              </button>
+              <button onClick={()=>buyEgg(10)} disabled={!canBuy10} style={{
+                background:canBuy10?'linear-gradient(135deg,#7c3aed,#4f46e5)':'rgba(255,255,255,0.05)',
+                border:'none',borderRadius:12,padding:'10px 20px',
+                color:canBuy10?'white':'#475569',fontSize:14,fontWeight:900,
+                cursor:canBuy10?'pointer':'default',
+                boxShadow:canBuy10?'0 0 20px rgba(124,58,237,0.4)':'none',
+              }}>
+                🥚 ×10 ({eggCost*10}🪙)
+              </button>
+              <button onClick={()=>buyEgg(100)} disabled={!canBuy100} style={{
+                background:canBuy100?'linear-gradient(135deg,#dc2626,#f97316)':'rgba(255,255,255,0.05)',
+                border:'none',borderRadius:12,padding:'10px 20px',
+                color:canBuy100?'white':'#475569',fontSize:14,fontWeight:900,
+                cursor:canBuy100?'pointer':'default',
+                boxShadow:canBuy100?'0 0 20px rgba(220,38,38,0.5)':'none',
+              }}>
+                🥚 ×100 ({(eggCost*100).toLocaleString()}🪙)
+              </button>
+            </div>
+          </div>
+
+          {/* Last roll */}
+          {lastRoll&&(
+            <div style={{
+              background:lastRoll.tier.bg,
+              border:`2px solid ${lastRoll.tier.glow}`,
+              borderRadius:16,padding:'14px 20px',textAlign:'center',width:'100%',maxWidth:380,
+              boxShadow:`0 0 40px ${lastRoll.tier.glow}66`,
+            }}>
+              <p style={{margin:'0 0 2px',fontSize:11,color:lastRoll.tier.color,fontWeight:800,letterSpacing:2}}>{lastRoll.tier.icon} {lastRoll.tier.name.toUpperCase()}</p>
+              <div style={{fontSize:64}}>{lastRoll.animal.icon}</div>
+              <p style={{margin:'4px 0 0',color:'white',fontWeight:900,fontSize:18}}>{lastRoll.animal.n}</p>
+              <p style={{margin:'4px 0 0',fontSize:10,color:lastRoll.tier.color}}>💰 +{lastRoll.tier.coinMult}🪙 thụ động/10s</p>
+            </div>
+          )}
+
+          {/* Collection toggle */}
+          <button onClick={()=>setShowCollection(p=>!p)} style={{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'8px 20px',color:'#94a3b8',fontSize:12,cursor:'pointer',fontWeight:700,width:'100%',maxWidth:380}}>
+            📚 Bộ Sưu Tập — {collection.length} loài / {totalAnimals} con {showCollection?'▲':'▼'}
+          </button>
+
+          {showCollection&&(
+            <div style={{width:'100%',maxWidth:380,background:'rgba(0,0,0,0.4)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:14,padding:'10px'}}>
+              <p style={{margin:'0 0 8px',fontSize:10,color:'#64748b'}}>👆 Bấm vào sinh vật để chọn làm thú cưng!</p>
+              {GACHA_TIERS.map(tier=>{
+                const items=collection.filter(x=>x.tier.id===tier.id);
+                if(!items.length) return null;
+                return(
+                  <div key={tier.id} style={{marginBottom:10}}>
+                    <div style={{fontSize:10,fontWeight:800,color:tier.color,marginBottom:5,display:'flex',gap:6,alignItems:'center'}}>
+                      {tier.icon} {tier.name} <span style={{color:'#64748b'}}>({items.reduce((s,x)=>s+x.count,0)} con)</span>
+                    </div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+                      {items.map(item=>{
+                        const isActive = selectedPet.n===item.animal.n && selectedPet.icon===item.animal.icon;
+                        return(
+                          <div key={item.key}
+                            onClick={()=>setSelectedPet({icon:item.animal.icon, n:item.animal.n, tier:item.tier})}
+                            style={{
+                              background: isActive ? `${tier.glow}33` : tier.bg,
+                              border:`2px solid ${isActive?tier.glow:tier.glow+'44'}`,
+                              borderRadius:10,padding:'6px 8px',textAlign:'center',minWidth:60,
+                              cursor:'pointer',
+                              boxShadow: isActive ? `0 0 16px ${tier.glow}88` : `0 0 8px ${tier.glow}22`,
+                              transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                              transition:'all 0.15s',
+                            }}
+                          >
+                            <div style={{fontSize:24}}>{item.animal.icon}</div>
+                            <div style={{fontSize:8,color:tier.color,fontWeight:700,marginTop:2}}>{item.animal.n}</div>
+                            <div style={{fontSize:8,color:'#64748b'}}>×{item.count}</div>
+                            {isActive && <div style={{fontSize:7,color:tier.color,fontWeight:800}}>✓ Đang dùng</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {!collection.length&&<p style={{color:'#475569',fontSize:11,textAlign:'center',margin:0}}>Chưa có thú nào. Mua trứng đi! 🥚</p>}
+            </div>
+          )}
+
+          {/* Footer stats */}
+          <div style={{display:'flex',gap:14,fontSize:10,color:'#475569',paddingBottom:10}}>
+            <span>🪙 Tổng: {totalCoins.toLocaleString()}</span>
+            <span>📚 {collection.length} loài</span>
+            <span>🥚 {totalAnimals} con</span>
+          </div>
+        </div>
+      );
+    }
+
+    // ===================== APP =====================
+    function App() {
+      const handleBack = () => {
+        window.location.href = '../index.html';
+      };
+
+      return <AnimalTapGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

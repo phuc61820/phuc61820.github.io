@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏨 Khách Sạn Huyền Thoại — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(160deg, #0f0c29, #1e1b4b);
+      min-height: 100vh;
+      color: #e2e8f0;
+    }
+    #root {
+      min-height: 100vh;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(165,180,252,0.3);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ===================== KHÁCH SẠN HUYỀN THOẠI =====================
+    const ROOM_TYPES = [
+      { id:'standard', name:'Phòng Tiêu Chuẩn', icon:'🛏️', cost:500,    income:50,   time:10, star:1, capacity:2, desc:'Phòng đơn giản' },
+      { id:'deluxe',   name:'Phòng Deluxe',      icon:'🛎️', cost:2000,   income:200,  time:15, star:2, capacity:2, desc:'Phòng tiện nghi' },
+      { id:'suite',    name:'Phòng Suite',        icon:'🛋️', cost:8000,   income:800,  time:20, star:3, capacity:3, desc:'Phòng cao cấp' },
+      { id:'vip',      name:'Phòng VIP',          icon:'👑', cost:30000,  income:3000, time:25, star:4, capacity:4, desc:'Phòng dành cho VIP' },
+      { id:'penthouse',name:'Penthouse',          icon:'🌆', cost:150000, income:20000,time:40, star:5, capacity:6, desc:'Tầng thượng sang trọng' },
+      { id:'palace',   name:'Cung Điện',          icon:'🏰', cost:2000000,income:500000,time:60,star:6,capacity:10,desc:'Đỉnh cao xa xỉ' },
+    ];
+
+    const STAFF_TYPES = [
+      { id:'cleaner',  name:'Lao Công',     icon:'🧹', cost:300,    salary:10,   effect:'quality+1',  desc:'Tăng chất lượng phòng' },
+      { id:'waiter',   name:'Phục Vụ',      icon:'🍽️', cost:800,    salary:25,   effect:'income+10%', desc:'+10% thu nhập' },
+      { id:'chef',     name:'Đầu Bếp',      icon:'👨‍🍳',cost:2000,   salary:60,   effect:'income+20%', desc:'+20% thu nhập từ ẩm thực' },
+      { id:'security', name:'Bảo Vệ',       icon:'💂', cost:1500,   salary:40,   effect:'rating+1',   desc:'Tăng đánh giá khách sạn' },
+      { id:'manager',  name:'Quản Lý',      icon:'👔', cost:10000,  salary:200,  effect:'income+30%', desc:'+30% thu nhập tổng' },
+      { id:'concierge',name:'Lễ Tân VIP',   icon:'🎩', cost:50000,  salary:800,  effect:'vip+50%',    desc:'+50% thu từ phòng VIP+' },
+    ];
+
+    const FACILITIES = [
+      { id:'pool',     name:'Hồ Bơi',       icon:'🏊', cost:5000,    incomeBonus:100,  desc:'Khách sẵn sàng trả thêm' },
+      { id:'spa',      name:'Spa',           icon:'💆', cost:15000,   incomeBonus:300,  desc:'Dịch vụ thư giãn cao cấp' },
+      { id:'gym',      name:'Phòng Gym',     icon:'🏋️', cost:8000,    incomeBonus:150,  desc:'Tiện ích thể thao' },
+      { id:'bar',      name:'Bar & Nhà Hàng',icon:'🍸', cost:20000,   incomeBonus:500,  desc:'Doanh thu F&B' },
+      { id:'casino',   name:'Casino',        icon:'🎰', cost:200000,  incomeBonus:5000, desc:'Hốt tiền từ cờ bạc' },
+      { id:'helipad',  name:'Sân Bay Trực Thăng',icon:'🚁',cost:1000000,incomeBonus:50000,desc:'Đón khách siêu VIP' },
+    ];
+
+    const GUEST_TYPES = [
+      { icon:'👨‍👩‍👧', name:'Gia Đình',    tip:1.0, prefer:'standard' },
+      { icon:'💼', name:'Doanh Nhân',   tip:1.5, prefer:'deluxe'  },
+      { icon:'💑', name:'Cặp Đôi',      tip:1.3, prefer:'suite'   },
+      { icon:'👑', name:'Khách VIP',    tip:3.0, prefer:'vip'     },
+      { icon:'🌟', name:'Ngôi Sao',     tip:5.0, prefer:'penthouse'},
+      { icon:'🤴', name:'Hoàng Gia',    tip:10,  prefer:'palace'  },
+    ];
+
+    function fmtH(n){
+      if(n>=1e12)return(n/1e12).toFixed(1)+'T';
+      if(n>=1e9)return(n/1e9).toFixed(1)+'B';
+      if(n>=1e6)return(n/1e6).toFixed(1)+'M';
+      if(n>=1e3)return(n/1e3).toFixed(1)+'K';
+      return Math.floor(n).toLocaleString();
+    }
+
+    function HotelGame({ onBack }) {
+      const [money, setMoney]         = useState(3e6);
+      const [totalEarned, setTotalEarned] = useState(0);
+      const [rooms, setRooms]         = useState([]); // [{id, type, occupied, checkoutIn, guest}]
+      const [staff, setStaff]         = useState({}); // {staffId: count}
+      const [facilities, setFacilities] = useState({}); // {facId: true}
+      const [guests, setGuests]       = useState([]); // active guest cards
+      const [rating, setRating]       = useState(1);
+      const [day, setDay]             = useState(1);
+      const [tab, setTab]             = useState('hotel');
+      const [log, setLog]             = useState([]);
+      const [totalGuests, setTotalGuests] = useState(0);
+      const roomIdRef = useRef(0);
+      const guestIdRef = useRef(0);
+
+      const addLog = (msg) => setLog(p => [msg,...p].slice(0,15));
+
+      // Calculate income multiplier from staff
+      const incomeMultiplier = () => {
+        let mult = 1;
+        if((staff.waiter||0)>0) mult += 0.10*(staff.waiter||0);
+        if((staff.chef||0)>0)   mult += 0.20*(staff.chef||0);
+        if((staff.manager||0)>0) mult += 0.30*(staff.manager||0);
+        return Math.min(mult, 10);
+      };
+
+      const facilityBonus = () => Object.keys(facilities).reduce((s,fid)=>{
+        const f=FACILITIES.find(x=>x.id===fid); return s+(f?f.incomeBonus:0);
+      },0);
+
+      const totalSalary = () => Object.entries(staff).reduce((s,[sid,cnt])=>{
+        const st=STAFF_TYPES.find(x=>x.id===sid); return s+(st?st.salary*cnt:0);
+      },0);
+
+      // Income tick every 5 seconds - passive income from facilities
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          const occupiedRooms=rooms.filter(r=>r.occupied);
+          const mult=incomeMultiplier();
+          const bonus=facilityBonus();
+          const salary=totalSalary();
+          let income=0;
+          // Each occupied room pays per tick
+          occupiedRooms.forEach(r=>{
+            const rt=ROOM_TYPES.find(x=>x.id===r.type);
+            const guestTip=r.guest?r.guest.tip:1;
+            const vipBonus=(staff.concierge||0)>0&&r.star>=4?1.5:1;
+            income+=rt.income*mult*guestTip*vipBonus;
+          });
+          income+=bonus;
+          income-=salary;
+          income=Math.max(0,Math.floor(income));
+          if(income>0){
+            setMoney(m=>m+income);
+            setTotalEarned(t=>t+income);
+            addLog(`💰 Thu ${fmtH(income)}₫ từ ${occupiedRooms.length} phòng`);
+          }
+        },5000);
+        return()=>clearInterval(iv);
+      },[rooms,staff,facilities]);
+
+      // Guest checkout timer
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          setRooms(prev=>prev.map(r=>{
+            if(!r.occupied) return r;
+            if(r.checkoutIn<=1){
+              // Pay on checkout
+              const rt=ROOM_TYPES.find(x=>x.id===r.type);
+              const guestTip=r.guest?r.guest.tip:1;
+              const checkout=Math.floor(rt.income*5*guestTip);
+              setMoney(m=>m+checkout);
+              setTotalEarned(t=>t+checkout);
+              addLog(`${r.guest?.icon||'👤'} ${r.guest?.name||'Khách'} check-out P.${r.roomNum} — trả ${fmtH(checkout)}₫`);
+              // Auto check-in new guest
+              const maxRat=Math.min(GUEST_TYPES.length-1,Math.floor(rating/2));
+              const gType=GUEST_TYPES[Math.floor(Math.random()*(maxRat+1))];
+              const stayTime=rt.time+Math.floor(Math.random()*rt.time);
+              setTotalGuests(g=>g+1);
+              return {...r, occupied:true, guest:gType, checkoutIn:stayTime};
+            }
+            return {...r, checkoutIn:r.checkoutIn-1};
+          }));
+        },1000);
+        return()=>clearInterval(iv);
+      },[rating]);
+
+      // Random guest arrivals
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          const emptyRooms=rooms.filter(r=>!r.occupied);
+          if(!emptyRooms.length) return;
+          const maxRating=Math.min(GUEST_TYPES.length-1,Math.floor(rating/2));
+          const gType=GUEST_TYPES[Math.floor(Math.random()*(maxRating+1))];
+          // pick matching room
+          const prefRoom=emptyRooms.find(r=>r.type===gType.prefer)||emptyRooms[0];
+          const rt=ROOM_TYPES.find(x=>x.id===prefRoom.type);
+          const stayTime=rt.time+Math.floor(Math.random()*rt.time);
+          setRooms(prev=>prev.map(r=>r.id===prefRoom.id?{...r,occupied:true,guest:gType,checkoutIn:stayTime}:r));
+          setTotalGuests(g=>g+1);
+          addLog(`${gType.icon} ${gType.name} check-in phòng ${prefRoom.roomNum}!`);
+        }, Math.max(3000, 8000-rating*500));
+        return()=>clearInterval(iv);
+      },[rooms,rating]);
+
+      const buildRoom = (rt) => {
+        if(money<rt.cost){addLog(`❌ Cần ${fmtH(rt.cost)}₫ để xây ${rt.name}`);return;}
+        setMoney(m=>m-rt.cost);
+        const id=roomIdRef.current++;
+        const num=rooms.length+101;
+        // Auto-assign a guest immediately
+        const maxRating=Math.min(GUEST_TYPES.length-1,Math.floor(rating/2));
+        const gType=GUEST_TYPES[Math.floor(Math.random()*(maxRating+1))];
+        const stayTime=rt.time+Math.floor(Math.random()*rt.time);
+        setRooms(prev=>[...prev,{id,type:rt.id,star:rt.star,occupied:true,guest:gType,checkoutIn:stayTime,roomNum:num}]);
+        if(rt.star>rating) setRating(rt.star);
+        setTotalGuests(g=>g+1);
+        addLog(`🏗️ Xây xong ${rt.icon}${rt.name} (Phòng ${num}) — ${gType.icon}${gType.name} check-in ngay!`);
+      };
+
+      const hireStaff = (st) => {
+        if(money<st.cost){addLog(`❌ Cần ${fmtH(st.cost)}₫ để thuê ${st.name}`);return;}
+        setMoney(m=>m-st.cost);
+        setStaff(p=>({...p,[st.id]:(p[st.id]||0)+1}));
+        addLog(`${st.icon} Thuê ${st.name} thứ ${(staff[st.id]||0)+1}!`);
+      };
+
+      const buildFacility = (fac) => {
+        if(facilities[fac.id]){addLog(`❌ Đã có ${fac.name} rồi`);return;}
+        if(money<fac.cost){addLog(`❌ Cần ${fmtH(fac.cost)}₫`);return;}
+        setMoney(m=>m-fac.cost);
+        setFacilities(p=>({...p,[fac.id]:true}));
+        addLog(`✨ Xây xong ${fac.icon}${fac.name}! +${fmtH(fac.incomeBonus)}₫/giây`);
+      };
+
+      const occupied=rooms.filter(r=>r.occupied).length;
+      const incPS=Math.floor((rooms.filter(r=>r.occupied).reduce((s,r)=>{
+        const rt=ROOM_TYPES.find(x=>x.id===r.type);return s+rt.income;
+      },0)*incomeMultiplier()+facilityBonus()-totalSalary())/12);
+
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0f0c29,#1e1b4b)',display:'flex',flexDirection:'column',padding:10,gap:8}}>
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <div style={{textAlign:'center'}}>
+              <div style={{color:'#a5b4fc',fontWeight:900,fontSize:14}}>🏨 Khách Sạn {'⭐'.repeat(Math.min(rating,6))}</div>
+              <div style={{fontSize:9,color:'#64748b'}}>Ngày {day} • {totalGuests} lượt khách</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{color:'#fbbf24',fontWeight:900,fontSize:15}}>💰 {fmtH(money)}₫</div>
+              <div style={{fontSize:9,color:incPS>=0?'#22c55e':'#f87171'}}>≈{incPS>=0?'+':''}{fmtH(incPS)}/5s</div>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div style={{display:'flex',gap:6}}>
+            {[
+              {v:`${occupied}/${rooms.length}`,l:'🛏️ Phòng'},
+              {v:Object.values(staff).reduce((s,c)=>s+c,0),l:'👔 Nhân Viên'},
+              {v:Object.keys(facilities).length,l:'✨ Tiện Ích'},
+              {v:fmtH(totalEarned),l:'💵 Tổng thu'},
+            ].map((s,i)=>(
+              <div key={i} style={{flex:1,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(165,180,252,0.1)',borderRadius:8,padding:'5px',textAlign:'center'}}>
+                <div style={{color:'#a5b4fc',fontWeight:900,fontSize:13}}>{s.v}</div>
+                <div style={{color:'#64748b',fontSize:8}}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tabs */}
+          <div style={{display:'flex',gap:4}}>
+            {[['hotel','🏨 Khách Sạn'],['build','🏗️ Xây Phòng'],['staff','👔 Nhân Viên'],['facility','✨ Tiện Ích']].map(([id,label])=>(
+              <button key={id} onClick={()=>setTab(id)} style={{
+                flex:1,background:tab===id?'rgba(165,180,252,0.15)':'rgba(255,255,255,0.04)',
+                border:`1px solid ${tab===id?'rgba(165,180,252,0.4)':'rgba(255,255,255,0.07)'}`,
+                borderRadius:8,padding:'5px 0',color:tab===id?'#a5b4fc':'#64748b',
+                fontSize:10,fontWeight:700,cursor:'pointer',
+              }}>{label}</button>
+            ))}
+          </div>
+
+          {/* Hotel view */}
+          {tab==='hotel' && (
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              {rooms.length===0 && (
+                <div style={{textAlign:'center',color:'#475569',padding:'40px 0'}}>
+                  <div style={{fontSize:48}}>🏗️</div>
+                  <p>Chưa có phòng nào! Vào tab Xây Phòng để bắt đầu.</p>
+                </div>
+              )}
+              {rooms.map(room=>{
+                const rt=ROOM_TYPES.find(x=>x.id===room.type);
+                return(
+                  <div key={room.id} style={{
+                    background: room.occupied?'rgba(165,180,252,0.08)':'rgba(0,0,0,0.2)',
+                    border:`1px solid ${room.occupied?'rgba(165,180,252,0.3)':'rgba(255,255,255,0.05)'}`,
+                    borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10,
+                  }}>
+                    <span style={{fontSize:28}}>{rt.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>Phòng {room.roomNum} — {rt.name}</span>
+                        <span style={{fontSize:9,color:'#fbbf24'}}>{'⭐'.repeat(rt.star)}</span>
+                      </div>
+                      {room.occupied?(
+                        <div>
+                          <div style={{fontSize:10,color:'#a5b4fc'}}>{room.guest?.icon} {room.guest?.name} đang ở</div>
+                          <div style={{height:4,borderRadius:2,background:'rgba(255,255,255,0.08)',marginTop:3}}>
+                            <div style={{height:'100%',borderRadius:2,background:'#818cf8',width:`${(room.checkoutIn/(rt.time*2))*100}%`,transition:'width 1s'}}/>
+                          </div>
+                          <div style={{fontSize:8,color:'#64748b'}}>Checkout trong {room.checkoutIn}s • +{fmtH(rt.income)}₫/lần</div>
+                        </div>
+                      ):(
+                        <div style={{fontSize:10,color:'#64748b'}}>Trống — đang chờ khách...</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Build rooms */}
+          {tab==='build' && (
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              {ROOM_TYPES.map(rt=>{
+                const count=rooms.filter(r=>r.type===rt.id).length;
+                const canBuy=money>=rt.cost;
+                return(
+                  <div key={rt.id} style={{background:canBuy?'rgba(165,180,252,0.06)':'rgba(0,0,0,0.2)',border:`1px solid ${canBuy?'rgba(165,180,252,0.2)':'rgba(255,255,255,0.04)'}`,borderRadius:12,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:30}}>{rt.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:12,fontWeight:700,color:canBuy?'#e2e8f0':'#64748b'}}>{rt.name} {'⭐'.repeat(rt.star)}</span>
+                        <span style={{fontSize:10,color:'#fbbf24',fontWeight:700}}>×{count} đã xây</span>
+                      </div>
+                      <div style={{fontSize:9,color:'#64748b'}}>{rt.desc} • +{fmtH(rt.income)}₫/lần</div>
+                    </div>
+                    <button onClick={()=>buildRoom(rt)} disabled={!canBuy} style={{background:canBuy?'linear-gradient(135deg,#4f46e5,#7c3aed)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'6px 12px',color:canBuy?'white':'#475569',fontSize:11,fontWeight:800,cursor:canBuy?'pointer':'default',whiteSpace:'nowrap'}}>{fmtH(rt.cost)}₫</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Staff */}
+          {tab==='staff' && (
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              <p style={{margin:'0 0 4px',fontSize:10,color:'#64748b'}}>Lương/5s: -{fmtH(totalSalary()/12)}₫ &nbsp;|&nbsp; Hệ số thu nhập: ×{incomeMultiplier().toFixed(1)}</p>
+              {STAFF_TYPES.map(st=>{
+                const count=staff[st.id]||0;
+                const canBuy=money>=st.cost;
+                return(
+                  <div key={st.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:28}}>{st.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{st.name}</span>
+                        <span style={{fontSize:10,color:'#a5b4fc',fontWeight:700}}>×{count}</span>
+                      </div>
+                      <div style={{fontSize:9,color:'#64748b'}}>{st.desc} • lương {fmtH(st.salary)}₫/5s</div>
+                    </div>
+                    <button onClick={()=>hireStaff(st)} disabled={!canBuy} style={{background:canBuy?'linear-gradient(135deg,#0ea5e9,#0284c7)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'6px 10px',color:canBuy?'white':'#475569',fontSize:10,fontWeight:800,cursor:canBuy?'pointer':'default',whiteSpace:'nowrap'}}>{fmtH(st.cost)}₫</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Facilities */}
+          {tab==='facility' && (
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              {FACILITIES.map(fac=>{
+                const owned=facilities[fac.id];
+                const canBuy=money>=fac.cost&&!owned;
+                return(
+                  <div key={fac.id} style={{background:owned?'rgba(251,191,36,0.08)':'rgba(0,0,0,0.2)',border:`1px solid ${owned?'rgba(251,191,36,0.25)':'rgba(255,255,255,0.05)'}`,borderRadius:12,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:30}}>{fac.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:11,fontWeight:700,color:owned?'#fbbf24':'#e2e8f0'}}>{fac.name}</span>
+                        {owned&&<span style={{fontSize:10,color:'#22c55e',fontWeight:700}}>✓ Đã xây</span>}
+                      </div>
+                      <div style={{fontSize:9,color:'#64748b'}}>{fac.desc} • +{fmtH(fac.incomeBonus)}₫/5s</div>
+                    </div>
+                    {!owned&&<button onClick={()=>buildFacility(fac)} disabled={!canBuy} style={{background:canBuy?'linear-gradient(135deg,#f59e0b,#d97706)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'6px 10px',color:canBuy?'white':'#475569',fontSize:10,fontWeight:800,cursor:canBuy?'pointer':'default',whiteSpace:'nowrap'}}>{fmtH(fac.cost)}₫</button>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Log */}
+          <div style={{background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'5px 8px',maxHeight:65,overflowY:'auto'}}>
+            {log.slice(0,4).map((l,i)=><div key={i} style={{fontSize:9,color:'#64748b',lineHeight:1.6}}>{l}</div>)}
+            {!log.length&&<div style={{fontSize:9,color:'#475569'}}>Nhật ký khách sạn trống...</div>}
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const handleBack = () => {
+        window.location.href = "../index.html";
+      };
+
+      return <HotelGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

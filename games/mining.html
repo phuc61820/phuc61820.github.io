@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⛏️ Đào Mỏ Tỷ Phú — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(160deg, #1c0a00, #3d1a00);
+      min-height: 100vh;
+      color: #e2e8f0;
+    }
+    #root {
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // === MINING GAME CONSTANTS ===
+    const MINERALS = [
+      { id:'dirt',   name:'Đất',         icon:'🟫', depth:[0,3],   rarity:0.80, value:1,        color:'#92400e' },
+      { id:'stone',  name:'Đá',          icon:'⬛', depth:[1,8],   rarity:0.60, value:3,        color:'#6b7280' },
+      { id:'coal',   name:'Than Đá',     icon:'🫙', depth:[2,10],  rarity:0.30, value:10,       color:'#1f2937' },
+      { id:'iron',   name:'Quặng Sắt',   icon:'🔩', depth:[3,12],  rarity:0.20, value:25,       color:'#b45309' },
+      { id:'copper', name:'Đồng',        icon:'🟤', depth:[4,14],  rarity:0.15, value:50,       color:'#d97706' },
+      { id:'silver', name:'Bạc',         icon:'🪨', depth:[6,16],  rarity:0.10, value:150,      color:'#9ca3af' },
+      { id:'gold',   name:'Vàng',        icon:'✨', depth:[8,18],  rarity:0.06, value:400,      color:'#f59e0b' },
+      { id:'ruby',   name:'Ruby',        icon:'💎', depth:[10,20], rarity:0.04, value:1000,     color:'#ef4444' },
+      { id:'emerald',name:'Ngọc Lục Bảo',icon:'💚', depth:[12,22], rarity:0.025,value:3000,     color:'#22c55e' },
+      { id:'diamond',name:'Kim Cương',   icon:'💠', depth:[15,25], rarity:0.015,value:10000,    color:'#60a5fa' },
+      { id:'mythril',name:'Mythril',     icon:'🔮', depth:[18,28], rarity:0.008,value:50000,    color:'#a855f7' },
+      { id:'orichalcum',name:'Orichalcum',icon:'🌟',depth:[22,30], rarity:0.003,value:200000,   color:'#fbbf24' },
+      { id:'cosmic', name:'Tinh Chất Vũ Trụ',icon:'🌌',depth:[28,35],rarity:0.001,value:5000000,color:'#818cf8' },
+    ];
+
+    const PICKAXES = [
+      { id:'wood',   name:'Cuốc Gỗ',     icon:'🪓', cost:0,        dmg:1,   speed:2000, desc:'Dụng cụ cơ bản' },
+      { id:'stone',  name:'Cuốc Đá',     icon:'⛏️', cost:200,      dmg:2,   speed:1700, desc:'Bền hơn một chút' },
+      { id:'iron',   name:'Cuốc Sắt',    icon:'🔨', cost:1000,     dmg:4,   speed:1400, desc:'Đào nhanh hơn' },
+      { id:'gold',   name:'Cuốc Vàng',   icon:'✨', cost:5000,     dmg:8,   speed:1100, desc:'Sáng lấp lánh' },
+      { id:'diamond',name:'Cuốc Kim Cương',icon:'💠',cost:30000,   dmg:16,  speed:800,  desc:'Cực kỳ bền' },
+      { id:'mythril',name:'Cuốc Mythril',icon:'🔮', cost:200000,   dmg:40,  speed:500,  desc:'Huyền thoại' },
+      { id:'laser',  name:'Cuốc Laser',  icon:'⚡', cost:2000000,  dmg:100, speed:200,  desc:'Công nghệ tương lai' },
+      { id:'cosmic', name:'Cuốc Vũ Trụ',icon:'🌌', cost:100000000,dmg:1000,speed:100,  desc:'Xuyên không gian' },
+    ];
+
+    const MINE_WORKERS = [
+      { id:'junior', name:'Phu Mỏ Mới',   icon:'👷', cost:500,    passive:1,   desc:'+1 tài nguyên/5s' },
+      { id:'senior', name:'Phu Mỏ Lão Luyện',icon:'⛑️',cost:3000, passive:5,   desc:'+5 tài nguyên/5s' },
+      { id:'expert', name:'Chuyên Gia Mỏ',icon:'🧑‍🔬',cost:15000, passive:20,  desc:'+20 tài nguyên/5s' },
+      { id:'machine',name:'Máy Đào',      icon:'🚜', cost:100000,  passive:100, desc:'+100 tài nguyên/5s' },
+      { id:'robot',  name:'Robot Đào Mỏ', icon:'🤖', cost:1000000, passive:500, desc:'+500 tài nguyên/5s' },
+    ];
+
+    const MINE_H=35, MINE_W=12, CELL_M=32;
+
+    function generateMineLayer(depth) {
+      return Array(MINE_W).fill(null).map(()=>{
+        const r=Math.random();
+        let acc=0;
+        for(const m of [...MINERALS].reverse()){
+          if(depth>=m.depth[0]&&depth<=m.depth[1]){
+            acc+=m.rarity;
+            if(r<acc) return {mineral:m, hp:3+Math.floor(depth/3), maxHp:3+Math.floor(depth/3)};
+          }
+        }
+        return {mineral:MINERALS[1], hp:2, maxHp:2}; // stone default
+      });
+    }
+
+    function MiningGame({ onBack }) {
+      const [money, setMoney]         = useState(0);
+      const [totalEarned, setTotalEarned] = useState(0);
+      const [pickaxeIdx, setPickaxeIdx] = useState(0);
+      const [workers, setWorkers]   = useState({});
+      const [depth, setDepth]       = useState(0); // current player row
+      const [mine, setMine]         = useState(()=>Array.from({length:MINE_H},(_,r)=>generateMineLayer(r)));
+      const [inventory, setInventory] = useState({}); // {mineralId: count}
+      const [tab, setTab]           = useState('mine');
+      const [digging, setDigging]   = useState(null); // {row,col}
+      const [digProgress, setDigProgress] = useState(0);
+      const [log, setLog]           = useState([]);
+      const [totalMined, setTotalMined] = useState(0);
+      const mineRef = useRef(mine);
+      useEffect(()=>{ mineRef.current=mine; },[mine]);
+      const addLog = m=>setLog(p=>[m,...p].slice(0,10));
+
+      const pickaxe = PICKAXES[pickaxeIdx];
+
+      // Passive income from workers
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          const totalPassive=Object.entries(workers).reduce((s,[wid,cnt])=>{
+            const w=MINE_WORKERS.find(x=>x.id===wid); return s+(w?w.passive*cnt:0);
+          },0);
+          if(!totalPassive) return;
+          // Auto-mine based on current depth
+          let earned=0;
+          const d=depth;
+          const availMinerals=MINERALS.filter(m=>m.depth[0]<=d);
+          const pick=availMinerals[Math.floor(Math.random()*availMinerals.length)]||MINERALS[0];
+          const qty=Math.min(totalPassive, totalPassive);
+          earned=pick.value*qty*0.1;
+          setMoney(m=>m+earned);
+          setTotalEarned(t=>t+earned);
+          setInventory(inv=>({...inv,[pick.id]:(inv[pick.id]||0)+Math.floor(qty*0.1)}));
+          addLog(`⛏️ Phu mỏ khai thác ${Math.floor(qty*0.1)} ${pick.icon}${pick.name}`);
+        },5000);
+        return()=>clearInterval(iv);
+      },[workers,depth]);
+
+      // Dig timer
+      useEffect(()=>{
+        if(!digging) return;
+        const {row,col}=digging;
+        const cell=mineRef.current[row]?.[col];
+        if(!cell||cell.hp<=0){setDigging(null);setDigProgress(0);return;}
+        const speed=pickaxe.speed;
+        const iv=setInterval(()=>{
+          setDigProgress(p=>{
+            const np=p+10;
+            if(np>=100){
+              // Deal damage
+              setMine(prev=>{
+                const nm=prev.map(r=>[...r]);
+                const c=nm[row][col];
+                if(!c){setDigging(null);setDigProgress(0);return prev;}
+                const newHp=c.hp-pickaxe.dmg;
+                if(newHp<=0){
+                  // Collect mineral
+                  const m=c.mineral;
+                  setInventory(inv=>({...inv,[m.id]:(inv[m.id]||0)+1}));
+                  setTotalMined(t=>t+1);
+                  addLog(`✅ Đào được ${m.icon}${m.name}! (+${m.value}₫ khi bán)`);
+                  nm[row][col]=null;
+                  if(row>depth) setDepth(row);
+                  setDigging(null);
+                  return nm;
+                }
+                nm[row][col]={...c,hp:newHp};
+                return nm;
+              });
+              setDigProgress(0);
+              return 0;
+            }
+            return np;
+          });
+        }, speed/10);
+        return()=>clearInterval(iv);
+      },[digging,pickaxe]);
+
+      const clickCell=(row,col)=>{
+        if(digging) return;
+        const cell=mine[row]?.[col];
+        if(!cell) return;
+        // Can only dig adjacent to dug cells or top
+        const accessible=(row===0)||(row>0&&mine[row-1]?.some(c=>c===null))||mine[row]?.slice(0,col).some(c=>c===null)||mine[row]?.slice(col+1).some(c=>c===null);
+        if(!accessible){addLog('❌ Chưa đào tới! Đào các ô phía trên trước.');return;}
+        setDigging({row,col});
+        setDigProgress(0);
+      };
+
+      const sellAll=()=>{
+        let total=0;
+        Object.entries(inventory).forEach(([mid,qty])=>{const m=MINERALS.find(x=>x.id===mid);if(m)total+=m.value*qty;});
+        if(!total){addLog('❌ Không có gì để bán');return;}
+        setMoney(p=>p+total);
+        setTotalEarned(t=>t+total);
+        setInventory({});
+        addLog(`💰 Bán tất cả khoáng sản: +${total.toLocaleString()}₫`);
+      };
+
+      const buyPickaxe=()=>{
+        if(pickaxeIdx>=PICKAXES.length-1){addLog('🏆 Đã có cuốc tốt nhất!');return;}
+        const next=PICKAXES[pickaxeIdx+1];
+        if(money<next.cost){addLog(`❌ Cần ${next.cost.toLocaleString()}₫`);return;}
+        setMoney(m=>m-next.cost);
+        setPickaxeIdx(i=>i+1);
+        addLog(`⛏️ Nâng cấp lên ${next.icon}${next.name}!`);
+      };
+
+      const hireWorker=(w)=>{
+        if(money<w.cost){addLog(`❌ Cần ${w.cost.toLocaleString()}₫`);return;}
+        setMoney(m=>m-w.cost);
+        setWorkers(p=>({...p,[w.id]:(p[w.id]||0)+1}));
+        addLog(`${w.icon} Thuê ${w.name}!`);
+      };
+
+      const inventoryValue=Object.entries(inventory).reduce((s,[mid,qty])=>{const m=MINERALS.find(x=>x.id===mid);return s+(m?m.value*qty:0);},0);
+      const totalWorkerPassive=Object.entries(workers).reduce((s,[wid,cnt])=>{const w=MINE_WORKERS.find(x=>x.id===wid);return s+(w?w.passive*cnt:0);},0);
+
+      // Visible rows centered around depth
+      const visStart=Math.max(0,depth-3);
+      const visEnd=Math.min(MINE_H-1,visStart+10);
+
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#1c0a00,#3d1a00)',display:'flex',flexDirection:'column',padding:10,gap:8}}>
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <h3 style={{margin:0,color:'#f59e0b',fontSize:14,fontWeight:900}}>⛏️ Đào Mỏ Tỷ Phú</h3>
+            <div style={{textAlign:'right'}}><div style={{color:'#fbbf24',fontWeight:900,fontSize:14}}>💰 {money.toLocaleString()}₫</div><div style={{fontSize:9,color:'#64748b'}}>Sâu: {depth}m</div></div>
+          </div>
+
+          {/* Stats */}
+          <div style={{display:'flex',gap:5}}>
+            {[
+              {v:pickaxe.icon+pickaxe.name,l:'⛏️ Cuốc'},
+              {v:totalMined,l:'🪨 Đã Đào'},
+              {v:`+${(inventoryValue).toLocaleString()}`,l:'💎 Kho Hàng'},
+              {v:`${totalWorkerPassive}/5s`,l:'👷 Phu Mỏ'},
+            ].map((s,i)=>(
+              <div key={i} style={{flex:1,background:'rgba(245,158,11,0.06)',border:'1px solid rgba(245,158,11,0.1)',borderRadius:8,padding:'4px',textAlign:'center'}}>
+                <div style={{color:'#f59e0b',fontWeight:900,fontSize:10}}>{s.v}</div>
+                <div style={{color:'#64748b',fontSize:8}}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tabs */}
+          <div style={{display:'flex',gap:4}}>
+            {[['mine','⛏️ Mỏ'],['inventory','💎 Kho'],['upgrade','🔨 Nâng Cấp'],['workers','👷 Phu Mỏ']].map(([id,l])=>(
+              <button key={id} onClick={()=>setTab(id)} style={{flex:1,background:tab===id?'rgba(245,158,11,0.15)':'rgba(255,255,255,0.04)',border:`1px solid ${tab===id?'rgba(245,158,11,0.4)':'rgba(255,255,255,0.07)'}`,borderRadius:8,padding:'5px 0',color:tab===id?'#f59e0b':'#64748b',fontSize:10,fontWeight:700,cursor:'pointer'}}>{l}</button>
+            ))}
+          </div>
+
+          {/* Mine view */}
+          {tab==='mine'&&(
+            <div style={{flex:1,display:'flex',flexDirection:'column',gap:6}}>
+              {/* Digging progress */}
+              {digging&&(
+                <div style={{background:'rgba(245,158,11,0.1)',border:'1px solid rgba(245,158,11,0.25)',borderRadius:8,padding:'6px 10px'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+                    <span style={{color:'#f59e0b',fontSize:11,fontWeight:700}}>⛏️ Đang đào...</span>
+                    <span style={{color:'#f59e0b',fontSize:11}}>{digProgress}%</span>
+                  </div>
+                  <div style={{height:8,borderRadius:4,background:'rgba(255,255,255,0.08)'}}>
+                    <div style={{height:'100%',borderRadius:4,background:'linear-gradient(90deg,#f59e0b,#ef4444)',width:`${digProgress}%`,transition:'width 0.1s'}}/>
+                  </div>
+                </div>
+              )}
+              <p style={{margin:0,fontSize:10,color:'#64748b'}}>Bấm vào ô để đào • Hàng {visStart+1}–{visEnd+1} / {MINE_H} (sâu {visStart}–{visEnd}m)</p>
+              {/* Mine grid */}
+              <div style={{overflowX:'auto',overflowY:'auto',maxHeight:350}}>
+                <div style={{display:'inline-flex',flexDirection:'column',gap:1}}>
+                  {mine.slice(visStart,visEnd+1).map((row,ri)=>{
+                    const absRow=visStart+ri;
+                    return(
+                      <div key={absRow} style={{display:'flex',gap:1,alignItems:'center'}}>
+                        <span style={{fontSize:8,color:'#475569',width:22,flexShrink:0,textAlign:'right'}}>{absRow}m</span>
+                        {row.map((cell,c)=>{
+                          const isDigging=digging?.row===absRow&&digging?.col===c;
+                          return(
+                            <div key={c} onClick={()=>clickCell(absRow,c)}
+                              style={{
+                                width:CELL_M,height:CELL_M,
+                                background:cell?`${cell.mineral.color}cc`:'rgba(0,0,0,0.6)',
+                                border:`1px solid ${isDigging?'#fbbf24':cell?cell.mineral.color+'66':'rgba(0,0,0,0.3)'}`,
+                                borderRadius:3,cursor:cell?'pointer':'default',
+                                display:'flex',alignItems:'center',justifyContent:'center',
+                                fontSize:16,userSelect:'none',
+                                boxShadow:isDigging?'0 0 10px #fbbf24':'none',
+                                position:'relative',
+                              }}>
+                              {cell?(
+                                <>
+                                  {cell.mineral.icon}
+                                  {/* HP bar */}
+                                  <div style={{position:'absolute',bottom:1,left:1,right:1,height:3,borderRadius:1,background:'rgba(0,0,0,0.4)'}}>
+                                    <div style={{height:'100%',borderRadius:1,background:'#22c55e',width:`${(cell.hp/cell.maxHp)*100}%`}}/>
+                                  </div>
+                                </>
+                              ):(<span style={{fontSize:10,opacity:0.3}}>✓</span>)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={{display:'flex',gap:6}}>
+                <button onClick={()=>setDepth(d=>Math.max(0,d-1))} style={{flex:1,background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'6px',color:'#e2e8f0',fontSize:12,cursor:'pointer'}}>⬆ Lên</button>
+                <button onClick={()=>setDepth(d=>Math.min(MINE_H-1,d+1))} style={{flex:1,background:'rgba(245,158,11,0.1)',border:'1px solid rgba(245,158,11,0.25)',borderRadius:8,padding:'6px',color:'#f59e0b',fontSize:12,cursor:'pointer'}}>⬇ Xuống Sâu</button>
+              </div>
+            </div>
+          )}
+
+          {/* Inventory */}
+          {tab==='inventory'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <span style={{fontSize:11,color:'#e2e8f0',fontWeight:700}}>Kho: {inventoryValue.toLocaleString()}₫</span>
+                <button onClick={sellAll} style={{background:'linear-gradient(135deg,#22c55e,#16a34a)',border:'none',borderRadius:8,padding:'5px 14px',color:'white',fontSize:11,fontWeight:800,cursor:'pointer'}}>💰 Bán Tất Cả</button>
+              </div>
+              {MINERALS.map(m=>{
+                const qty=inventory[m.id]||0;
+                if(!qty) return null;
+                return(<div key={m.id} style={{background:`${m.color}18`,border:`1px solid ${m.color}44`,borderRadius:10,padding:'7px 12px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:26}}>{m.icon}</span>
+                  <div style={{flex:1}}><div style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{m.name}</div><div style={{fontSize:9,color:'#64748b'}}>×{qty} • {m.value.toLocaleString()}₫/cái</div></div>
+                  <span style={{color:'#fbbf24',fontWeight:800,fontSize:11}}>{(m.value*qty).toLocaleString()}₫</span>
+                </div>);
+              })}
+              {!Object.values(inventory).some(v=>v>0)&&<div style={{textAlign:'center',color:'#475569',padding:30}}>Chưa có gì. Đào mỏ đi! ⛏️</div>}
+            </div>
+          )}
+
+          {/* Upgrade pickaxe */}
+          {tab==='upgrade'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              <p style={{margin:'0 0 4px',fontSize:10,color:'#64748b'}}>Cuốc hiện tại: {pickaxe.icon}{pickaxe.name} (Sát thương ×{pickaxe.dmg}, tốc độ {pickaxe.speed}ms)</p>
+              {PICKAXES.map((p,i)=>{
+                const isCurrent=i===pickaxeIdx;
+                const isOwned=i<pickaxeIdx;
+                const isNext=i===pickaxeIdx+1;
+                return(<div key={p.id} style={{background:isCurrent?'rgba(245,158,11,0.12)':isOwned?'rgba(34,197,94,0.06)':'rgba(0,0,0,0.2)',border:`1px solid ${isCurrent?'rgba(245,158,11,0.4)':isOwned?'rgba(34,197,94,0.15)':'rgba(255,255,255,0.04)'}`,borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10,opacity:i>pickaxeIdx+1?0.4:1}}>
+                  <span style={{fontSize:28}}>{p.icon}</span>
+                  <div style={{flex:1}}><div style={{fontSize:11,fontWeight:700,color:isCurrent?'#f59e0b':isOwned?'#22c55e':'#64748b'}}>{p.name} {isCurrent?'← Đang dùng':isOwned?'✅':''}</div><div style={{fontSize:9,color:'#64748b'}}>{p.desc} • Sát thương: {p.dmg} • Speed: {p.speed}ms</div></div>
+                  {isNext&&<button onClick={buyPickaxe} disabled={money<p.cost} style={{background:money>=p.cost?'linear-gradient(135deg,#f59e0b,#d97706)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'5px 10px',color:money>=p.cost?'white':'#475569',fontSize:10,fontWeight:800,cursor:money>=p.cost?'pointer':'default',whiteSpace:'nowrap'}}>{p.cost.toLocaleString()}₫</button>}
+                </div>);
+              })}
+            </div>
+          )}
+
+          {/* Workers */}
+          {tab==='workers'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              <p style={{margin:'0 0 4px',fontSize:10,color:'#64748b'}}>Phu mỏ tự động khai thác mỗi 5s</p>
+              {MINE_WORKERS.map(w=>{
+                const count=workers[w.id]||0;
+                const canBuy=money>=w.cost;
+                return(<div key={w.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:28}}>{w.icon}</span>
+                  <div style={{flex:1}}><div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{w.name}</span><span style={{color:'#f59e0b',fontSize:10}}>×{count}</span></div><div style={{fontSize:9,color:'#64748b'}}>{w.desc}</div></div>
+                  <button onClick={()=>hireWorker(w)} disabled={!canBuy} style={{background:canBuy?'linear-gradient(135deg,#f59e0b,#d97706)':'rgba(255,255,255,0.04)',border:'none',borderRadius:8,padding:'5px 10px',color:canBuy?'#1a0a00':'#475569',fontSize:10,fontWeight:800,cursor:canBuy?'pointer':'default',whiteSpace:'nowrap'}}>{w.cost.toLocaleString()}₫</button>
+                </div>);
+              })}
+            </div>
+          )}
+
+          {/* Log */}
+          <div style={{background:'rgba(0,0,0,0.4)',borderRadius:8,padding:'5px 8px',maxHeight:55,overflowY:'auto'}}>
+            {log.slice(0,3).map((l,i)=><div key={i} style={{fontSize:9,color:'#64748b',lineHeight:1.6}}>{l}</div>)}
+            {!log.length&&<div style={{fontSize:9,color:'#475569'}}>Bắt đầu đào mỏ! ⛏️</div>}
+          </div>
+        </div>
+      );
+    }
+
+    // App wrapper
+    function App() {
+      const handleBack = () => {
+        window.location.href = '../index.html';
+      };
+
+      return <MiningGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

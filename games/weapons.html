@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔫 Nhà Máy Xe & Súng — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #1a1a00, #2d2d00);
+      min-height: 100vh;
+      color: #e2e8f0;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(253,224,71,0.3); border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Helper function for formatting large numbers
+    function fmtW(n) {
+      if (!isFinite(n) || n > 1e99) return '∞';
+      if (n >= 1e12) return (n / 1e12).toFixed(1) + 'T';
+      if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+      return Math.floor(n).toLocaleString();
+    }
+
+    // ===================== NHÀ MÁY XE & SÚNG =====================
+    const WEAPONS_PRODUCTS = [
+      { id:'pistol',   name:'Súng Ngắn',     icon:'🔫', tier:1, mat:{steel:5,copper:3},       time:3,   price:500,       desc:'Vũ khí cá nhân cơ bản' },
+      { id:'rifle',    name:'Súng Trường',   icon:'🪖', tier:1, mat:{steel:15,copper:5,wood:8},time:5,   price:2000,      desc:'Súng bộ binh' },
+      { id:'shotgun',  name:'Súng Hoa Cải',  icon:'💥', tier:1, mat:{steel:20,copper:8},       time:6,   price:3500,      desc:'Uy lực ngắn' },
+      { id:'sniper',   name:'Súng Bắn Tỉa',  icon:'🎯', tier:2, mat:{steel:30,titanium:5,optic:2},time:10,price:15000,   desc:'Chính xác 2000m' },
+      { id:'machinegun',name:'Súng Máy',     icon:'⚙️', tier:2, mat:{steel:50,copper:20,belt:5},time:12, price:40000,     desc:'1000 viên/phút' },
+      { id:'rpg',      name:'Rocket Launcher',icon:'🚀',tier:2, mat:{steel:40,explosive:10,rocket:3},time:15,price:100000,desc:'Diệt xe tăng' },
+      { id:'jeep',     name:'Xe Jeep Quân Sự',icon:'🚙',tier:3, mat:{steel:100,engine:5,rubber:20},time:20,price:300000, desc:'Cơ động chiến trường' },
+      { id:'tank',     name:'Xe Tăng',       icon:'🪖', tier:3, mat:{steel:500,titanium:50,engine:20,cannon:1},time:40,price:5000000,desc:'Vua chiến trường' },
+      { id:'fighter',  name:'Máy Bay Chiến Đấu',icon:'✈️',tier:4,mat:{titanium:200,engine:50,avionics:10},time:60,price:50000000,desc:'F-22 Raptor' },
+      { id:'destroyer',name:'Tàu Chiến',     icon:'🚢', tier:4, mat:{steel:2000,engine:100,weapon_sys:20},time:90,price:500000000,desc:'Thống trị đại dương' },
+      { id:'icbm',     name:'Tên Lửa ICBM',  icon:'☢️', tier:5, mat:{titanium:500,fuel:1000,nuclear:10},time:120,price:10000000000,desc:'Vũ khí hạt nhân chiến lược' },
+      { id:'orbital',  name:'Vũ Khí Quỹ Đạo',icon:'🛸',tier:5, mat:{titanium:1000,quantum:50,cosmic:5},time:180,price:1000000000000,desc:'Thống trị không gian' },
+    ];
+
+    const WEAPON_MATS = [
+      {id:'steel',    name:'Thép',        icon:'⚙️', base:10,  mult:1.25},
+      {id:'copper',   name:'Đồng',        icon:'🟤', base:8,   mult:1.2 },
+      {id:'wood',     name:'Gỗ',          icon:'🪵', base:5,   mult:1.15},
+      {id:'titanium', name:'Titan',       icon:'🔲', base:50,  mult:1.3 },
+      {id:'optic',    name:'Kính Quang Học',icon:'🔭',base:30, mult:1.35},
+      {id:'belt',     name:'Dây Đạn',     icon:'📿', base:20,  mult:1.25},
+      {id:'explosive',name:'Thuốc Nổ',   icon:'💣', base:40,  mult:1.4 },
+      {id:'rocket',   name:'Rocket',      icon:'🚀', base:100, mult:1.5 },
+      {id:'rubber',   name:'Cao Su',      icon:'⚫', base:15,  mult:1.2 },
+      {id:'engine',   name:'Động Cơ',     icon:'🔧', base:200, mult:1.4 },
+      {id:'cannon',   name:'Nòng Pháo',   icon:'🏴', base:500, mult:1.5 },
+      {id:'avionics', name:'Điện Tử Hàng Không',icon:'💡',base:800,mult:1.6},
+      {id:'weapon_sys',name:'Hệ Thống Vũ Khí',icon:'🎯',base:2000,mult:1.7},
+      {id:'fuel',     name:'Nhiên Liệu Tên Lửa',icon:'⛽',base:300,mult:1.5},
+      {id:'nuclear',  name:'Đầu Đạn Hạt Nhân',icon:'☢️',base:50000,mult:2.0},
+      {id:'quantum',  name:'Máy Tính Lượng Tử',icon:'💠',base:100000,mult:2.5},
+      {id:'cosmic',   name:'Vật Chất Tối',icon:'🌌', base:1000000,mult:3.0},
+    ];
+
+    function WeaponsFactory({ onBack }) {
+      const [money, setMoney]         = useState(1e50);
+      const [totalEarned, setTotalEarned] = useState(0);
+      const [mats, setMats]         = useState({});
+      const [matCounts, setMatCounts] = useState({});
+      const [inventory, setInventory] = useState({});
+      const [making, setMaking]     = useState(null);
+      const [makeProgress, setMakeProgress] = useState(0);
+      const [contracts, setContracts] = useState([]); // active army contracts
+      const [tab, setTab]           = useState('factory');
+      const [log, setLog]           = useState([]);
+      const [research, setResearch] = useState(1); // research multiplier
+      const contractId = useRef(0);
+      const addLog = m=>setLog(p=>[m,...p].slice(0,10));
+
+      const canMake=(prod)=>Object.entries(prod.mat).every(([id,qty])=>(mats[id]||0)>=qty);
+      const matCost=(mat,cnt)=>Math.floor(mat.base*Math.pow(mat.mult,cnt));
+      const calcBuyCost=(mat,qty)=>Array.from({length:qty}).reduce((s,_,i)=>s+matCost(mat,(matCounts[mat.id]||0)+i),0);
+
+      useEffect(()=>{
+        if(!making) return;
+        const prod=WEAPONS_PRODUCTS.find(p=>p.id===making);
+        if(!prod) return;
+        const iv=setInterval(()=>{
+          setMakeProgress(p=>{
+            if(p>=100){
+              setInventory(inv=>({...inv,[prod.id]:(inv[prod.id]||0)+1}));
+              addLog(`✅ ${prod.icon}${prod.name} hoàn thành!`);
+              setMaking(null); setMakeProgress(0); return 0;
+            }
+            return p+Math.max(1,10/research);
+          });
+        }, prod.time*100/research);
+        return()=>clearInterval(iv);
+      },[making,research]);
+
+      // Contracts - random army orders
+      useEffect(()=>{
+        const iv=setInterval(()=>{
+          if(contracts.length<3){
+            const prod=WEAPONS_PRODUCTS[Math.floor(Math.random()*WEAPONS_PRODUCTS.length)];
+            const qty=Math.floor(Math.random()*5)+1;
+            const bonus=Math.random()<0.2?3:1.5;
+            contracts.push({id:contractId.current++,prod,qty,bonus,timeLeft:120});
+            setContracts([...contracts]);
+            addLog(`📋 HĐ mới: ${prod.icon}${prod.name} ×${qty} (×${bonus.toFixed(1)} giá)`);
+          }
+          setContracts(prev=>prev.map(c=>({...c,timeLeft:c.timeLeft-10})).filter(c=>c.timeLeft>0));
+        },10000);
+        return()=>clearInterval(iv);
+      },[contracts]);
+
+      const startMake=(prod)=>{
+        if(making){addLog('⚠️ Đang sản xuất!');return;}
+        if(!canMake(prod)){addLog(`❌ Thiếu vật liệu`);return;}
+        setMats(prev=>{const n={...prev};Object.entries(prod.mat).forEach(([id,qty])=>n[id]=(n[id]||0)-qty);return n;});
+        setMaking(prod.id); setMakeProgress(0);
+        addLog(`🔨 SX ${prod.icon}${prod.name}...`);
+      };
+
+      const buyMat=(mat,qty)=>{
+        const cost=calcBuyCost(mat,qty);
+        if(money<cost){addLog(`❌ Cần ${fmtW(cost)}₫`);return;}
+        setMoney(m=>m-cost);
+        setMats(p=>({...p,[mat.id]:(p[mat.id]||0)+qty}));
+        setMatCounts(p=>({...p,[mat.id]:(p[mat.id]||0)+qty}));
+        addLog(`📦 Mua ${qty}x ${mat.icon}${mat.name}`);
+      };
+
+      const fulfillContract=(c)=>{
+        const {prod,qty,bonus}=c;
+        if((inventory[prod.id]||0)<qty){addLog(`❌ Cần ${qty}x ${prod.name}`);return;}
+        const earned=Math.floor(prod.price*qty*bonus*research);
+        setInventory(inv=>({...inv,[prod.id]:(inv[prod.id]||0)-qty}));
+        setMoney(m=>m+earned);setTotalEarned(t=>t+earned);
+        setContracts(prev=>prev.filter(x=>x.id!==c.id));
+        addLog(`💰 Hoàn thành HĐ ${prod.icon} ×${qty}: +${fmtW(earned)}₫`);
+      };
+
+      const sellProduct=(prod)=>{
+        const qty=inventory[prod.id]||0;
+        if(!qty){addLog('❌ Kho trống');return;}
+        const earned=Math.floor(prod.price*qty*research);
+        setMoney(m=>m+earned);setTotalEarned(t=>t+earned);
+        setInventory(inv=>({...inv,[prod.id]:0}));
+        addLog(`💰 Bán ${qty}x ${prod.icon}${prod.name}: +${fmtW(earned)}₫`);
+      };
+
+      const doResearch=()=>{
+        const cost=Math.floor(50000*research*research);
+        if(money<cost){addLog(`❌ Cần ${fmtW(cost)}₫`);return;}
+        setMoney(m=>m-cost);setResearch(r=>r*1.3);
+        addLog(`🔬 R&D nâng cấp! SX nhanh hơn ×${(research*1.3).toFixed(1)}`);
+      };
+
+      return(
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#1a1a00,#2d2d00)',display:'flex',flexDirection:'column',padding:10,gap:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <h3 style={{margin:0,color:'#fde047',fontSize:13,fontWeight:900}}>🔫 Nhà Máy Xe & Súng</h3>
+            <div style={{textAlign:'right'}}><div style={{color:'#fbbf24',fontWeight:900,fontSize:13}}>💰 {fmtW(money)}₫</div><div style={{fontSize:9,color:'#64748b'}}>R&D ×{research.toFixed(1)}</div></div>
+          </div>
+          <div style={{display:'flex',gap:4}}>
+            {[['factory','🔨 SX'],['materials','📦 VL'],['contracts','📋 HĐ'],['sell','💰 Bán']].map(([id,l])=>(
+              <button key={id} onClick={()=>setTab(id)} style={{flex:1,background:tab===id?'rgba(253,224,71,0.15)':'rgba(255,255,255,0.04)',border:`1px solid ${tab===id?'rgba(253,224,71,0.4)':'rgba(255,255,255,0.07)'}`,borderRadius:8,padding:'5px 0',color:tab===id?'#fde047':'#64748b',fontSize:9,fontWeight:700,cursor:'pointer'}}>{l}</button>
+            ))}
+          </div>
+          {making&&<div style={{background:'rgba(253,224,71,0.1)',border:'1px solid rgba(253,224,71,0.25)',borderRadius:8,padding:'6px 10px'}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}><span style={{color:'#fde047',fontSize:11}}>🔨 Đang SX...</span><span style={{color:'#fde047',fontSize:11}}>{Math.floor(makeProgress)}%</span></div><div style={{height:6,borderRadius:3,background:'rgba(255,255,255,0.08)'}}><div style={{height:'100%',borderRadius:3,background:'linear-gradient(90deg,#fde047,#f97316)',width:`${makeProgress}%`,transition:'width 0.2s'}}/></div></div>}
+          {tab==='factory'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <span style={{fontSize:10,color:'#64748b'}}>R&D ×{research.toFixed(1)} — SX nhanh hơn</span>
+                <button onClick={doResearch} style={{background:'rgba(59,130,246,0.15)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:8,padding:'3px 10px',color:'#60a5fa',fontSize:9,cursor:'pointer',fontWeight:700}}>🔬 Nghiên Cứu ({fmtW(Math.floor(50000*research*research))}₫)</button>
+              </div>
+              {[1,2,3,4,5].map(tier=>{
+                const prods=WEAPONS_PRODUCTS.filter(p=>p.tier===tier);
+                const colors=['#94a3b8','#4ade80','#f59e0b','#f87171','#a855f7'];
+                return(<div key={tier}><div style={{fontSize:9,color:colors[tier-1],fontWeight:800,marginBottom:3}}>TIER {tier}</div>
+                {prods.map(prod=>{
+                  const ok=canMake(prod);
+                  return(<div key={prod.id} style={{background:ok?'rgba(253,224,71,0.07)':'rgba(0,0,0,0.2)',border:`1px solid ${ok?'rgba(253,224,71,0.2)':'rgba(255,255,255,0.04)'}`,borderRadius:10,padding:'7px 10px',display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                    <span style={{fontSize:24}}>{prod.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:10,fontWeight:700,color:ok?'#e2e8f0':'#64748b'}}>{prod.name}</div>
+                      <div style={{fontSize:8,color:'#64748b',display:'flex',gap:3,flexWrap:'wrap'}}>
+                        {Object.entries(prod.mat).map(([id,qty])=>{const m=WEAPON_MATS.find(x=>x.id===id);const h=(mats[id]||0)>=qty;return <span key={id} style={{color:h?'#5eead4':'#f87171'}}>{m?.icon}{id}:{mats[id]||0}/{qty}</span>;})}
+                      </div>
+                    </div>
+                    <div style={{textAlign:'right'}}>
+                      <div style={{fontSize:8,color:'#fbbf24'}}>{fmtW(Math.floor(prod.price*research))}₫</div>
+                      <button onClick={()=>startMake(prod)} disabled={!ok||!!making} style={{background:ok&&!making?'linear-gradient(135deg,#fde047,#d97706)':'rgba(255,255,255,0.04)',border:'none',borderRadius:7,padding:'3px 7px',color:ok&&!making?'#1a1a00':'#475569',fontSize:8,fontWeight:800,cursor:ok&&!making?'pointer':'default'}}>{Math.ceil(prod.time/research)}s</button>
+                    </div>
+                  </div>);
+                })}</div>);
+              })}
+            </div>
+          )}
+          {tab==='materials'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:4}}>
+              {WEAPON_MATS.map(mat=>{
+                const c1=matCost(mat,matCounts[mat.id]||0);
+                const c10=calcBuyCost(mat,10);
+                const h1=money>=c1,h10=money>=c10;
+                return(<div key={mat.id} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:9,padding:'6px 10px',display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:22}}>{mat.icon}</span>
+                  <div style={{flex:1}}><div style={{fontSize:10,fontWeight:700,color:'#e2e8f0'}}>{mat.name}</div><div style={{fontSize:8,color:'#5eead4'}}>Có: {mats[mat.id]||0}</div></div>
+                  <div style={{display:'flex',gap:4}}>
+                    <button onClick={()=>buyMat(mat,1)} disabled={!h1} style={{background:h1?'rgba(253,224,71,0.15)':'rgba(255,255,255,0.03)',border:`1px solid ${h1?'#fde047':'rgba(255,255,255,0.05)'}`,borderRadius:6,padding:'3px 7px',color:h1?'#fde047':'#475569',fontSize:8,fontWeight:700,cursor:h1?'pointer':'default'}}>×1 {fmtW(c1)}₫</button>
+                    <button onClick={()=>buyMat(mat,10)} disabled={!h10} style={{background:h10?'rgba(253,224,71,0.15)':'rgba(255,255,255,0.03)',border:`1px solid ${h10?'#fde047':'rgba(255,255,255,0.05)'}`,borderRadius:6,padding:'3px 7px',color:h10?'#fde047':'#475569',fontSize:8,fontWeight:700,cursor:h10?'pointer':'default'}}>×10 {fmtW(c10)}₫</button>
+                  </div>
+                </div>);
+              })}
+            </div>
+          )}
+          {tab==='contracts'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              <p style={{margin:0,fontSize:10,color:'#64748b'}}>Hợp đồng quân đội — tự động mới sau 10s</p>
+              {!contracts.length&&<div style={{textAlign:'center',color:'#475569',padding:30}}>Đang chờ hợp đồng...</div>}
+              {contracts.map(c=>{
+                const canFulfill=(inventory[c.prod.id]||0)>=c.qty;
+                return(<div key={c.id} style={{background:canFulfill?'rgba(253,224,71,0.1)':'rgba(0,0,0,0.2)',border:`1px solid ${canFulfill?'rgba(253,224,71,0.3)':'rgba(255,255,255,0.05)'}`,borderRadius:10,padding:'8px 12px',display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:26}}>{c.prod.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{c.prod.name} ×{c.qty}</div>
+                    <div style={{fontSize:9,color:'#64748b'}}>Kho: {inventory[c.prod.id]||0}/{c.qty} • ×{c.bonus.toFixed(1)} giá • {c.timeLeft}s</div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontSize:9,color:'#fbbf24',fontWeight:700}}>{fmtW(Math.floor(c.prod.price*c.qty*c.bonus*research))}₫</div>
+                    <button onClick={()=>fulfillContract(c)} disabled={!canFulfill} style={{background:canFulfill?'linear-gradient(135deg,#22c55e,#16a34a)':'rgba(255,255,255,0.04)',border:'none',borderRadius:7,padding:'3px 8px',color:canFulfill?'white':'#475569',fontSize:9,fontWeight:800,cursor:canFulfill?'pointer':'default'}}>Giao Hàng</button>
+                  </div>
+                </div>);
+              })}
+            </div>
+          )}
+          {tab==='sell'&&(
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:5}}>
+              {WEAPONS_PRODUCTS.map(prod=>{const qty=inventory[prod.id]||0;if(!qty) return null;return(<div key={prod.id} onClick={()=>sellProduct(prod)} style={{background:'rgba(34,197,94,0.07)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:10,padding:'7px 12px',display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}>
+                <span style={{fontSize:24}}>{prod.icon}</span><div style={{flex:1}}><div style={{fontSize:11,fontWeight:700,color:'#e2e8f0'}}>{prod.name}</div><div style={{fontSize:9,color:'#64748b'}}>×{qty} • {fmtW(Math.floor(prod.price*research))}₫/cái</div></div>
+                <div style={{color:'#22c55e',fontWeight:800,fontSize:11}}>+{fmtW(Math.floor(prod.price*qty*research))}₫</div>
+              </div>);})}
+              {!Object.values(inventory).some(v=>v>0)&&<div style={{textAlign:'center',color:'#475569',padding:30}}>Kho trống! Sản xuất vũ khí đi! 🔫</div>}
+            </div>
+          )}
+          <div style={{background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'4px 8px',maxHeight:50,overflowY:'auto'}}>
+            {log.slice(0,2).map((l,i)=><div key={i} style={{fontSize:9,color:'#64748b',lineHeight:1.6}}>{l}</div>)}
+          </div>
+        </div>
+      );
+    }
+
+    // App wrapper
+    function App() {
+      const handleBack = () => {
+        window.location.href = '../index.html';
+      };
+
+      return <WeaponsFactory onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

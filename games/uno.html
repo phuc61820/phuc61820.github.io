@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎴 UNO — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(160deg, #0f0c29, #302b63, #24243e);
+      min-height: 100vh;
+      color: white;
+    }
+    button { font-family: inherit; }
+    button:hover { filter: brightness(1.1); }
+    button:active { transform: scale(0.98); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useRef } = React;
+
+    // UNO Constants
+    const UNO_COLORS = ['red','yellow','green','blue'];
+    const UNO_COLOR_HEX = { red:'#ef4444', yellow:'#eab308', green:'#22c55e', blue:'#3b82f6', wild:'#7c3aed' };
+    const UNO_COLOR_BG  = { red:'#450a0a', yellow:'#422006', green:'#052e16', blue:'#0c1a4a', wild:'#1e1b4b' };
+    const UNO_COLOR_VI  = { red:'Do', yellow:'Vang', green:'Xanh La', blue:'Xanh Duong' };
+
+    function makeUnoDeck() {
+      const deck = [];
+      let id = 0;
+      for (const color of UNO_COLORS) {
+        deck.push({ id:id++, color, value:'0', type:'number' });
+        for (const v of ['1','2','3','4','5','6','7','8','9','skip','reverse','draw2']) {
+          for (let x=0;x<2;x++) deck.push({ id:id++, color, value:v, type: v==='skip'||v==='reverse'||v==='draw2'?'action':'number' });
+        }
+      }
+      for (let x=0;x<4;x++) {
+        deck.push({ id:id++, color:'wild', value:'wild', type:'wild' });
+        deck.push({ id:id++, color:'wild', value:'wild4', type:'wild' });
+      }
+      return deck;
+    }
+
+    function shuffleArr(a) { const b=[...a]; for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
+
+    function cardLabel(card) {
+      if (card.value==='skip') return '\u2298';
+      if (card.value==='reverse') return '\u21C4';
+      if (card.value==='draw2') return '+2';
+      if (card.value==='wild') return '\uD83C\uDF08';
+      if (card.value==='wild4') return '+4';
+      return card.value;
+    }
+
+    function UnoCard({ card, onClick, selected, small, faceDown }) {
+      const color = faceDown ? '#1e1b4b' : (UNO_COLOR_HEX[card.color] || '#7c3aed');
+      const bg    = faceDown ? '#312e81' : (UNO_COLOR_BG[card.color]  || '#1e1b4b');
+      const w = small ? 36 : 52;
+      const h = small ? 52 : 76;
+      return (
+        <div onClick={onClick} style={{
+          width:w, height:h, borderRadius:8, flexShrink:0,
+          background: faceDown ? 'linear-gradient(135deg,#312e81,#1e1b4b)' : `linear-gradient(135deg,${bg},${bg}dd)`,
+          border:`2px solid ${selected?'#fbbf24':color}`,
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          cursor: onClick ? 'pointer' : 'default',
+          boxShadow: selected ? `0 0 16px #fbbf24, 0 4px 12px rgba(0,0,0,0.5)` : '0 3px 8px rgba(0,0,0,0.4)',
+          transform: selected ? 'translateY(-10px)' : 'none',
+          transition:'all 0.15s',
+          position:'relative', overflow:'hidden',
+        }}>
+          {!faceDown && <>
+            <div style={{position:'absolute',top:3,left:5,fontSize:small?8:10,fontWeight:900,color,lineHeight:1}}>{cardLabel(card)}</div>
+            <div style={{fontSize:small?16:24,fontWeight:900,color, textShadow:`0 0 10px ${color}88`}}>{cardLabel(card)}</div>
+            <div style={{position:'absolute',bottom:3,right:5,fontSize:small?8:10,fontWeight:900,color,lineHeight:1,transform:'rotate(180deg)'}}>{cardLabel(card)}</div>
+            {card.color!=='wild' && <div style={{position:'absolute',inset:0,borderRadius:6,border:`3px solid ${color}44`}}/>}
+          </>}
+          {faceDown && <div style={{fontSize:small?12:18,color:'#818cf8'}}>{'\uD83C\uDFB4'}</div>}
+        </div>
+      );
+    }
+
+    function UnoGame({ onBack }) {
+      const [phase, setPhase]         = useState('menu');
+      const [deck, setDeck]           = useState([]);
+      const [playerHand, setPlayerHand] = useState([]);
+      const [cpuHands, setCpuHands]   = useState([[],[],[]]);
+      const [discard, setDiscard]     = useState([]);
+      const [turn, setTurn]           = useState(0);
+      const [direction, setDirection] = useState(1);
+      const [selected, setSelected]   = useState(null);
+      const [msg, setMsg]             = useState('');
+      const [msgType, setMsgType]     = useState('ok');
+      const [winner, setWinner]       = useState(null);
+      const [wildPick, setWildPick]   = useState(false);
+      const [pendingCard, setPendingCard] = useState(null);
+      const [unoAlert, setUnoAlert]   = useState('');
+      const [playerMustCallUno, setPlayerMustCallUno] = useState(false);
+      const deckRef = useRef([]);
+
+      const showMsg = (txt, type='ok', dur=2000) => {
+        setMsg(txt); setMsgType(type);
+        setTimeout(()=>setMsg(''), dur);
+      };
+
+      const drawFromDeck = (deckArr, n=1) => {
+        let d = [...deckArr];
+        const drawn = [];
+        for (let i=0;i<n;i++) {
+          if (d.length===0) return { drawn, deck: d };
+          drawn.push(d.pop());
+        }
+        return { drawn, deck: d };
+      };
+
+      const canPlay = (card, top, activeColor) => {
+        if (!top) return true;
+        if (card.type==='wild') return true;
+        if (card.color===activeColor) return true;
+        if (card.value===top.value) return true;
+        return false;
+      };
+
+      const startGame = () => {
+        const d = shuffleArr(makeUnoDeck());
+        const ph = d.splice(0,7);
+        const c1 = d.splice(0,7), c2=d.splice(0,7), c3=d.splice(0,7);
+        let startIdx = d.findIndex(c=>c.type==='number');
+        if (startIdx===-1) startIdx=0;
+        const [startCard] = d.splice(startIdx,1);
+        setDeck(d); deckRef.current=d;
+        setPlayerHand(ph); setCpuHands([c1,c2,c3]);
+        setDiscard([startCard]); setTurn(0); setDirection(1);
+        setSelected(null); setWinner(null); setWildPick(false);
+        setPendingCard(null); setPlayerMustCallUno(false);
+        setPhase('playing');
+        showMsg('Ván mới bắt đầu! Bạn đi trước \uD83C\uDFB4','ok',1500);
+      };
+
+      const top       = discard[discard.length-1];
+      const activeColor = top ? (top.activeColor || top.color) : 'red';
+
+      const playCard = (card, hand, setHand, isPlayer) => {
+        if (!canPlay(card, top, activeColor)) return false;
+        const newHand = hand.filter(c=>c.id!==card.id);
+
+        if (card.type==='wild') {
+          if (isPlayer) { setPendingCard(card); setWildPick(true); setPlayerHand(newHand); return true; }
+          const colorCount = {};
+          newHand.forEach(c=>{ if(c.color!=='wild') colorCount[c.color]=(colorCount[c.color]||0)+1; });
+          const best = UNO_COLORS.reduce((a,b)=>(colorCount[b]||0)>(colorCount[a]||0)?b:a, 'red');
+          const newCard = {...card, activeColor: best};
+          setDiscard(p=>[...p, newCard]);
+          setHand(newHand);
+          if (card.value==='wild4') return { effect:'draw4', color:best, hand:newHand };
+          return { effect:null, hand:newHand };
+        }
+
+        setDiscard(p=>[...p, card]);
+        setHand(newHand);
+        return { effect: card.value==='draw2'?'draw2': card.value==='skip'?'skip': card.value==='reverse'?'reverse':null, hand:newHand };
+      };
+
+      const nextTurn = (cur, dir, skip=false) => {
+        const n = (cur + dir*(skip?2:1) + 4) % 4;
+        return n;
+      };
+
+      const checkWin = (hand, name) => {
+        if (hand.length===0) { setWinner(name); setPhase('result'); return true; }
+        return false;
+      };
+
+      const applyEffect = (effect, nextT, dir, newDeck, cpus, setCpus) => {
+        let nd=[...newDeck], nc=[...cpus.map(h=>[...h])];
+        if (effect==='draw2') {
+          if (nextT===0) {
+            const {drawn,deck:d2}=drawFromDeck(nd,2); nd=d2;
+            setPlayerHand(p=>[...p,...drawn]);
+            showMsg('Bạn rút 2 lá! \u270C\uFE0F','bad');
+          } else {
+            const {drawn,deck:d2}=drawFromDeck(nd,2); nd=d2;
+            nc[nextT-1]=[...nc[nextT-1],...drawn];
+            showMsg(`CPU ${nextT} rút 2 lá!`,'ok');
+          }
+          nextT = nextTurn(nextT,dir,true);
+        } else if (effect==='draw4') {
+          if (nextT===0) {
+            const {drawn,deck:d2}=drawFromDeck(nd,4); nd=d2;
+            setPlayerHand(p=>[...p,...drawn]);
+            showMsg('Bạn rút 4 lá! \uD83D\uDE31','bad');
+          } else {
+            const {drawn,deck:d2}=drawFromDeck(nd,4); nd=d2;
+            nc[nextT-1]=[...nc[nextT-1],...drawn];
+            showMsg(`CPU ${nextT} rút 4 lá!`,'ok');
+          }
+          nextT = nextTurn(nextT,dir,true);
+        } else if (effect==='skip') {
+          nextT = nextTurn(nextT,dir,true);
+          showMsg(nextT===0?'Bạn bị skip!':'Skip!', nextT===0?'bad':'ok');
+        } else if (effect==='reverse') {
+          dir = -dir;
+          nextT = nextTurn(nextT,dir);
+          showMsg('Đảo chiều! \u21C4','ok');
+        }
+        setCpus(nc);
+        setDeck(nd); deckRef.current=nd;
+        return { nextT, dir };
+      };
+
+      const playerPlay = () => {
+        if (turn!==0||!selected||wildPick) return;
+        const card = playerHand.find(c=>c.id===selected);
+        if (!card||!canPlay(card,top,activeColor)) { showMsg('Lá này không đánh được!','bad'); return; }
+        setSelected(null);
+        if (card.type==='wild') {
+          const newHand=playerHand.filter(c=>c.id!==card.id);
+          setPlayerHand(newHand); setPendingCard(card); setWildPick(true);
+          return;
+        }
+        const newHand=playerHand.filter(c=>c.id!==card.id);
+        setDiscard(p=>[...p,card]);
+        setPlayerHand(newHand);
+        if (checkWin(newHand,'Bạn')) return;
+        if (newHand.length===1) setPlayerMustCallUno(true);
+        let nextT=nextTurn(0,direction), dir=direction;
+        const eff=card.value==='draw2'?'draw2':card.value==='skip'?'skip':card.value==='reverse'?'reverse':null;
+        let nc=[...cpuHands.map(h=>[...h])];
+        if (eff) {
+          let nd=[...deck];
+          if (eff==='draw2') {
+            const {drawn,deck:d2}=drawFromDeck(nd,2); nd=d2;
+            if (nextT===0){setPlayerHand(p=>[...p,...drawn]);}
+            else {nc[nextT-1]=[...nc[nextT-1],...drawn]; showMsg(`CPU ${nextT} rút 2 lá!`);}
+            nextT=nextTurn(nextT,dir,true);
+          } else if (eff==='skip') {
+            if (nextT===0) showMsg('Lượt bạn bị skip!','bad');
+            else showMsg(`CPU ${nextT} bị skip!`,'ok');
+            nextT=nextTurn(nextT,dir,true);
+          } else if (eff==='reverse') {
+            dir=-direction; setDirection(dir);
+            nextT=nextTurn(0,dir); showMsg('Đảo chiều! \u21C4');
+          }
+          setDeck(nd); deckRef.current=nd;
+        }
+        setCpuHands(nc);
+        if (nextT===0) { setTurn(0); showMsg('Lượt bạn lại!','ok'); }
+        else { setTurn(nextT); setTimeout(()=>doCpuTurn(nextT, dir, nc), 900); }
+      };
+
+      const pickWildColor = (color) => {
+        if (!pendingCard) return;
+        const card={...pendingCard, activeColor:color};
+        setDiscard(p=>[...p,card]);
+        const newHand=[...playerHand];
+        if (checkWin(newHand,'Bạn')) { setWildPick(false); return; }
+        setWildPick(false); setPendingCard(null);
+        const isW4=pendingCard.value==='wild4';
+        let nextT=nextTurn(0,direction), dir=direction;
+        let nc=[...cpuHands.map(h=>[...h])], nd=[...deck];
+        if (isW4) {
+          if (nextT===0){const {drawn,deck:d2}=drawFromDeck(nd,4);nd=d2;setPlayerHand(p=>[...p,...drawn]);}
+          else {const {drawn,deck:d2}=drawFromDeck(nd,4);nd=d2;nc[nextT-1]=[...nc[nextT-1],...drawn];}
+          nextT=nextTurn(nextT,dir,true);
+        }
+        setCpuHands(nc); setDeck(nd); deckRef.current=nd;
+        if (nextT===0) { setTurn(0); showMsg(`Bạn chọn ${UNO_COLOR_VI[color]}!`); }
+        else { setTurn(nextT); setTimeout(()=>doCpuTurn(nextT,dir,nc),900); }
+      };
+
+      const doCpuTurn = (cpuIdx, dir, hands) => {
+        const hand=[...hands[cpuIdx-1]];
+        const top2=discard[discard.length-1];
+        const ac=top2?(top2.activeColor||top2.color):'red';
+        const playable=hand.filter(c=>canPlay(c,top2,ac));
+        let nd=[...deckRef.current];
+
+        if (playable.length===0) {
+          const {drawn,deck:d}=drawFromDeck(nd,1); nd=d; deckRef.current=nd;
+          const newHand=[...hand,...drawn];
+          hands=hands.map((h,i)=>i===cpuIdx-1?newHand:h);
+          setCpuHands(hands.map(h=>[...h])); setDeck(nd);
+          const canPlayDrawn=drawn[0]&&canPlay(drawn[0],top2,ac);
+          if (canPlayDrawn) {
+            const c=drawn[0]; const nh=newHand.filter(x=>x.id!==c.id);
+            let nc={...c}; if(c.type==='wild'){const best=UNO_COLORS.reduce((a,b)=>{const ct=nh.filter(x=>x.color===b).length;return ct>nh.filter(x=>x.color===a).length?b:a},'red');nc.activeColor=best;}
+            setDiscard(p=>[...p,nc]);
+            hands=hands.map((h,i)=>i===cpuIdx-1?nh:h);
+            setCpuHands(hands.map(h=>[...h]));
+            if (checkWin(nh,`CPU ${cpuIdx}`)) return;
+            if (nh.length===1) showMsg(`CPU ${cpuIdx}: UNO! \uD83D\uDD34`,'bad');
+            const eff=nc.value==='draw2'?'draw2':nc.value==='wild4'?'draw4':nc.value==='skip'?'skip':nc.value==='reverse'?'reverse':null;
+            advanceTurn(cpuIdx,dir,eff,hands,nd,nc.activeColor||nc.color);
+          } else {
+            showMsg(`CPU ${cpuIdx} rút bài...`,'ok');
+            advanceTurn(cpuIdx,dir,null,hands,nd,ac);
+          }
+          return;
+        }
+        const card = playable.find(c=>c.type==='action')||playable.find(c=>c.type==='wild')||playable[0];
+        const nh=hand.filter(c=>c.id!==card.id);
+        let nc={...card};
+        if (card.type==='wild'){const best=UNO_COLORS.reduce((a,b)=>{const ct=nh.filter(x=>x.color===b).length;return ct>nh.filter(x=>x.color===a).length?b:a},'red');nc.activeColor=best;}
+        setDiscard(p=>[...p,nc]);
+        hands=hands.map((h,i)=>i===cpuIdx-1?nh:h);
+        setCpuHands(hands.map(h=>[...h]));
+        if (checkWin(nh,`CPU ${cpuIdx}`)) return;
+        if (nh.length===1) { showMsg(`CPU ${cpuIdx}: UNO! \uD83D\uDD34`,'bad'); setUnoAlert(`CPU ${cpuIdx}`); setTimeout(()=>setUnoAlert(''),1500); }
+        const eff=nc.value==='draw2'?'draw2':nc.value==='wild4'?'draw4':nc.value==='skip'?'skip':nc.value==='reverse'?'reverse':null;
+        advanceTurn(cpuIdx,dir,eff,hands,nd,nc.activeColor||nc.color);
+      };
+
+      const advanceTurn = (from, dir, eff, hands, nd, ac) => {
+        let nextT=nextTurn(from,dir);
+        if (eff==='draw2'||eff==='draw4') {
+          const n=eff==='draw2'?2:4;
+          if (nextT===0){const {drawn,deck:d}=drawFromDeck(nd,n);nd=d;setPlayerHand(p=>[...p,...drawn]);showMsg(`Bạn rút ${n} lá!`,'bad');}
+          else {const {drawn,deck:d}=drawFromDeck(nd,n);nd=d;hands=hands.map((h,i)=>i===nextT-1?[...h,...drawn]:h);setCpuHands(hands.map(h=>[...h]));showMsg(`CPU ${nextT} rút ${n} lá!`);}
+          nextT=nextTurn(nextT,dir,true);
+        } else if (eff==='skip') {
+          if (nextT===0) showMsg('Lượt bạn bị skip!','bad');
+          else showMsg(`CPU ${nextT} bị skip!`,'ok');
+          nextT=nextTurn(nextT,dir,true);
+        } else if (eff==='reverse') {
+          dir=-dir; setDirection(dir); nextT=nextTurn(from,dir);
+          showMsg('Đảo chiều! \u21C4');
+        }
+        setDeck(nd); deckRef.current=nd;
+        setTurn(nextT);
+        if (nextT!==0) setTimeout(()=>doCpuTurn(nextT,dir,hands),900);
+      };
+
+      const drawCard = () => {
+        if (turn!==0) return;
+        const {drawn,deck:nd}=drawFromDeck(deck,1);
+        if (!drawn.length){showMsg('Hết bài rút!','bad');return;}
+        setDeck(nd); deckRef.current=nd;
+        const newHand=[...playerHand,...drawn];
+        setPlayerHand(newHand);
+        setPlayerMustCallUno(false);
+        showMsg(`Rut: ${cardLabel(drawn[0])} (${UNO_COLOR_VI[drawn[0].color]||'Wild'})`,'ok');
+        if (canPlay(drawn[0],top,activeColor)) {
+          showMsg(`Rút được lá có thể đánh!`,'ok');
+        } else {
+          const nextT=nextTurn(0,direction);
+          setTurn(nextT);
+          setTimeout(()=>doCpuTurn(nextT,direction,cpuHands),900);
+        }
+      };
+
+      const callUno = () => {
+        if (playerHand.length===1) {
+          showMsg('UNO! \uD83D\uDD34','ok');
+          setPlayerMustCallUno(false);
+          setUnoAlert('Bạn');
+          setTimeout(()=>setUnoAlert(''),1500);
+        }
+      };
+
+      if (phase==='menu') return (
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0f0c29,#302b63,#24243e)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:20,padding:20}}>
+          <div style={{fontSize:64}}>{'\uD83C\uDFB4'}</div>
+          <h2 style={{margin:0,color:'#818cf8',fontSize:28,fontWeight:900,letterSpacing:3}}>UNO</h2>
+          <div style={{background:'rgba(0,0,0,0.3)',borderRadius:14,padding:'14px 20px',maxWidth:340,textAlign:'center'}}>
+            <p style={{color:'#c7d2fe',fontSize:13,margin:'0 0 8px',fontWeight:700}}>Cách chơi:</p>
+            <p style={{color:'#a5b4fc',fontSize:12,margin:'0 0 4px'}}>{'\uD83C\uDFB4'} Đánh lá cùng màu hoặc cùng số</p>
+            <p style={{color:'#a5b4fc',fontSize:12,margin:'0 0 4px'}}>{'\u2298'} Skip — bỏ lượt người tiếp theo</p>
+            <p style={{color:'#a5b4fc',fontSize:12,margin:'0 0 4px'}}>{'\u21C4'} Reverse — đảo chiều chơi</p>
+            <p style={{color:'#a5b4fc',fontSize:12,margin:'0 0 4px'}}>+2 Draw Two — người tiếp rút 2</p>
+            <p style={{color:'#a5b4fc',fontSize:12,margin:'0 0 4px'}}>{'\uD83C\uDF08'} Wild — chọn màu bất kỳ</p>
+            <p style={{color:'#a5b4fc',fontSize:12,margin:'0 0 4px'}}>+4 Wild Draw 4 — chọn màu + rút 4</p>
+            <p style={{color:'#f87171',fontSize:12,margin:'8px 0 0',fontWeight:700}}>{'\u26A0\uFE0F'} Còn 1 lá phải hô UNO!</p>
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:10,padding:'10px 20px',color:'#94a3b8',fontSize:14,cursor:'pointer'}}>{'\u2190'} Quay lại</button>
+            <button onClick={startGame} style={{background:'linear-gradient(135deg,#4f46e5,#7c3aed)',border:'none',borderRadius:10,padding:'10px 28px',color:'white',fontSize:16,fontWeight:800,cursor:'pointer'}}>{'\uD83C\uDFB4'} Bắt đầu!</button>
+          </div>
+        </div>
+      );
+
+      if (phase==='result') return (
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0f0c29,#302b63)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:20}}>
+          <div style={{fontSize:64}}>{winner==='Bạn'?'\uD83C\uDFC6':'\uD83D\uDE22'}</div>
+          <h2 style={{margin:0,color:winner==='Bạn'?'#fbbf24':'#f87171',fontSize:24,fontWeight:900}}>{winner} THẮNG!</h2>
+          <div style={{display:'flex',gap:10,marginTop:8}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:10,padding:'10px 20px',color:'#94a3b8',fontSize:14,cursor:'pointer'}}>{'\u2190'} Hub</button>
+            <button onClick={startGame} style={{background:'linear-gradient(135deg,#4f46e5,#7c3aed)',border:'none',borderRadius:10,padding:'10px 28px',color:'white',fontSize:15,fontWeight:800,cursor:'pointer'}}>{'\uD83D\uDD04'} Ván mới</button>
+          </div>
+        </div>
+      );
+
+      const topColor = UNO_COLOR_HEX[activeColor]||'#7c3aed';
+
+      return (
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0f0c29,#1e1b4b)',display:'flex',flexDirection:'column',padding:10,gap:8,maxWidth:520,margin:'0 auto'}}>
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>{'\u2190'} Hub</button>
+            <h3 style={{margin:0,color:'#818cf8',fontSize:16,fontWeight:900}}>{'\uD83C\uDFB4'} UNO</h3>
+            <div style={{fontSize:11,color:'#64748b'}}>{'\uD83C\uDFB4'} {deck.length} lá còn</div>
+          </div>
+
+          {/* UNO alert */}
+          {unoAlert && <div style={{textAlign:'center',background:'rgba(239,68,68,0.3)',border:'1px solid #ef4444',borderRadius:10,padding:'6px',color:'#f87171',fontWeight:900,fontSize:16,animation:'none'}}>{'\uD83D\uDD34'} {unoAlert}: UNO!</div>}
+
+          {/* Message */}
+          {msg && <div style={{textAlign:'center',padding:'5px 10px',borderRadius:8,fontSize:12,fontWeight:700,background:msgType==='ok'?'rgba(99,102,241,0.2)':'rgba(239,68,68,0.2)',color:msgType==='ok'?'#a5b4fc':'#f87171'}}>{msg}</div>}
+
+          {/* CPU hands */}
+          <div style={{display:'flex',gap:8,justifyContent:'space-around'}}>
+            {cpuHands.map((hand,i)=>(
+              <div key={i} style={{background:turn===i+1?'rgba(99,102,241,0.15)':'rgba(0,0,0,0.2)',border:`1px solid ${turn===i+1?'#818cf8':'rgba(255,255,255,0.05)'}`,borderRadius:10,padding:'6px 10px',flex:1,textAlign:'center'}}>
+                <div style={{fontSize:10,color:turn===i+1?'#818cf8':'#64748b',fontWeight:700,marginBottom:4}}>CPU {i+1} {turn===i+1?'\u2B05\uFE0F đang đi':''}</div>
+                <div style={{display:'flex',gap:2,justifyContent:'center',flexWrap:'wrap'}}>
+                  {hand.map((c,j)=><UnoCard key={j} card={c} faceDown small />)}
+                </div>
+                <div style={{fontSize:9,color:'#64748b',marginTop:3}}>{hand.length} lá</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Discard pile + active color */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:16}}>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontSize:10,color:'#64748b',marginBottom:4}}>Bài vừa đánh</div>
+              {top && <UnoCard card={top} />}
+            </div>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontSize:10,color:'#64748b',marginBottom:4}}>Màu hiện tại</div>
+              <div style={{width:52,height:52,borderRadius:12,background:topColor,border:'3px solid white',boxShadow:`0 0 20px ${topColor}88`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:'white'}}>
+                {UNO_COLOR_VI[activeColor]||'Wild'}
+              </div>
+            </div>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontSize:10,color:'#64748b',marginBottom:4}}>Rút bài</div>
+              <div onClick={turn===0?drawCard:undefined} style={{width:52,height:76,borderRadius:8,background:'linear-gradient(135deg,#312e81,#1e1b4b)',border:'2px solid #818cf8',cursor:turn===0?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,boxShadow:'0 3px 8px rgba(0,0,0,0.4)'}}>{'\uD83C\uDFB4'}</div>
+            </div>
+          </div>
+
+          {/* Wild color picker */}
+          {wildPick && (
+            <div style={{background:'rgba(124,58,237,0.2)',border:'1px solid #7c3aed',borderRadius:12,padding:'10px',textAlign:'center'}}>
+              <p style={{margin:'0 0 8px',color:'#c4b5fd',fontSize:12,fontWeight:700}}>Chọn màu cho lá Wild:</p>
+              <div style={{display:'flex',gap:8,justifyContent:'center'}}>
+                {UNO_COLORS.map(c=>(
+                  <button key={c} onClick={()=>pickWildColor(c)} style={{width:50,height:50,borderRadius:10,background:UNO_COLOR_HEX[c],border:'2px solid white',cursor:'pointer',fontWeight:700,color:'white',fontSize:11,boxShadow:`0 0 12px ${UNO_COLOR_HEX[c]}`}}>
+                    {UNO_COLOR_VI[c]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Player hand */}
+          <div style={{background:'rgba(0,0,0,0.2)',border:`2px solid ${turn===0?'#818cf8':'rgba(255,255,255,0.05)'}`,borderRadius:12,padding:'10px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+              <span style={{fontSize:12,color:turn===0?'#818cf8':'#64748b',fontWeight:700}}>
+                {turn===0?'\u2728 Lượt của bạn!':'\u23F3 Đợi CPU...'} ({playerHand.length} lá)
+              </span>
+              <div style={{display:'flex',gap:6}}>
+                {playerHand.length===1 && (
+                  <button onClick={callUno} style={{background:'linear-gradient(135deg,#ef4444,#b91c1c)',border:'none',borderRadius:8,padding:'4px 10px',color:'white',fontSize:12,fontWeight:900,cursor:'pointer',boxShadow:'0 0 12px rgba(239,68,68,0.5)'}}>{'\uD83D\uDD34'} UNO!</button>
+                )}
+                {selected!==null && turn===0 && (
+                  <button onClick={playerPlay} style={{background:'linear-gradient(135deg,#4f46e5,#7c3aed)',border:'none',borderRadius:8,padding:'4px 12px',color:'white',fontSize:12,fontWeight:800,cursor:'pointer'}}>{'\u25B6'} Đánh</button>
+                )}
+              </div>
+            </div>
+            <div style={{display:'flex',gap:4,flexWrap:'wrap',justifyContent:'center'}}>
+              {playerHand.map(card=>{
+                const playable = turn===0 && canPlay(card,top,activeColor);
+                return (
+                  <div key={card.id} onClick={()=>turn===0&&playable&&setSelected(selected===card.id?null:card.id)}
+                    style={{opacity:turn===0&&!playable?0.4:1, cursor:turn===0&&playable?'pointer':'default'}}>
+                    <UnoCard card={card} selected={selected===card.id} />
+                  </div>
+                );
+              })}
+            </div>
+            <p style={{margin:'6px 0 0',fontSize:9,color:'#475569',textAlign:'center'}}>Nhấn lá để chọn, nhấn lại để bỏ chọn. Lá mờ = không đánh được.</p>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const handleBack = () => {
+        window.location.href = "../index.html";
+      };
+
+      return <UnoGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

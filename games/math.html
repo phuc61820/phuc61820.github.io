@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧮 Làm Toán Siêu Tốc — Game Hub</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(160deg, #0f1e3c, #0f4c75);
+      min-height: 100vh;
+    }
+    #root {
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React 18 CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <!-- Babel for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function MathGame({ onBack }) {
+      const LEVELS = [
+        { name:'Dễ 🌱',     ops:['+','-'],          range:[1,20],   time:15, pts:10  },
+        { name:'Vừa 🌿',    ops:['+','-','×'],       range:[1,50],   time:12, pts:20  },
+        { name:'Khó 🌳',    ops:['+','-','×','÷'],   range:[1,100],  time:10, pts:35  },
+        { name:'Ác 🔥',     ops:['+','-','×','÷'],   range:[1,200],  time:8,  pts:55  },
+        { name:'Huyền Thoại ⚡',ops:['+','-','×','÷'],range:[1,999], time:6,  pts:80  },
+      ];
+
+      const [phase, setPhase]       = useState('menu'); // menu | playing | result
+      const [levelIdx, setLevelIdx] = useState(0);
+      const [question, setQuestion] = useState(null);
+      const [input, setInput]       = useState('');
+      const [score, setScore]       = useState(0);
+      const [streak, setStreak]     = useState(0);
+      const [best, setBest]         = useState(0);
+      const [timeLeft, setTimeLeft] = useState(15);
+      const [totalQ, setTotalQ]     = useState(0);
+      const [correct, setCorrect]   = useState(0);
+      const [feedback, setFeedback] = useState(null); // {ok, text}
+      const [combo, setCombo]       = useState(0);
+      const inputRef = useRef(null);
+      const timerRef = useRef(null);
+
+      const level = LEVELS[levelIdx];
+
+      const genQuestion = (lv) => {
+        const ops = lv.ops;
+        const [min, max] = lv.range;
+        const op = ops[Math.floor(Math.random()*ops.length)];
+        let a = Math.floor(Math.random()*(max-min+1))+min;
+        let b = Math.floor(Math.random()*(max-min+1))+min;
+        let ans;
+        if (op==='+') { ans = a+b; }
+        else if (op==='-') { if (a<b)[a,b]=[b,a]; ans=a-b; }
+        else if (op==='×') { a=Math.floor(Math.random()*12)+1; b=Math.floor(Math.random()*12)+1; ans=a*b; }
+        else { // ÷
+          b = Math.floor(Math.random()*11)+2;
+          ans = Math.floor(Math.random()*12)+1;
+          a = b*ans;
+        }
+        return { a, b, op, ans };
+      };
+
+      const startGame = () => {
+        setScore(0); setStreak(0); setTotalQ(0); setCorrect(0);
+        setCombo(0); setInput(''); setFeedback(null);
+        const q = genQuestion(level);
+        setQuestion(q);
+        setTimeLeft(level.time);
+        setPhase('playing');
+        setTimeout(()=>inputRef.current?.focus(),100);
+      };
+
+      // Timer
+      useEffect(() => {
+        if (phase!=='playing') return;
+        timerRef.current = setInterval(()=>{
+          setTimeLeft(t=>{
+            if (t<=1) {
+              clearInterval(timerRef.current);
+              // wrong - time up
+              setFeedback({ok:false, text:'⏰ Hết giờ!'});
+              setStreak(0); setCombo(0);
+              setTimeout(()=>{
+                const q=genQuestion(level);
+                setQuestion(q); setTimeLeft(level.time); setInput(''); setFeedback(null);
+                setTotalQ(p=>p+1);
+                setTimeout(()=>inputRef.current?.focus(),50);
+              },700);
+              return level.time;
+            }
+            return t-1;
+          });
+        },1000);
+        return ()=>clearInterval(timerRef.current);
+      },[phase, question]);
+
+      const submit = () => {
+        if (!question||input==='') return;
+        const userAns = parseInt(input,10);
+        const ok = userAns===question.ans;
+        clearInterval(timerRef.current);
+        if (ok) {
+          const timeBonus = Math.floor(timeLeft/level.time*level.pts);
+          const comboBonus = combo>=3?Math.floor(level.pts*0.5*(combo-2)):0;
+          const earned = level.pts + timeBonus + comboBonus;
+          setScore(p=>{const ns=p+earned;setBest(b=>Math.max(b,ns));return ns;});
+          setStreak(p=>p+1); setCombo(p=>p+1); setCorrect(p=>p+1);
+          setFeedback({ok:true, text:`✅ +${earned}đ${comboBonus>0?` 🔥COMBO x${combo+1}!`:''} (nhanh +${timeBonus})`});
+        } else {
+          setStreak(0); setCombo(0);
+          setFeedback({ok:false, text:`❌ Sai! Đáp án: ${question.ans}`});
+        }
+        setTotalQ(p=>p+1);
+        setTimeout(()=>{
+          const q=genQuestion(level);
+          setQuestion(q); setTimeLeft(level.time); setInput(''); setFeedback(null);
+          setTimeout(()=>inputRef.current?.focus(),50);
+        },ok?600:900);
+      };
+
+      const handleKey = (e) => {
+        if (e.key==='Enter') submit();
+      };
+
+      const numPad = ['7','8','9','4','5','6','1','2','3','','0','⌫'];
+
+      const pressNum = (v) => {
+        if (v==='⌫') { setInput(p=>p.slice(0,-1)); return; }
+        if (v==='-' && input==='') { setInput('-'); return; }
+        if (input.length>6) return;
+        setInput(p=>p+v);
+      };
+
+      const pct = timeLeft/level.time;
+      const barColor = pct>0.5?'#22c55e':pct>0.25?'#f59e0b':'#ef4444';
+
+      if (phase==='menu') return (
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0f1e3c,#0f4c75)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:20}}>
+          <div style={{fontSize:56}}>🧮</div>
+          <h2 style={{margin:0,color:'#38bdf8',fontSize:24,fontWeight:900}}>Làm Toán Siêu Tốc</h2>
+          <p style={{color:'#7dd3fc',fontSize:12,margin:0,textAlign:'center'}}>Giải đúng càng nhanh càng nhiều điểm!<br/>Trả lời liên tiếp để nhận COMBO bonus 🔥</p>
+
+          <div style={{width:'100%',maxWidth:380}}>
+            <p style={{color:'#7dd3fc',fontSize:12,fontWeight:700,margin:'0 0 8px'}}>Chọn cấp độ:</p>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {LEVELS.map((lv,i)=>(
+                <button key={i} onClick={()=>setLevelIdx(i)} style={{
+                  background: levelIdx===i?'rgba(56,189,248,0.2)':'rgba(255,255,255,0.04)',
+                  border:`2px solid ${levelIdx===i?'#38bdf8':'rgba(255,255,255,0.08)'}`,
+                  borderRadius:12, padding:'10px 16px', cursor:'pointer',
+                  display:'flex',justifyContent:'space-between',alignItems:'center',
+                }}>
+                  <span style={{color:levelIdx===i?'#38bdf8':'#94a3b8',fontWeight:700,fontSize:13}}>{lv.name}</span>
+                  <span style={{color:'#64748b',fontSize:11}}>
+                    {lv.ops.join(' ')} &nbsp;|&nbsp; ⏱{lv.time}s &nbsp;|&nbsp; +{lv.pts}đ/câu
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{display:'flex',gap:10}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,padding:'10px 20px',color:'#94a3b8',fontSize:14,cursor:'pointer'}}>← Quay lại</button>
+            <button onClick={startGame} style={{background:'linear-gradient(135deg,#0ea5e9,#0284c7)',border:'none',borderRadius:10,padding:'10px 28px',color:'white',fontSize:15,fontWeight:800,cursor:'pointer'}}>🧮 Bắt đầu!</button>
+          </div>
+          {best>0 && <p style={{color:'#fbbf24',fontSize:13,margin:0}}>🏆 Kỷ lục: {best}đ</p>}
+        </div>
+      );
+
+      return (
+        <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#0f1e3c,#0f4c75)',display:'flex',flexDirection:'column',alignItems:'center',padding:16,gap:10}}>
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%',maxWidth:400}}>
+            <button onClick={()=>{clearInterval(timerRef.current);setPhase('menu');}} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <span style={{color:'#38bdf8',fontWeight:800,fontSize:13}}>{level.name}</span>
+            <span style={{color:'#fbbf24',fontWeight:800,fontSize:15}}>💰 {score}</span>
+          </div>
+
+          {/* Stats bar */}
+          <div style={{display:'flex',gap:12,width:'100%',maxWidth:400,justifyContent:'center'}}>
+            <span style={{color:'#5eead4',fontSize:12}}>✅ {correct}/{totalQ}</span>
+            <span style={{color:combo>=3?'#f97316':'#64748b',fontSize:12,fontWeight:combo>=3?800:400}}>🔥 Combo: {combo}</span>
+            <span style={{color:'#f87171',fontSize:12}}>🏆 Best: {best}</span>
+          </div>
+
+          {/* Timer bar */}
+          <div style={{width:'100%',maxWidth:400,height:10,borderRadius:5,background:'rgba(255,255,255,0.1)'}}>
+            <div style={{height:'100%',borderRadius:5,background:barColor,width:`${pct*100}%`,transition:'width 1s linear',boxShadow:`0 0 10px ${barColor}`}}/>
+          </div>
+          <div style={{color:barColor,fontWeight:800,fontSize:18}}>⏱ {timeLeft}s</div>
+
+          {/* Question */}
+          {question && (
+            <div style={{background:'rgba(255,255,255,0.05)',border:'2px solid rgba(56,189,248,0.3)',borderRadius:20,padding:'24px 32px',textAlign:'center',width:'100%',maxWidth:400}}>
+              <div style={{fontSize:42,fontWeight:900,color:'#e2e8f0',letterSpacing:4,fontFamily:'monospace'}}>
+                {question.a} {question.op} {question.b} = ?
+              </div>
+            </div>
+          )}
+
+          {/* Feedback */}
+          {feedback && (
+            <div style={{padding:'8px 20px',borderRadius:12,fontSize:14,fontWeight:800,
+              background:feedback.ok?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.2)',
+              color:feedback.ok?'#4ade80':'#f87171',
+              border:`1px solid ${feedback.ok?'rgba(34,197,94,0.4)':'rgba(239,68,68,0.4)'}`,
+              textAlign:'center'}}>
+              {feedback.text}
+            </div>
+          )}
+
+          {/* Answer input */}
+          <div style={{width:'100%',maxWidth:400}}>
+            <div style={{display:'flex',gap:8,marginBottom:8}}>
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={e=>setInput(e.target.value.replace(/[^0-9-]/g,''))}
+                onKeyDown={handleKey}
+                placeholder='Nhập đáp án...'
+                style={{flex:1,background:'rgba(255,255,255,0.08)',border:'2px solid rgba(56,189,248,0.4)',borderRadius:12,padding:'12px 16px',color:'white',fontSize:24,fontWeight:800,textAlign:'center',outline:'none',fontFamily:'monospace'}}
+              />
+              <button onClick={submit} style={{background:'linear-gradient(135deg,#0ea5e9,#0284c7)',border:'none',borderRadius:12,padding:'0 20px',color:'white',fontSize:20,fontWeight:900,cursor:'pointer'}}>✓</button>
+            </div>
+
+            {/* Numpad */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
+              {numPad.map((v,i)=>(
+                <button key={i} onClick={()=>v&&pressNum(v)} style={{
+                  background: v==='⌫'?'rgba(239,68,68,0.2)':v?'rgba(255,255,255,0.08)':'transparent',
+                  border: v?`1px solid rgba(255,255,255,0.12)`:'none',
+                  borderRadius:10, padding:'14px 0',
+                  color:v==='⌫'?'#f87171':'#e2e8f0',
+                  fontSize:20, fontWeight:700, cursor:v?'pointer':'default',
+                }}>{v}</button>
+              ))}
+            </div>
+
+            {/* Negative button */}
+            <button onClick={()=>setInput(p=>p.startsWith('-')?p.slice(1):'-'+p)} style={{width:'100%',marginTop:6,background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:10,padding:'10px',color:'#64748b',fontSize:13,cursor:'pointer'}}>
+              +/− (số âm)
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const handleBack = () => {
+        window.location.href = '../index.html';
+      };
+
+      return <MathGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
