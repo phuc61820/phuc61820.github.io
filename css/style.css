@@ -18,6 +18,24 @@
   --border-dark: rgba(255, 255, 255, 0.07);
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --card-bg: rgba(255, 255, 255, 0.04);
+  --input-bg: rgba(255, 255, 255, 0.07);
+}
+
+body.light-mode {
+  --bg-primary: #f0f4ff;
+  --bg-secondary: #e8edf8;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --accent: #7c3aed;
+  --accent-light: #6d28d9;
+  --border-light: rgba(0, 0, 0, 0.15);
+  --border-dark: rgba(0, 0, 0, 0.08);
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  --shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.18);
+  --card-bg: rgba(255, 255, 255, 0.75);
+  --input-bg: rgba(255, 255, 255, 0.9);
 }
 
 * {
@@ -32,6 +50,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--text-primary);
   line-height: 1.5;
+  transition: background 0.3s, color 0.3s;
 }
 
 /* Hub Container */
@@ -47,7 +66,7 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--card-bg);
   border: 1px solid var(--border-dark);
   border-radius: 16px;
   padding: 16px 20px;
@@ -132,7 +151,7 @@ body {
 
 .search-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--input-bg);
   border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 12px 16px;
@@ -158,7 +177,7 @@ body {
 }
 
 .category-tag {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--card-bg);
   border: 1px solid var(--border-dark);
   border-radius: 20px;
   padding: 6px 14px;
@@ -197,7 +216,7 @@ body {
 }
 
 .tag-btn {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--card-bg);
   border: 1px solid var(--border-dark);
   border-radius: 12px;
   padding: 3px 10px;
@@ -294,6 +313,32 @@ body {
   color: rgba(255, 255, 255, 0.35);
 }
 
+/* Light mode card text overrides */
+body.light-mode .game-name {
+  color: #1e293b;
+}
+
+body.light-mode .game-desc {
+  color: rgba(30, 41, 59, 0.7);
+}
+
+body.light-mode .game-tag {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(30, 41, 59, 0.6);
+}
+
+body.light-mode .game-category {
+  color: rgba(30, 41, 59, 0.5);
+}
+
+body.light-mode .search-input {
+  color: #1e293b;
+}
+
+body.light-mode .search-input::placeholder {
+  color: #94a3b8;
+}
+
 /* No Results */
 .no-results {
   grid-column: 1 / -1;
@@ -313,53 +358,31 @@ body {
   color: var(--text-primary);
 }
 
-/* Theme Picker */
-.theme-picker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.theme-picker-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 700;
-  margin-right: 4px;
-}
-
-.theme-btn {
-  width: 28px;
-  height: 28px;
+/* Dark/Light Toggle */
+.theme-toggle-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  border: 2px solid transparent;
+  border: 2px solid var(--border-light);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 20px;
   cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s;
-  position: relative;
-}
-
-.theme-btn:hover {
-  transform: scale(1.15);
-}
-
-.theme-btn.active {
-  border-color: white;
-  transform: scale(1.15);
-}
-
-.theme-btn.active::after {
-  content: '✓';
-  position: absolute;
-  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  color: white;
-  font-weight: 900;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  box-shadow: var(--shadow);
+  transition: background 0.3s, border-color 0.3s, transform 0.15s;
+  backdrop-filter: blur(8px);
+}
+
+.theme-toggle-btn:hover {
+  transform: scale(1.1);
+  border-color: var(--accent);
 }
 
 /* Footer */
