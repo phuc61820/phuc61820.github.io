@@ -117,7 +117,7 @@ function renderHub() {
 
       <!-- Footer -->
       <div class="hub-footer">
-        v3.0 Modular — ${GAMES.length} games • Made with ❤️ by Tiến Phúc
+        v3.1 — ${GAMES.length} games • Made with ❤️ by Tiến Phúc
       </div>
     </div>
   `;
