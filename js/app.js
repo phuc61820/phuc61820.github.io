@@ -9,11 +9,36 @@ let currentCategory = 'all';
 let searchQuery = '';
 let activeTag = '';
 
+// Themes
+const THEMES = [
+  { id: 'dark-blue',  label: 'Xanh tối',   bg: 'linear-gradient(160deg, #0c1929, #0a0a1e)', color: '#0c1929' },
+  { id: 'deep-purple',label: 'Tím đậm',    bg: 'linear-gradient(160deg, #1a0a2e, #0d0020)', color: '#1a0a2e' },
+  { id: 'dark-green', label: 'Xanh lá',    bg: 'linear-gradient(160deg, #0a1f0a, #051005)', color: '#0a1f0a' },
+  { id: 'dark-red',   label: 'Đỏ tối',     bg: 'linear-gradient(160deg, #1f0a0a, #100505)', color: '#1f0a0a' },
+  { id: 'midnight',   label: 'Đen đêm',    bg: 'linear-gradient(160deg, #0d0d0d, #000000)', color: '#0d0d0d' },
+  { id: 'ocean',      label: 'Đại dương',  bg: 'linear-gradient(160deg, #031930, #04111f)', color: '#031930' },
+  { id: 'sunset',     label: 'Hoàng hôn',  bg: 'linear-gradient(160deg, #1a0a00, #0f0514)', color: '#1a0a00' },
+  { id: 'forest',     label: 'Rừng xanh',  bg: 'linear-gradient(160deg, #071a0f, #020d06)', color: '#071a0f' },
+];
+
+let currentTheme = localStorage.getItem('gameHubTheme') || 'dark-blue';
+
+function applyTheme(themeId) {
+  const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
+  document.body.style.background = theme.bg;
+  currentTheme = themeId;
+  localStorage.setItem('gameHubTheme', themeId);
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === themeId);
+  });
+}
+
 // DOM Elements
 const app = document.getElementById('app');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+  applyTheme(currentTheme);
   render();
 });
 
@@ -113,6 +138,20 @@ function renderHub() {
         `}
       </div>
 
+      <!-- Theme Picker -->
+      <div class="theme-picker">
+        <span class="theme-picker-label">Màu nền:</span>
+        ${THEMES.map(t => `
+          <button
+            class="theme-btn ${currentTheme === t.id ? 'active' : ''}"
+            data-theme="${t.id}"
+            title="${t.label}"
+            style="background: ${t.color}; box-shadow: 0 2px 8px ${t.color}88;"
+            onclick="selectTheme('${t.id}')"
+          ></button>
+        `).join('')}
+      </div>
+
       <!-- Footer -->
       <div class="hub-footer">
         v3.0 Modular — ${GAMES.length} games • Made with ❤️ by Tiến Phúc
@@ -189,6 +228,11 @@ function updateGamesGrid() {
 function selectCategory(categoryId) {
   currentCategory = categoryId;
   render();
+}
+
+// Select theme
+function selectTheme(themeId) {
+  applyTheme(themeId);
 }
 
 // Select tag
