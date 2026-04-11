@@ -117,7 +117,7 @@ function renderHub() {
 
       <!-- Footer -->
       <div class="hub-footer">
-        <span class="version-badge">v3.3</span>
+        <span class="version-badge">v3.4</span>
         ${GAMES.length} games • Made with ❤️ by Tiến Phúc
       </div>
     </div>
