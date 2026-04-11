@@ -9,27 +9,13 @@ let currentCategory = 'all';
 let searchQuery = '';
 let activeTag = '';
 
-// Light/Dark mode
-let isLightMode = localStorage.getItem('gameHubLightMode') === 'true';
-
-function applyMode() {
-  document.body.classList.toggle('light-mode', isLightMode);
-  const btn = document.getElementById('themeToggle');
-  if (btn) btn.textContent = isLightMode ? '🌙' : '☀️';
-}
-
-function toggleMode() {
-  isLightMode = !isLightMode;
-  localStorage.setItem('gameHubLightMode', isLightMode);
-  applyMode();
-}
+// Light/Dark mode — handled by js/theme.js (shared with games)
 
 // DOM Elements
 const app = document.getElementById('app');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  applyMode();
   render();
 });
 
@@ -45,7 +31,6 @@ function renderHub() {
   const allTags = getAllTags();
 
   app.innerHTML = `
-    <button class="theme-toggle-btn" id="themeToggle" onclick="toggleMode()" title="${isLightMode ? 'Chuyển tối' : 'Chuyển sáng'}">${isLightMode ? '🌙' : '☀️'}</button>
     <div class="hub-container">
       <!-- Author Section -->
       <div class="author-section">
