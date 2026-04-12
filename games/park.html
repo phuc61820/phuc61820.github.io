@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎡 Công Viên Vui Chơi — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #0a0a1f, #1a1040);
+      min-height: 100vh;
+    }
+    #root { min-height: 100vh; }
+    button { transition: all 0.2s; }
+    button:hover:not(:disabled) { transform: scale(1.02); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.98); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ===================== CÔNG VIÊN VUI CHƠI =====================
+
+    const ATTRACTIONS = [
+      { id:'ferris',   name:'Đu Quay',          icon:'🎡', cost:200000,   ticket:8000,   maintenance:5000,  capacity:40,  desc:'Vòng quay khổng lồ nhìn toàn cảnh' },
+      { id:'coaster',  name:'Tàu Lượn',          icon:'🎢', cost:800000,   ticket:20000,  maintenance:15000, capacity:30,  desc:'Trò chơi tốc độ mạo hiểm' },
+      { id:'haunted',  name:'Nhà Ma',             icon:'👻', cost:350000,   ticket:12000,  maintenance:7000,  capacity:20,  desc:'Ngôi nhà ma ớn lạnh' },
+      { id:'shooting', name:'Bắn Súng',           icon:'🎯', cost:80000,    ticket:5000,   maintenance:2000,  capacity:15,  desc:'Trò chơi bắn súng nước' },
+      { id:'icecream', name:'Gian Hàng Kem',      icon:'🍦', cost:50000,    ticket:3000,   maintenance:1000,  capacity:50,  desc:'Kem tươi mát các vị' },
+      { id:'pool',     name:'Hồ Bơi',             icon:'🏊', cost:500000,   ticket:15000,  maintenance:10000, capacity:60,  desc:'Hồ bơi trong xanh mát mẻ' },
+      { id:'zoo',      name:'Vườn Thú',           icon:'🦁', cost:1200000,  ticket:25000,  maintenance:20000, capacity:80,  desc:'Thế giới động vật muôn màu' },
+      { id:'cinema',   name:'Rạp Chiếu Phim',     icon:'🎬', cost:600000,   ticket:18000,  maintenance:8000,  capacity:100, desc:'Rạp 4DX hiện đại' },
+      { id:'tram',     name:'Tàu Điện',            icon:'🚃', cost:900000,   ticket:10000,  maintenance:12000, capacity:120, desc:'Tàu điện tham quan toàn khu' },
+      { id:'palace',   name:'Cung Điện VIP',       icon:'👑', cost:2500000,  ticket:80000,  maintenance:30000, capacity:25,  desc:'Trải nghiệm xa xỉ dành cho VIP' },
+    ];
+
+    const UPGRADES = [
+      { id:'lighting',  name:'Hệ Thống Chiếu Sáng', icon:'💡', cost:300000,  desc:'Mở đêm — tăng 30% khách tối', effect:'night_visitors' },
+      { id:'security',  name:'An Ninh Tăng Cường',   icon:'🛡️', cost:250000,  desc:'Giảm 70% sự cố ngoài ý muốn',  effect:'reduce_incidents' },
+      { id:'foodcourt', name:'Khu Ẩm Thực',           icon:'🍔', cost:400000,  desc:'+25% doanh thu mỗi tick',       effect:'food_bonus' },
+      { id:'parking',   name:'Bãi Đỗ Xe',             icon:'🅿️', cost:200000,  desc:'+20 khách mỗi tick',            effect:'more_visitors' },
+      { id:'vip_lounge',name:'Phòng Chờ VIP',         icon:'🥂', cost:700000,  desc:'Vé VIP tăng thêm 50%',          effect:'vip_tickets' },
+    ];
+
+    const STAFF_TYPES = [
+      { id:'guard',   name:'Bảo Vệ',        icon:'💂', cost:80000,  salary:3000,  desc:'Giảm sự cố, tăng độ hài lòng +5%' },
+      { id:'cleaner', name:'Vệ Sinh Viên',  icon:'🧹', cost:60000,  salary:2000,  desc:'Giữ sạch sẽ, tăng độ hài lòng +3%' },
+      { id:'guide',   name:'Hướng Dẫn Viên',icon:'🎤', cost:100000, salary:4000,  desc:'Tăng thời gian ở lại, +8% doanh thu' },
+    ];
+
+    const EVENTS = [
+      { id:'breakdown',  name:'Sự Cố Máy Móc',      icon:'⚠️',  weight:15, type:'bad',      satisfactionDelta:-10, moneyDelta:0,       visitorDelta:-15, desc:'Một trò chơi bị hỏng! Kỹ thuật viên đang sửa...' },
+      { id:'vip_visit',  name:'Đoàn Khách VIP',      icon:'🌟',  weight:10, type:'good',     satisfactionDelta:+8,  moneyDelta:500000,  visitorDelta:+10, desc:'Đoàn khách VIP ghé thăm — doanh thu tăng vọt!' },
+      { id:'school',     name:'Tham Quan Học Sinh',  icon:'🏫',  weight:20, type:'good',     satisfactionDelta:+5,  moneyDelta:0,       visitorDelta:+50, desc:'Trường học tổ chức tham quan — hàng trăm học sinh ào vào!' },
+      { id:'rain',       name:'Trời Mưa',             icon:'🌧️', weight:20, type:'bad',      satisfactionDelta:-5,  moneyDelta:0,       visitorDelta:-30, desc:'Trời đổ mưa — nhiều khách rời đi...' },
+      { id:'festival',   name:'Lễ Hội Đặc Biệt',    icon:'🎉',  weight:8,  type:'good',     satisfactionDelta:+12, moneyDelta:200000,  visitorDelta:+40, desc:'Lễ hội đặc biệt hôm nay — khách đến rất đông!' },
+      { id:'theft',      name:'Trộm Cắp',             icon:'🦹',  weight:12, type:'bad',      satisfactionDelta:-8,  moneyDelta:-100000, visitorDelta:-5,  desc:'Xảy ra vụ trộm cắp! Khách hoang mang...' },
+      { id:'food_truck', name:'Xe Đồ Ăn Nổi Tiếng', icon:'🚚',  weight:10, type:'good',     satisfactionDelta:+6,  moneyDelta:150000,  visitorDelta:+20, desc:'Xe đồ ăn nổi tiếng đến ghé — khách thích lắm!' },
+      { id:'review',     name:'Báo Chí Đưa Tin',     icon:'📰',  weight:5,  type:'very_good',satisfactionDelta:+15, moneyDelta:0,       visitorDelta:+30, desc:'Báo đưa tin tốt về công viên — danh tiếng tăng cao!' },
+    ];
+
+    const fmtM = (n) => {
+      if (n >= 1000000000) return (n/1000000000).toFixed(1) + 'B₫';
+      if (n >= 1000000)    return (n/1000000).toFixed(2).replace(/\.?0+$/, '') + 'M₫';
+      if (n >= 1000)       return (n/1000).toFixed(1).replace(/\.?0+$/, '') + 'K₫';
+      return n.toLocaleString('vi-VN') + '₫';
+    };
+
+    // ===================== APP =====================
+    function App() {
+      const [money, setMoney]               = useState(4000000);
+      const [satisfaction, setSatisfaction] = useState(60);
+      const [visitors, setVisitors]         = useState(0);
+      const [totalVisitors, setTotalVisitors] = useState(0);
+      const [tick, setTick]                 = useState(0);
+      const [built, setBuilt]               = useState({});       // id -> count
+      const [open, setOpen]                 = useState({});        // id -> bool
+      const [upgrades, setUpgrades]         = useState({});        // id -> bool
+      const [staff, setStaff]               = useState({});        // id -> count
+      const [log, setLog]                   = useState([]);
+      const [activeTab, setActiveTab]       = useState('attractions');
+      const [popup, setPopup]               = useState(null);      // event popup
+      const [lastIncome, setLastIncome]     = useState(0);
+      const [lastMaintenance, setLastMaintenance] = useState(0);
+      const [pendingBreakdown, setPendingBreakdown] = useState(false);
+      const gameRef = useRef({ money: 4000000, satisfaction: 60, visitors: 0, totalVisitors: 0, built: {}, open: {}, upgrades: {}, staff: {} });
+
+      // Sync ref
+      useEffect(() => {
+        gameRef.current = { money, satisfaction, visitors, totalVisitors, built, open, upgrades, staff };
+      });
+
+      const addLog = (msg) => setLog(prev => [msg, ...prev].slice(0, 5));
+
+      // GAME TICK every 5 seconds
+      useEffect(() => {
+        const interval = setInterval(() => {
+          const g = gameRef.current;
+
+          // Compute open attractions
+          const openList = ATTRACTIONS.filter(a => g.built[a.id] && g.open[a.id]);
+          if (openList.length === 0) return;
+
+          // Visitors this tick
+          const basePark = 20 + openList.length * 5;
+          const satBonus = Math.floor((g.satisfaction / 100) * 40);
+          const parkingBonus = g.upgrades['parking'] ? 20 : 0;
+          const nightBonus = g.upgrades['lighting'] ? Math.floor(basePark * 0.3) : 0;
+          const guardCount = g.staff['guard'] || 0;
+          const guideCount = g.staff['guide'] || 0;
+          const newVisitors = Math.max(1, basePark + satBonus + parkingBonus + nightBonus + Math.floor(guideCount * 5));
+
+          // Income from tickets
+          let income = 0;
+          openList.forEach(a => {
+            const visitors_for_attraction = Math.min(newVisitors, a.capacity);
+            let ticketPrice = a.ticket;
+            if (g.upgrades['vip_lounge'] && a.id === 'palace') ticketPrice = Math.floor(ticketPrice * 1.5);
+            income += visitors_for_attraction * ticketPrice;
+          });
+
+          // Guide bonus
+          if (guideCount > 0) income = Math.floor(income * (1 + guideCount * 0.08));
+          // Food court bonus
+          if (g.upgrades['foodcourt']) income = Math.floor(income * 1.25);
+
+          // Maintenance costs
+          let maintenance = 0;
+          openList.forEach(a => { maintenance += a.maintenance; });
+          // Staff salaries
+          STAFF_TYPES.forEach(s => { maintenance += (g.staff[s.id] || 0) * s.salary; });
+
+          // Net
+          const net = income - maintenance;
+          const newMoney = g.money + net;
+          const newTotalVisitors = g.totalVisitors + newVisitors;
+
+          // Satisfaction drift
+          let satDelta = 0;
+          if (net > 0) satDelta += 1;
+          if (net < 0) satDelta -= 2;
+          const cleanerCount = g.staff['cleaner'] || 0;
+          satDelta += cleanerCount * 1;
+          satDelta += guardCount * 1;
+          const newSat = Math.max(10, Math.min(100, g.satisfaction + satDelta));
+
+          setMoney(newMoney);
+          setVisitors(newVisitors);
+          setTotalVisitors(newTotalVisitors);
+          setSatisfaction(newSat);
+          setLastIncome(income);
+          setLastMaintenance(maintenance);
+          setTick(t => t + 1);
+          addLog(`+${fmtM(income)} doanh thu, -${fmtM(maintenance)} chi phí | ${newVisitors} khách`);
+
+          // Random event (20% chance per tick)
+          if (Math.random() < 0.20) {
+            const withoutBreakdown = g.upgrades['security']
+              ? EVENTS.filter(e => e.id !== 'breakdown' && e.id !== 'theft')
+              : EVENTS;
+            const pool = [];
+            withoutBreakdown.forEach(e => { for (let i=0; i<e.weight; i++) pool.push(e); });
+            const ev = pool[Math.floor(Math.random() * pool.length)];
+            let extraMoney = ev.moneyDelta;
+            setMoney(m => m + extraMoney);
+            setSatisfaction(s => Math.max(10, Math.min(100, s + ev.satisfactionDelta)));
+            setVisitors(v => Math.max(0, v + ev.visitorDelta));
+            setPopup(ev);
+            addLog(`${ev.icon} ${ev.name}: ${ev.desc}`);
+            setTimeout(() => setPopup(null), 3500);
+          }
+
+        }, 5000);
+        return () => clearInterval(interval);
+      }, []);
+
+      const buildAttraction = (a) => {
+        if (money < a.cost) return;
+        setMoney(m => m - a.cost);
+        setBuilt(b => ({ ...b, [a.id]: (b[a.id] || 0) + 1 }));
+        setOpen(o => ({ ...o, [a.id]: true }));
+        addLog(`🔨 Đã xây ${a.icon} ${a.name}`);
+      };
+
+      const toggleOpen = (id) => {
+        setOpen(o => ({ ...o, [id]: !o[id] }));
+      };
+
+      const buyUpgrade = (u) => {
+        if (money < u.cost || upgrades[u.id]) return;
+        setMoney(m => m - u.cost);
+        setUpgrades(u2 => ({ ...u2, [u.id]: true }));
+        addLog(`✅ Đã mua nâng cấp: ${u.icon} ${u.name}`);
+      };
+
+      const hireStaff = (s) => {
+        if (money < s.cost) return;
+        setMoney(m => m - s.cost);
+        setStaff(st => ({ ...st, [s.id]: (st[s.id] || 0) + 1 }));
+        addLog(`👷 Đã tuyển ${s.icon} ${s.name}`);
+      };
+
+      const openAttractionCount = ATTRACTIONS.filter(a => built[a.id] && open[a.id]).length;
+      const totalStaff = STAFF_TYPES.reduce((sum, s) => sum + (staff[s.id] || 0), 0);
+
+      const satColor = satisfaction >= 75 ? '#4ade80' : satisfaction >= 50 ? '#fbbf24' : '#f87171';
+      const satBg = satisfaction >= 75 ? 'rgba(74,222,128,0.15)' : satisfaction >= 50 ? 'rgba(251,191,36,0.15)' : 'rgba(248,113,113,0.15)';
+
+      // Colors
+      const C = {
+        bg:        '#0d0d24',
+        card:      'rgba(255,255,255,0.05)',
+        cardHover: 'rgba(255,255,255,0.08)',
+        border:    'rgba(255,255,255,0.08)',
+        text:      '#e2e8f0',
+        muted:     '#94a3b8',
+        accent:    '#a78bfa',
+        accentD:   '#7c3aed',
+        green:     '#4ade80',
+        red:       '#f87171',
+        yellow:    '#fbbf24',
+        pink:      '#f472b6',
+        cyan:      '#22d3ee',
+      };
+
+      const tabStyle = (t) => ({
+        padding: '8px 16px',
+        border: 'none',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontWeight: 600,
+        fontSize: '13px',
+        background: activeTab === t ? C.accentD : 'transparent',
+        color: activeTab === t ? '#fff' : C.muted,
+      });
+
+      return (
+        <div style={{ minHeight:'100vh', color: C.text, padding: '16px', maxWidth: '900px', margin: '0 auto' }}>
+
+          {/* HEADER */}
+          <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'16px', flexWrap:'wrap' }}>
+            <a href="../index.html" style={{ textDecoration:'none', color: C.muted, fontSize:'22px', lineHeight:1 }}>←</a>
+            <div>
+              <h1 style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg,#a78bfa,#f472b6,#fbbf24)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                🎡 Công Viên Vui Chơi
+              </h1>
+              <p style={{ fontSize:'12px', color: C.muted }}>Xây dựng công viên giải trí hàng đầu Việt Nam</p>
+            </div>
+            <div style={{ marginLeft:'auto', textAlign:'right' }}>
+              <div style={{ fontSize:'22px', fontWeight:800, color: C.green }}>{fmtM(money)}</div>
+              <div style={{ fontSize:'11px', color: C.muted }}>
+                {lastIncome > 0 && <span style={{ color: C.green }}>+{fmtM(lastIncome)} </span>}
+                {lastMaintenance > 0 && <span style={{ color: C.red }}>-{fmtM(lastMaintenance)}</span>}
+              </div>
+            </div>
+          </div>
+
+          {/* STATS ROW */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'8px', marginBottom:'16px' }}>
+            {[
+              { label:'Khách/Tick',   val: visitors,           color: C.cyan,   icon:'👥' },
+              { label:'Tổng Khách',   val: totalVisitors.toLocaleString('vi-VN'), color: C.yellow, icon:'🎟️' },
+              { label:'Khu Vui Chơi', val: openAttractionCount + '/' + Object.keys(built).length, color: C.accent, icon:'🎠' },
+              { label:'Nhân Viên',    val: totalStaff,          color: C.pink,   icon:'👷' },
+            ].map(s => (
+              <div key={s.label} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius:'10px', padding:'10px 12px', textAlign:'center' }}>
+                <div style={{ fontSize:'18px' }}>{s.icon}</div>
+                <div style={{ fontSize:'16px', fontWeight:700, color: s.color }}>{s.val}</div>
+                <div style={{ fontSize:'10px', color: C.muted }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* SATISFACTION BAR */}
+          <div style={{ background: C.card, border:`1px solid ${C.border}`, borderRadius:'10px', padding:'12px 16px', marginBottom:'16px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
+              <span style={{ fontSize:'13px', fontWeight:600 }}>😊 Độ Hài Lòng</span>
+              <span style={{ fontSize:'16px', fontWeight:800, color: satColor }}>{satisfaction}%</span>
+            </div>
+            <div style={{ background:'rgba(255,255,255,0.08)', borderRadius:'6px', height:'10px', overflow:'hidden' }}>
+              <div style={{
+                width: satisfaction + '%',
+                height:'100%',
+                background: `linear-gradient(90deg, ${satColor}, ${satColor}aa)`,
+                borderRadius:'6px',
+                transition:'width 0.5s ease',
+              }} />
+            </div>
+            <div style={{ fontSize:'11px', color: C.muted, marginTop:'4px' }}>
+              {satisfaction >= 80 ? 'Tuyệt vời! Khách rất hài lòng' : satisfaction >= 60 ? 'Ổn định, tiếp tục cải thiện' : satisfaction >= 40 ? 'Cần cải thiện dịch vụ' : 'Nguy hiểm! Khách không hài lòng'}
+            </div>
+          </div>
+
+          {/* TABS */}
+          <div style={{ display:'flex', gap:'6px', marginBottom:'14px', background: C.card, borderRadius:'10px', padding:'6px', border:`1px solid ${C.border}` }}>
+            {[['attractions','🎠 Khu Vui Chơi'],['upgrades','⚡ Nâng Cấp'],['staff','👷 Nhân Viên'],['log','📋 Nhật Ký']].map(([t,l]) => (
+              <button key={t} style={tabStyle(t)} onClick={() => setActiveTab(t)}>{l}</button>
+            ))}
+          </div>
+
+          {/* TAB CONTENT */}
+          {activeTab === 'attractions' && (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:'10px' }}>
+              {ATTRACTIONS.map(a => {
+                const isBuilt = built[a.id];
+                const isOpen  = open[a.id];
+                const canBuild = money >= a.cost;
+                return (
+                  <div key={a.id} style={{
+                    background: isBuilt ? 'rgba(167,139,250,0.08)' : C.card,
+                    border: `1px solid ${isBuilt ? 'rgba(167,139,250,0.3)' : C.border}`,
+                    borderRadius:'12px', padding:'14px',
+                  }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', gap:'10px', marginBottom:'8px' }}>
+                      <span style={{ fontSize:'28px' }}>{a.icon}</span>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontWeight:700, fontSize:'14px' }}>{a.name}</div>
+                        <div style={{ fontSize:'11px', color: C.muted }}>{a.desc}</div>
+                      </div>
+                      {isBuilt && (
+                        <button onClick={() => toggleOpen(a.id)} style={{
+                          padding:'4px 10px', borderRadius:'6px', border:'none', cursor:'pointer', fontSize:'11px', fontWeight:600,
+                          background: isOpen ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)',
+                          color: isOpen ? C.green : C.red,
+                        }}>
+                          {isOpen ? 'MỞ' : 'ĐÓNG'}
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'4px', marginBottom:'10px', fontSize:'11px' }}>
+                      <div style={{ background:'rgba(34,211,238,0.1)', borderRadius:'6px', padding:'4px 6px', textAlign:'center' }}>
+                        <div style={{ color: C.cyan, fontWeight:700 }}>{fmtM(a.ticket)}</div>
+                        <div style={{ color: C.muted }}>Vé/khách</div>
+                      </div>
+                      <div style={{ background:'rgba(248,113,113,0.1)', borderRadius:'6px', padding:'4px 6px', textAlign:'center' }}>
+                        <div style={{ color: C.red, fontWeight:700 }}>{fmtM(a.maintenance)}</div>
+                        <div style={{ color: C.muted }}>Bảo trì</div>
+                      </div>
+                      <div style={{ background:'rgba(251,191,36,0.1)', borderRadius:'6px', padding:'4px 6px', textAlign:'center' }}>
+                        <div style={{ color: C.yellow, fontWeight:700 }}>{a.capacity}</div>
+                        <div style={{ color: C.muted }}>Sức chứa</div>
+                      </div>
+                    </div>
+                    <button
+                      disabled={!canBuild}
+                      onClick={() => buildAttraction(a)}
+                      style={{
+                        width:'100%', padding:'8px', borderRadius:'8px', border:'none', cursor: canBuild ? 'pointer' : 'not-allowed',
+                        background: isBuilt
+                          ? (canBuild ? 'rgba(167,139,250,0.3)' : 'rgba(167,139,250,0.1)')
+                          : (canBuild ? 'linear-gradient(90deg,#7c3aed,#a78bfa)' : 'rgba(255,255,255,0.05)'),
+                        color: canBuild ? '#fff' : C.muted,
+                        fontWeight: 700, fontSize:'13px',
+                      }}
+                    >
+                      {isBuilt ? `🔨 Xây thêm — ${fmtM(a.cost)}` : `🏗️ Xây — ${fmtM(a.cost)}`}
+                    </button>
+                    {isBuilt && (
+                      <div style={{ marginTop:'6px', fontSize:'11px', color: C.accent, textAlign:'center' }}>
+                        ✅ Đã xây {built[a.id]} cái
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {activeTab === 'upgrades' && (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:'10px' }}>
+              {UPGRADES.map(u => {
+                const owned = upgrades[u.id];
+                const canBuy = money >= u.cost && !owned;
+                return (
+                  <div key={u.id} style={{
+                    background: owned ? 'rgba(74,222,128,0.08)' : C.card,
+                    border: `1px solid ${owned ? 'rgba(74,222,128,0.3)' : C.border}`,
+                    borderRadius:'12px', padding:'16px',
+                  }}>
+                    <div style={{ fontSize:'30px', marginBottom:'8px' }}>{u.icon}</div>
+                    <div style={{ fontWeight:700, fontSize:'14px', marginBottom:'4px' }}>{u.name}</div>
+                    <div style={{ fontSize:'12px', color: C.muted, marginBottom:'12px' }}>{u.desc}</div>
+                    <button
+                      disabled={!canBuy}
+                      onClick={() => buyUpgrade(u)}
+                      style={{
+                        width:'100%', padding:'8px', borderRadius:'8px', border:'none',
+                        cursor: canBuy ? 'pointer' : 'not-allowed',
+                        background: owned
+                          ? 'rgba(74,222,128,0.2)'
+                          : (canBuy ? 'linear-gradient(90deg,#059669,#4ade80)' : 'rgba(255,255,255,0.05)'),
+                        color: owned ? C.green : (canBuy ? '#fff' : C.muted),
+                        fontWeight:700, fontSize:'13px',
+                      }}
+                    >
+                      {owned ? '✅ Đã Có' : `💰 Mua — ${fmtM(u.cost)}`}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {activeTab === 'staff' && (
+            <div>
+              <div style={{ fontSize:'12px', color: C.muted, marginBottom:'12px' }}>
+                Mỗi nhân viên có lương định kỳ. Tuyển đúng người để tăng sự hài lòng.
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:'10px' }}>
+                {STAFF_TYPES.map(s => {
+                  const count = staff[s.id] || 0;
+                  const canHire = money >= s.cost;
+                  return (
+                    <div key={s.id} style={{
+                      background: count > 0 ? 'rgba(244,114,182,0.08)' : C.card,
+                      border: `1px solid ${count > 0 ? 'rgba(244,114,182,0.3)' : C.border}`,
+                      borderRadius:'12px', padding:'16px',
+                    }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'8px' }}>
+                        <span style={{ fontSize:'30px' }}>{s.icon}</span>
+                        <div>
+                          <div style={{ fontWeight:700, fontSize:'14px' }}>{s.name}</div>
+                          {count > 0 && <div style={{ fontSize:'12px', color: C.pink }}>Đang có: {count} người</div>}
+                        </div>
+                      </div>
+                      <div style={{ fontSize:'12px', color: C.muted, marginBottom:'4px' }}>{s.desc}</div>
+                      <div style={{ fontSize:'11px', color: C.red, marginBottom:'12px' }}>Lương: {fmtM(s.salary)}/tick</div>
+                      <button
+                        disabled={!canHire}
+                        onClick={() => hireStaff(s)}
+                        style={{
+                          width:'100%', padding:'8px', borderRadius:'8px', border:'none',
+                          cursor: canHire ? 'pointer' : 'not-allowed',
+                          background: canHire ? 'linear-gradient(90deg,#be185d,#f472b6)' : 'rgba(255,255,255,0.05)',
+                          color: canHire ? '#fff' : C.muted,
+                          fontWeight:700, fontSize:'13px',
+                        }}
+                      >
+                        👷 Tuyển — {fmtM(s.cost)}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              {totalStaff > 0 && (
+                <div style={{ marginTop:'14px', background:'rgba(244,114,182,0.08)', border:'1px solid rgba(244,114,182,0.2)', borderRadius:'10px', padding:'12px 16px', fontSize:'13px' }}>
+                  <strong style={{ color: C.pink }}>Tổng lương mỗi tick:</strong>{' '}
+                  <span style={{ color: C.red }}>
+                    -{fmtM(STAFF_TYPES.reduce((sum, s) => sum + (staff[s.id] || 0) * s.salary, 0))}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'log' && (
+            <div>
+              {log.length === 0 ? (
+                <div style={{ color: C.muted, textAlign:'center', padding:'40px', fontSize:'14px' }}>
+                  Chưa có sự kiện nào. Hãy xây khu vui chơi!
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                  {log.map((l, i) => (
+                    <div key={i} style={{
+                      background: C.card, border:`1px solid ${C.border}`, borderRadius:'8px',
+                      padding:'10px 14px', fontSize:'13px', color: C.text,
+                      opacity: 1 - i * 0.15,
+                    }}>
+                      {l}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* EVENT POPUP */}
+          {popup && (
+            <div style={{
+              position:'fixed', bottom:'24px', right:'24px', maxWidth:'300px',
+              background: popup.type === 'bad' ? 'rgba(127,29,29,0.95)' : 'rgba(6,78,59,0.95)',
+              border: `1px solid ${popup.type === 'bad' ? C.red : C.green}`,
+              borderRadius:'14px', padding:'16px 18px',
+              boxShadow:'0 8px 32px rgba(0,0,0,0.5)',
+              zIndex:1000, animation:'slideIn 0.3s ease',
+            }}>
+              <div style={{ fontSize:'28px', marginBottom:'6px' }}>{popup.icon}</div>
+              <div style={{ fontWeight:700, fontSize:'14px', marginBottom:'4px' }}>{popup.name}</div>
+              <div style={{ fontSize:'12px', color: popup.type === 'bad' ? '#fca5a5' : '#86efac' }}>{popup.desc}</div>
+              {popup.moneyDelta !== 0 && (
+                <div style={{ marginTop:'6px', fontSize:'12px', fontWeight:700, color: popup.moneyDelta > 0 ? C.green : C.red }}>
+                  {popup.moneyDelta > 0 ? '+' : ''}{fmtM(popup.moneyDelta)}
+                </div>
+              )}
+            </div>
+          )}
+
+          <style>{`
+            @keyframes slideIn {
+              from { opacity:0; transform:translateX(20px); }
+              to   { opacity:1; transform:translateX(0); }
+            }
+            @media(max-width:520px) {
+              h1 { font-size:18px !important; }
+            }
+          `}</style>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🍎 Vườn Trái Cây — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #0a1a00, #1a3300);
+      min-height: 100vh;
+    }
+    #root { min-height: 100vh; }
+    button { transition: all 0.2s; }
+    button:hover:not(:disabled) { transform: scale(1.02); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.98); }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
+    ::-webkit-scrollbar-thumb { background: rgba(74,222,128,0.3); border-radius: 3px; }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ===================== CONFIG =====================
+    const START_MONEY = 3_000_000;
+
+    const TREES = [
+      { id:'xoai',    name:'Xoài',      icon:'🥭', cost:120_000,  harvestTurns:4,  income:85_000,   maxTrees:8,  desc:'Trái ngọt, dễ trồng' },
+      { id:'tao',     name:'Táo',       icon:'🍎', cost:150_000,  harvestTurns:3,  income:75_000,   maxTrees:8,  desc:'Thu hoạch nhanh' },
+      { id:'cam',     name:'Cam',       icon:'🍊', cost:180_000,  harvestTurns:5,  income:130_000,  maxTrees:7,  desc:'Giàu vitamin C' },
+      { id:'chuoi',   name:'Chuối',     icon:'🍌', cost:60_000,   harvestTurns:2,  income:40_000,   maxTrees:12, desc:'Sinh trưởng nhanh nhất' },
+      { id:'duahau',  name:'Dưa Hấu',  icon:'🍉', cost:200_000,  harvestTurns:6,  income:200_000,  maxTrees:6,  desc:'Lợi nhuận cao mùa hè' },
+      { id:'nho',     name:'Nho',       icon:'🍇', cost:350_000,  harvestTurns:7,  income:310_000,  maxTrees:5,  desc:'Cao cấp, xuất khẩu' },
+      { id:'dautay',  name:'Dâu Tây',  icon:'🍓', cost:'unlock', harvestTurns:3,  income:150_000,  maxTrees:6,  desc:'Mở khóa khi đạt 5tr', unlockAt:5_000_000  },
+      { id:'dua',     name:'Dừa',       icon:'🥥', cost:'unlock', harvestTurns:8,  income:450_000,  maxTrees:4,  desc:'Mở khóa khi đạt 8tr', unlockAt:8_000_000  },
+      { id:'mit',     name:'Mít',       icon:'🍈', cost:'unlock', harvestTurns:10, income:700_000,  maxTrees:3,  desc:'Mở khóa khi đạt 12tr', unlockAt:12_000_000 },
+      { id:'saurieng',name:'Sầu Riêng',icon:'👑', cost:'unlock', harvestTurns:14, income:2_000_000,maxTrees:2,  desc:'Vua trái cây — mở khóa 20tr', unlockAt:20_000_000 },
+    ];
+
+    // Actual planting cost (unlockable trees still have a cost)
+    const PLANT_COST = {
+      xoai:120_000, tao:150_000, cam:180_000, chuoi:60_000, duahau:200_000,
+      nho:350_000, dautay:280_000, dua:600_000, mit:1_200_000, saurieng:3_500_000
+    };
+
+    const UPGRADES = [
+      { id:'fertilizer', name:'Phân Bón',     icon:'🌿', baseCost:500_000,  costMult:2.5, maxLevel:5, desc:'Giảm 1 lượt thu hoạch mỗi cấp (min 1)' },
+      { id:'irrigation', name:'Hệ Thống Tưới',icon:'💧', baseCost:800_000,  costMult:2.5, maxLevel:5, desc:'+15% sản lượng mỗi cấp' },
+      { id:'greenhouse', name:'Nhà Kính',      icon:'🏡', baseCost:1_500_000,costMult:3,   maxLevel:3, desc:'Giảm thiệt hại thời tiết' },
+      { id:'warehouse',  name:'Kho Hàng',      icon:'🏗️', baseCost:600_000,  costMult:2,   maxLevel:4, desc:'+10 cây tối đa toàn vườn' },
+    ];
+
+    const WEATHER_EVENTS = [
+      { id:'rain',     name:'Mưa Thuận Gió Hòa', icon:'🌧️', color:'#38bdf8', yieldMult:1.5,  turns:3, desc:'Sản lượng +50% trong 3 lượt' },
+      { id:'sun',      name:'Nắng Đẹp',           icon:'☀️',  color:'#fbbf24', yieldMult:1.2,  turns:4, desc:'Sản lượng +20% trong 4 lượt' },
+      { id:'drought',  name:'Hạn Hán',             icon:'🔥',  color:'#ef4444', yieldMult:0.7,  turns:3, desc:'Sản lượng -30% trong 3 lượt' },
+      { id:'pest',     name:'Sâu Bệnh',             icon:'🐛',  color:'#a16207', yieldMult:0.5,  turns:2, desc:'Sản lượng -50% trong 2 lượt' },
+      { id:'storm',    name:'Bão Lớn',              icon:'🌪️', color:'#7c3aed', yieldMult:0.4,  turns:2, desc:'Sản lượng -60% trong 2 lượt' },
+      { id:'perfect',  name:'Điều Kiện Hoàn Hảo',  icon:'✨',  color:'#22c55e', yieldMult:2.0,  turns:2, desc:'Sản lượng x2 trong 2 lượt' },
+    ];
+
+    // ===================== HELPERS =====================
+    function fmtM(n) {
+      if (n === 0) return '0₫';
+      const abs = Math.abs(n);
+      let s;
+      if (abs >= 1_000_000_000) s = (n / 1_000_000_000).toFixed(1).replace(/\.0$/, '') + 'tỷ';
+      else if (abs >= 1_000_000)  s = (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'tr';
+      else if (abs >= 1_000)      s = (n / 1_000).toFixed(0) + 'k';
+      else                         s = n.toLocaleString('vi-VN');
+      return s + '₫';
+    }
+
+    function calcUpgradeCost(upg, level) {
+      return Math.round(upg.baseCost * Math.pow(upg.costMult, level));
+    }
+
+    function getYieldMult(upgradeLevel, weatherEvent) {
+      const irrigation = 1 + upgradeLevel.irrigation * 0.15;
+      const weather = weatherEvent ? weatherEvent.yieldMult : 1;
+      return irrigation * weather;
+    }
+
+    function getHarvestTurns(base, fertLevel) {
+      return Math.max(1, base - fertLevel);
+    }
+
+    function greenhouse_protection(greenhouseLevel, weatherEvent) {
+      if (!weatherEvent || weatherEvent.yieldMult >= 1) return weatherEvent;
+      // greenhouse reduces bad event severity
+      const protection = greenhouseLevel * 0.15; // 15% per level
+      const newMult = Math.min(1, weatherEvent.yieldMult + protection * (1 - weatherEvent.yieldMult));
+      return { ...weatherEvent, yieldMult: newMult };
+    }
+
+    function getMaxTrees(warehouseLevel) {
+      return 30 + warehouseLevel * 10; // base 30, +10 per warehouse level
+    }
+
+    function totalTreesPlanted(garden) {
+      return garden.reduce((s, t) => s + t.count, 0);
+    }
+
+    function addLog(setLog, msg) {
+      setLog(prev => [{ msg, time: Date.now() }, ...prev].slice(0, 5));
+    }
+
+    // ===================== INITIAL STATE =====================
+    function initGarden() {
+      return TREES.map(t => ({
+        id: t.id,
+        count: 0,
+        turnsLeft: {},   // slot index -> turns left
+        readySlots: [],  // slot indices ready to harvest
+        storedHarvest: 0 // kg stored, ready to sell
+      }));
+    }
+
+    function initUpgrades() {
+      return { fertilizer: 0, irrigation: 0, greenhouse: 0, warehouse: 0 };
+    }
+
+    // ===================== MAIN APP =====================
+    function App() {
+      const [money, setMoney] = useState(START_MONEY);
+      const [garden, setGarden] = useState(initGarden);
+      const [upgrades, setUpgrades] = useState(initUpgrades);
+      const [turn, setTurn] = useState(1);
+      const [weatherEvent, setWeatherEvent] = useState(null);
+      const [weatherTurnsLeft, setWeatherTurnsLeft] = useState(0);
+      const [log, setLog] = useState([{ msg: '🌱 Chào mừng đến Vườn Trái Cây! Bắt đầu trồng trái cây nào.', time: Date.now() }]);
+      const [totalEarned, setTotalEarned] = useState(0);
+      const [totalHarvested, setTotalHarvested] = useState(0);
+      const [workers, setWorkers] = useState(0);
+      const [workerCost] = useState(300_000);
+      const [maxWorkers] = useState(5);
+      const [tab, setTab] = useState('garden'); // garden | shop | upgrades | stats
+      const [notification, setNotification] = useState(null);
+      const notifTimer = useRef(null);
+
+      const totalEarnedRef = useRef(totalEarned);
+      const totalHarvestedRef = useRef(totalHarvested);
+      totalEarnedRef.current = totalEarned;
+      totalHarvestedRef.current = totalHarvested;
+
+      function showNotif(msg, color = '#22c55e') {
+        if (notifTimer.current) clearTimeout(notifTimer.current);
+        setNotification({ msg, color });
+        notifTimer.current = setTimeout(() => setNotification(null), 2800);
+      }
+
+      // Advance turn: grow trees, workers auto-harvest, weather tick
+      function doNextTurn() {
+        let newGarden = garden.map(entry => {
+          const tree = TREES.find(t => t.id === entry.id);
+          const fertLevel = upgrades.fertilizer;
+          const harvestTurns = getHarvestTurns(tree.harvestTurns, fertLevel);
+          const newTurnsLeft = { ...entry.turnsLeft };
+          const newReady = [...entry.readySlots];
+
+          for (let slot = 0; slot < entry.count; slot++) {
+            if (newReady.includes(slot)) continue; // already ready
+            if (newTurnsLeft[slot] === undefined) {
+              newTurnsLeft[slot] = harvestTurns; // just planted this turn
+            } else {
+              newTurnsLeft[slot] = newTurnsLeft[slot] - 1;
+              if (newTurnsLeft[slot] <= 0) {
+                newReady.push(slot);
+                delete newTurnsLeft[slot];
+              }
+            }
+          }
+          return { ...entry, turnsLeft: newTurnsLeft, readySlots: newReady };
+        });
+
+        // Resolve weather
+        let newWeather = weatherEvent;
+        let newWeatherTurns = weatherTurnsLeft;
+        if (newWeatherTurns > 0) {
+          newWeatherTurns -= 1;
+          if (newWeatherTurns === 0) {
+            newWeather = null;
+            addLog(setLog, `☁️ Thời tiết trở lại bình thường.`);
+          }
+        }
+
+        // Random weather trigger (15% chance per turn)
+        if (!newWeather && Math.random() < 0.15) {
+          const ev = WEATHER_EVENTS[Math.floor(Math.random() * WEATHER_EVENTS.length)];
+          newWeather = ev;
+          newWeatherTurns = ev.turns;
+          addLog(setLog, `${ev.icon} Sự kiện thời tiết: ${ev.name}! ${ev.desc}`);
+          showNotif(`${ev.icon} ${ev.name}!`, ev.color);
+        }
+
+        // Workers auto-harvest
+        let workerIncome = 0;
+        let workerHarvestCount = 0;
+        if (workers > 0) {
+          const effectiveWeather = greenhouse_protection(upgrades.greenhouse, newWeather);
+          const yieldMult = getYieldMult(upgrades, effectiveWeather);
+          let harvested = 0;
+          newGarden = newGarden.map(entry => {
+            if (entry.readySlots.length === 0) return entry;
+            const tree = TREES.find(t => t.id === entry.id);
+            const harvestableMult = Math.min(workers, entry.readySlots.length); // workers share
+            const slotsToHarvest = entry.readySlots.slice(0, harvestableMult);
+            const income = Math.round(PLANT_COST[tree.id] === 'unlock' ? tree.income : tree.income * yieldMult) * slotsToHarvest.length;
+            workerIncome += income;
+            workerHarvestCount += slotsToHarvest.length;
+            harvested += slotsToHarvest.length;
+            const newReady = entry.readySlots.filter(s => !slotsToHarvest.includes(s));
+            const harvestTurns = getHarvestTurns(tree.harvestTurns, upgrades.fertilizer);
+            const newTurnsLeft = { ...entry.turnsLeft };
+            slotsToHarvest.forEach(s => { newTurnsLeft[s] = harvestTurns; });
+            return { ...entry, readySlots: newReady, turnsLeft: newTurnsLeft };
+          });
+          if (workerIncome > 0) {
+            addLog(setLog, `👷 Công nhân thu hoạch ${workerHarvestCount} cây, kiếm được ${fmtM(workerIncome)}`);
+          }
+        }
+
+        setGarden(newGarden);
+        setWeatherEvent(newWeather);
+        setWeatherTurnsLeft(newWeatherTurns);
+        setTurn(t => t + 1);
+        if (workerIncome > 0) {
+          setMoney(m => m + workerIncome);
+          setTotalEarned(e => e + workerIncome);
+          setTotalHarvested(h => h + workerHarvestCount);
+        }
+
+        addLog(setLog, `⏭️ Lượt ${turn + 1} bắt đầu.`);
+      }
+
+      function plantTree(treeId) {
+        const tree = TREES.find(t => t.id === treeId);
+        const cost = PLANT_COST[treeId];
+        const gardenEntry = garden.find(g => g.id === treeId);
+        const maxAllowed = Math.min(tree.maxTrees, getMaxTrees(upgrades.warehouse));
+        if (gardenEntry.count >= maxAllowed) {
+          showNotif('Đã đạt số cây tối đa!', '#ef4444'); return;
+        }
+        if (money < cost) {
+          showNotif('Không đủ tiền!', '#ef4444'); return;
+        }
+        const totalTrees = totalTreesPlanted(garden);
+        if (totalTrees >= getMaxTrees(upgrades.warehouse)) {
+          showNotif('Vườn đã đầy! Nâng cấp Kho Hàng để trồng thêm.', '#ef4444'); return;
+        }
+        const fertLevel = upgrades.fertilizer;
+        const harvestTurns = getHarvestTurns(tree.harvestTurns, fertLevel);
+        setMoney(m => m - cost);
+        setGarden(prev => prev.map(g => {
+          if (g.id !== treeId) return g;
+          const slot = g.count;
+          return {
+            ...g,
+            count: g.count + 1,
+            turnsLeft: { ...g.turnsLeft, [slot]: harvestTurns }
+          };
+        }));
+        addLog(setLog, `🌱 Trồng 1 cây ${tree.icon} ${tree.name} (còn ${harvestTurns} lượt).`);
+        showNotif(`Đã trồng ${tree.icon} ${tree.name}!`);
+      }
+
+      function harvestTree(treeId) {
+        const tree = TREES.find(t => t.id === treeId);
+        const gardenEntry = garden.find(g => g.id === treeId);
+        if (gardenEntry.readySlots.length === 0) {
+          showNotif('Chưa có cây sẵn sàng thu hoạch!', '#fbbf24'); return;
+        }
+        const effectiveWeather = greenhouse_protection(upgrades.greenhouse, weatherEvent);
+        const yieldMult = getYieldMult(upgrades, effectiveWeather);
+        const income = Math.round(tree.income * yieldMult) * gardenEntry.readySlots.length;
+        const harvestCount = gardenEntry.readySlots.length;
+        const fertLevel = upgrades.fertilizer;
+        const harvestTurns = getHarvestTurns(tree.harvestTurns, fertLevel);
+        setMoney(m => m + income);
+        setTotalEarned(e => e + income);
+        setTotalHarvested(h => h + harvestCount);
+        setGarden(prev => prev.map(g => {
+          if (g.id !== treeId) return g;
+          const newTurnsLeft = { ...g.turnsLeft };
+          g.readySlots.forEach(s => { newTurnsLeft[s] = harvestTurns; });
+          return { ...g, readySlots: [], turnsLeft: newTurnsLeft };
+        }));
+        addLog(setLog, `${tree.icon} Thu hoạch ${harvestCount} cây ${tree.name} → +${fmtM(income)}`);
+        showNotif(`+${fmtM(income)} từ ${tree.name}!`);
+      }
+
+      function harvestAll() {
+        let totalIncome = 0;
+        let totalCount = 0;
+        const effectiveWeather = greenhouse_protection(upgrades.greenhouse, weatherEvent);
+        const yieldMult = getYieldMult(upgrades, effectiveWeather);
+        const fertLevel = upgrades.fertilizer;
+        const newGarden = garden.map(g => {
+          if (g.readySlots.length === 0) return g;
+          const tree = TREES.find(t => t.id === g.id);
+          const income = Math.round(tree.income * yieldMult) * g.readySlots.length;
+          const harvestTurns = getHarvestTurns(tree.harvestTurns, fertLevel);
+          totalIncome += income;
+          totalCount += g.readySlots.length;
+          const newTurnsLeft = { ...g.turnsLeft };
+          g.readySlots.forEach(s => { newTurnsLeft[s] = harvestTurns; });
+          return { ...g, readySlots: [], turnsLeft: newTurnsLeft };
+        });
+        if (totalCount === 0) { showNotif('Chưa có cây nào sẵn sàng!', '#fbbf24'); return; }
+        setMoney(m => m + totalIncome);
+        setTotalEarned(e => e + totalIncome);
+        setTotalHarvested(h => h + totalCount);
+        setGarden(newGarden);
+        addLog(setLog, `🧺 Thu hoạch tất cả (${totalCount} cây) → +${fmtM(totalIncome)}`);
+        showNotif(`+${fmtM(totalIncome)} thu hoạch tất cả!`);
+      }
+
+      function buyUpgrade(upgId) {
+        const upg = UPGRADES.find(u => u.id === upgId);
+        const level = upgrades[upgId];
+        if (level >= upg.maxLevel) { showNotif('Đã đạt cấp tối đa!', '#fbbf24'); return; }
+        const cost = calcUpgradeCost(upg, level);
+        if (money < cost) { showNotif('Không đủ tiền!', '#ef4444'); return; }
+        setMoney(m => m - cost);
+        setUpgrades(prev => ({ ...prev, [upgId]: prev[upgId] + 1 }));
+        addLog(setLog, `${upg.icon} Nâng cấp ${upg.name} lên cấp ${level + 1}! (-${fmtM(cost)})`);
+        showNotif(`${upg.icon} ${upg.name} Cấp ${level + 1}!`);
+      }
+
+      function hireWorker() {
+        if (workers >= maxWorkers) { showNotif('Đã có đủ công nhân!', '#fbbf24'); return; }
+        if (money < workerCost) { showNotif('Không đủ tiền!', '#ef4444'); return; }
+        setMoney(m => m - workerCost);
+        setWorkers(w => w + 1);
+        addLog(setLog, `👷 Thuê thêm 1 công nhân (${workers + 1}/${maxWorkers})`);
+        showNotif(`👷 Công nhân thứ ${workers + 1} đã được thuê!`);
+      }
+
+      const totalTrees = totalTreesPlanted(garden);
+      const maxGardenTrees = getMaxTrees(upgrades.warehouse);
+      const totalReady = garden.reduce((s, g) => s + g.readySlots.length, 0);
+      const maxEarned = Math.max(totalEarned, 1);
+      const milestone = totalEarned >= 50_000_000 ? '🏆 Tỷ Phú Vườn Cây!' :
+                        totalEarned >= 20_000_000 ? '💎 Vườn Xuất Khẩu' :
+                        totalEarned >= 10_000_000 ? '🌟 Vườn Thịnh Vượng' :
+                        totalEarned >= 5_000_000  ? '🌿 Nhà Vườn Chuyên Nghiệp' :
+                        totalEarned >= 1_000_000  ? '🌱 Nông Dân Bắt Đầu' : '🪴 Người Học Việc';
+
+      // ===================== RENDER =====================
+      return (
+        <div style={{ minHeight:'100vh', color:'#f0fdf4', padding:'0 0 60px' }}>
+          {/* Header */}
+          <div style={{ background:'linear-gradient(135deg, #14532d, #166534)', padding:'16px 16px 12px', borderBottom:'1px solid rgba(74,222,128,0.2)', position:'sticky', top:0, zIndex:100 }}>
+            <div style={{ maxWidth:700, margin:'0 auto' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <a href="../index.html" style={{ color:'#86efac', textDecoration:'none', fontSize:20, lineHeight:1 }}>←</a>
+                  <div>
+                    <div style={{ fontSize:18, fontWeight:700, letterSpacing:0.5 }}>🍎 Vườn Trái Cây</div>
+                    <div style={{ fontSize:11, color:'#86efac', marginTop:1 }}>{milestone} · Lượt {turn}</div>
+                  </div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ fontSize:22, fontWeight:800, color:'#4ade80' }}>{fmtM(money)}</div>
+                  <div style={{ fontSize:11, color:'#86efac' }}>{totalTrees}/{maxGardenTrees} cây · {workers} công nhân</div>
+                </div>
+              </div>
+
+              {/* Weather banner */}
+              {weatherEvent && (
+                <div style={{ marginTop:8, padding:'6px 12px', borderRadius:8, background:`${weatherEvent.color}22`, border:`1px solid ${weatherEvent.color}55`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span style={{ fontSize:13, color: weatherEvent.color }}>{weatherEvent.icon} {weatherEvent.name}</span>
+                  <span style={{ fontSize:11, color:'#86efac' }}>{weatherTurnsLeft} lượt còn lại · Sản lượng {weatherEvent.yieldMult >= 1 ? '+' : ''}{Math.round((weatherEvent.yieldMult - 1) * 100)}%</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Notification toast */}
+          {notification && (
+            <div style={{ position:'fixed', top:70, left:'50%', transform:'translateX(-50%)', background:notification.color || '#22c55e', color:'#fff', padding:'10px 20px', borderRadius:24, fontWeight:700, fontSize:14, zIndex:9999, boxShadow:'0 4px 20px rgba(0,0,0,0.4)', pointerEvents:'none' }}>
+              {notification.msg}
+            </div>
+          )}
+
+          <div style={{ maxWidth:700, margin:'0 auto', padding:'12px 12px 0' }}>
+            {/* Tab Nav */}
+            <div style={{ display:'flex', gap:6, marginBottom:14, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12 }}>
+              {[['garden','🌳 Vườn'],['shop','🛒 Cửa Hàng'],['upgrades','⚗️ Nâng Cấp'],['stats','📊 Thống Kê']].map(([key, label]) => (
+                <button key={key} onClick={() => setTab(key)} style={{
+                  flex:1, padding:'8px 4px', borderRadius:8, border:'none', fontSize:12, fontWeight:600, cursor:'pointer',
+                  background: tab === key ? 'linear-gradient(135deg, #16a34a, #15803d)' : 'transparent',
+                  color: tab === key ? '#fff' : '#86efac'
+                }}>{label}</button>
+              ))}
+            </div>
+
+            {/* GARDEN TAB */}
+            {tab === 'garden' && (
+              <div>
+                {/* Action bar */}
+                <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap' }}>
+                  <button onClick={doNextTurn} style={{ flex:'1 1 140px', padding:'12px 16px', background:'linear-gradient(135deg, #0284c7, #0369a1)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer' }}>
+                    ⏭️ Lượt Tiếp Theo
+                  </button>
+                  <button onClick={harvestAll} disabled={totalReady === 0} style={{ flex:'1 1 140px', padding:'12px 16px', background: totalReady > 0 ? 'linear-gradient(135deg, #d97706, #b45309)' : 'rgba(255,255,255,0.05)', color: totalReady > 0 ? '#fff' : '#64748b', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor: totalReady > 0 ? 'pointer' : 'not-allowed' }}>
+                    🧺 Thu Hoạch Tất Cả {totalReady > 0 ? `(${totalReady})` : ''}
+                  </button>
+                </div>
+
+                {/* Tree cards */}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:10 }}>
+                  {garden.map(g => {
+                    const tree = TREES.find(t => t.id === g.id);
+                    const isUnlocked = tree.cost !== 'unlock' || (totalEarned >= tree.unlockAt);
+                    const planted = g.count > 0;
+                    if (!isUnlocked && !planted) return null;
+                    const readyCount = g.readySlots.length;
+                    const growingCount = g.count - readyCount;
+                    const nextReady = Object.values(g.turnsLeft).length > 0 ? Math.min(...Object.values(g.turnsLeft)) : null;
+                    return (
+                      <div key={g.id} style={{ background: planted ? 'rgba(21,128,61,0.2)' : 'rgba(255,255,255,0.04)', border:`1px solid ${readyCount > 0 ? '#4ade80' : 'rgba(74,222,128,0.15)'}`, borderRadius:12, padding:12, position:'relative' }}>
+                        {readyCount > 0 && (
+                          <div style={{ position:'absolute', top:8, right:8, background:'#4ade80', color:'#14532d', borderRadius:12, padding:'2px 8px', fontSize:11, fontWeight:800 }}>
+                            {readyCount} sẵn sàng
+                          </div>
+                        )}
+                        <div style={{ fontSize:28, marginBottom:4 }}>{tree.icon}</div>
+                        <div style={{ fontWeight:700, fontSize:14, marginBottom:2 }}>{tree.name}</div>
+                        <div style={{ fontSize:11, color:'#86efac', marginBottom:8 }}>{tree.desc}</div>
+                        <div style={{ fontSize:11, color:'#a7f3d0', marginBottom:6, display:'flex', flexDirection:'column', gap:2 }}>
+                          <span>💰 Thu: {fmtM(tree.income)}/lượt</span>
+                          <span>🌳 Đang trồng: {planted ? `${growingCount} đang lớn · ${readyCount} sẵn sàng` : 'Chưa có cây'}</span>
+                          {nextReady !== null && growingCount > 0 && <span>⏳ Còn {nextReady} lượt</span>}
+                        </div>
+                        <div style={{ display:'flex', gap:6 }}>
+                          <button onClick={() => plantTree(g.id)} disabled={g.count >= Math.min(tree.maxTrees, maxGardenTrees) || totalTrees >= maxGardenTrees || money < PLANT_COST[g.id]} style={{ flex:1, padding:'7px 4px', background: money >= PLANT_COST[g.id] && g.count < Math.min(tree.maxTrees, maxGardenTrees) && totalTrees < maxGardenTrees ? 'linear-gradient(135deg, #16a34a, #15803d)' : 'rgba(255,255,255,0.08)', color: money >= PLANT_COST[g.id] && g.count < tree.maxTrees ? '#fff' : '#64748b', border:'none', borderRadius:7, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                            🌱 Trồng ({fmtM(PLANT_COST[g.id])})
+                          </button>
+                          {readyCount > 0 && (
+                            <button onClick={() => harvestTree(g.id)} style={{ flex:1, padding:'7px 4px', background:'linear-gradient(135deg, #d97706, #b45309)', color:'#fff', border:'none', borderRadius:7, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                              🍂 Hái
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Locked previews */}
+                <div style={{ marginTop:12 }}>
+                  <div style={{ fontSize:12, color:'#4ade80', fontWeight:600, marginBottom:8 }}>🔒 Cây Chưa Mở Khóa</div>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                    {TREES.filter(t => t.cost === 'unlock' && totalEarned < t.unlockAt).map(t => (
+                      <div key={t.id} style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'8px 12px', opacity:0.7, display:'flex', alignItems:'center', gap:8 }}>
+                        <span style={{ fontSize:20 }}>{t.icon}</span>
+                        <div>
+                          <div style={{ fontSize:12, fontWeight:600 }}>{t.name}</div>
+                          <div style={{ fontSize:10, color:'#64748b' }}>Mở khóa: {fmtM(t.unlockAt)} thu nhập</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recent Log */}
+                <div style={{ marginTop:16, background:'rgba(0,0,0,0.25)', borderRadius:12, padding:12, border:'1px solid rgba(74,222,128,0.1)' }}>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#4ade80', marginBottom:8 }}>📋 Nhật Ký Hoạt Động</div>
+                  {log.map((entry, i) => (
+                    <div key={i} style={{ fontSize:12, color: i === 0 ? '#d1fae5' : '#6b7280', padding:'3px 0', borderBottom: i < log.length-1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                      {entry.msg}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* SHOP TAB */}
+            {tab === 'shop' && (
+              <div>
+                <div style={{ marginBottom:12 }}>
+                  <div style={{ fontSize:13, color:'#86efac', marginBottom:10 }}>Mua thêm cây để mở rộng vườn. Chi phí trồng mỗi lượt.</div>
+                  {/* Worker hire */}
+                  <div style={{ background:'rgba(0,0,0,0.25)', borderRadius:12, padding:14, border:'1px solid rgba(74,222,128,0.15)', marginBottom:12 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                      <div>
+                        <div style={{ fontSize:16, fontWeight:700 }}>👷 Thuê Công Nhân</div>
+                        <div style={{ fontSize:12, color:'#86efac', marginTop:2 }}>Tự động thu hoạch mỗi lượt (tối đa {maxWorkers} người)</div>
+                        <div style={{ fontSize:11, color:'#a7f3d0', marginTop:4 }}>Đang có: {workers}/{maxWorkers} công nhân</div>
+                      </div>
+                      <button onClick={hireWorker} disabled={workers >= maxWorkers || money < workerCost} style={{ padding:'10px 16px', background: workers < maxWorkers && money >= workerCost ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' : 'rgba(255,255,255,0.08)', color: workers < maxWorkers && money >= workerCost ? '#fff' : '#64748b', border:'none', borderRadius:10, fontWeight:700, fontSize:13, cursor: workers < maxWorkers && money >= workerCost ? 'pointer':'not-allowed' }}>
+                        {workers >= maxWorkers ? 'Đủ rồi' : `Thuê ${fmtM(workerCost)}`}
+                      </button>
+                    </div>
+                    {workers > 0 && (
+                      <div style={{ marginTop:8, display:'flex', gap:6 }}>
+                        {Array.from({length:workers}).map((_,i) => <span key={i} style={{ fontSize:18 }}>👷</span>)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* All tree info */}
+                  <div style={{ fontSize:12, color:'#4ade80', fontWeight:600, marginBottom:8 }}>📋 Bảng Giá Cây Giống</div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                    {TREES.map(t => {
+                      const isUnlocked = t.cost !== 'unlock' || totalEarned >= t.unlockAt;
+                      const fertLevel = upgrades.fertilizer;
+                      const turns = getHarvestTurns(t.harvestTurns, fertLevel);
+                      return (
+                        <div key={t.id} style={{ background:'rgba(0,0,0,0.2)', border:`1px solid rgba(74,222,128,${isUnlocked ? 0.2 : 0.05})`, borderRadius:10, padding:'10px 14px', opacity: isUnlocked ? 1 : 0.5, display:'flex', justifyContent:'space-between', alignItems:'center', gap:10 }}>
+                          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+                            <span style={{ fontSize:24 }}>{t.icon}</span>
+                            <div>
+                              <div style={{ fontWeight:700, fontSize:13 }}>{t.name} {!isUnlocked ? '🔒' : ''}</div>
+                              <div style={{ fontSize:11, color:'#86efac' }}>{t.desc}</div>
+                              {!isUnlocked && <div style={{ fontSize:10, color:'#fbbf24' }}>Thu nhập {fmtM(t.unlockAt)} để mở</div>}
+                            </div>
+                          </div>
+                          <div style={{ textAlign:'right', flexShrink:0 }}>
+                            <div style={{ fontSize:12, fontWeight:700, color:'#4ade80' }}>{fmtM(PLANT_COST[t.id])}</div>
+                            <div style={{ fontSize:10, color:'#86efac' }}>{fmtM(t.income)}/lượt</div>
+                            <div style={{ fontSize:10, color:'#64748b' }}>{turns} lượt · max {t.maxTrees}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* UPGRADES TAB */}
+            {tab === 'upgrades' && (
+              <div>
+                <div style={{ fontSize:13, color:'#86efac', marginBottom:12 }}>Nâng cấp vườn để tăng năng suất và lợi nhuận.</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {UPGRADES.map(upg => {
+                    const level = upgrades[upg.id];
+                    const nextCost = level < upg.maxLevel ? calcUpgradeCost(upg, level) : null;
+                    const maxed = level >= upg.maxLevel;
+                    return (
+                      <div key={upg.id} style={{ background:'rgba(0,0,0,0.25)', border:`1px solid rgba(74,222,128,${maxed ? 0.4 : 0.15})`, borderRadius:12, padding:14 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10 }}>
+                          <div style={{ flex:1 }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                              <span style={{ fontSize:22 }}>{upg.icon}</span>
+                              <div>
+                                <div style={{ fontWeight:700, fontSize:14 }}>{upg.name}</div>
+                                {maxed && <span style={{ fontSize:10, background:'#4ade80', color:'#14532d', padding:'1px 6px', borderRadius:8, fontWeight:700 }}>TỐI ĐA</span>}
+                              </div>
+                            </div>
+                            <div style={{ fontSize:12, color:'#86efac', marginBottom:6 }}>{upg.desc}</div>
+                            {/* Level bar */}
+                            <div style={{ display:'flex', gap:4 }}>
+                              {Array.from({length:upg.maxLevel}).map((_,i) => (
+                                <div key={i} style={{ height:6, flex:1, borderRadius:3, background: i < level ? '#4ade80' : 'rgba(255,255,255,0.1)' }} />
+                              ))}
+                            </div>
+                            <div style={{ fontSize:11, color:'#64748b', marginTop:4 }}>Cấp {level}/{upg.maxLevel}</div>
+                          </div>
+                          <div style={{ textAlign:'right', flexShrink:0 }}>
+                            {!maxed && <div style={{ fontSize:11, color:'#86efac', marginBottom:4 }}>Chi phí</div>}
+                            {!maxed && <div style={{ fontSize:14, fontWeight:700, color:'#fbbf24', marginBottom:6 }}>{fmtM(nextCost)}</div>}
+                            <button onClick={() => buyUpgrade(upg.id)} disabled={maxed || money < (nextCost || 0)} style={{ padding:'9px 16px', background: !maxed && money >= nextCost ? 'linear-gradient(135deg, #d97706, #b45309)' : maxed ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.06)', color: !maxed && money >= nextCost ? '#fff' : maxed ? '#4ade80' : '#64748b', border:'none', borderRadius:9, fontWeight:700, fontSize:12, cursor: !maxed && money >= nextCost ? 'pointer' : 'not-allowed' }}>
+                              {maxed ? '✅ Đã tối đa' : 'Nâng Cấp'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Yield preview */}
+                <div style={{ marginTop:14, background:'rgba(0,0,0,0.2)', borderRadius:12, padding:12, border:'1px solid rgba(74,222,128,0.1)' }}>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#4ade80', marginBottom:8 }}>📈 Hiệu Quả Hiện Tại</div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:4, fontSize:12 }}>
+                    <div style={{ color:'#d1fae5' }}>🌿 Phân bón: Giảm {upgrades.fertilizer} lượt thu hoạch</div>
+                    <div style={{ color:'#d1fae5' }}>💧 Tưới nước: Sản lượng +{upgrades.irrigation * 15}%</div>
+                    <div style={{ color:'#d1fae5' }}>🏡 Nhà kính: Giảm {upgrades.greenhouse * 15}% thiệt hại thời tiết</div>
+                    <div style={{ color:'#d1fae5' }}>🏗️ Kho hàng: Tối đa {getMaxTrees(upgrades.warehouse)} cây trong vườn</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STATS TAB */}
+            {tab === 'stats' && (
+              <div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
+                  {[
+                    ['💰', 'Tổng Thu Nhập', fmtM(totalEarned), '#4ade80'],
+                    ['🌳', 'Tổng Cây Trồng', `${totalTrees} cây`, '#38bdf8'],
+                    ['🍂', 'Tổng Thu Hoạch', `${totalHarvested} lần`, '#fbbf24'],
+                    ['👷', 'Công Nhân', `${workers}/${maxWorkers}`, '#c084fc'],
+                    ['⏭️', 'Số Lượt', `${turn}`, '#f97316'],
+                    ['🎖️', 'Danh Hiệu', milestone, '#f0fdf4'],
+                  ].map(([icon, label, value, color]) => (
+                    <div key={label} style={{ background:'rgba(0,0,0,0.25)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:12, padding:14 }}>
+                      <div style={{ fontSize:22, marginBottom:4 }}>{icon}</div>
+                      <div style={{ fontSize:11, color:'#86efac' }}>{label}</div>
+                      <div style={{ fontSize:16, fontWeight:700, color, marginTop:2 }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Progress to next milestone */}
+                <div style={{ background:'rgba(0,0,0,0.25)', borderRadius:12, padding:14, border:'1px solid rgba(74,222,128,0.15)', marginBottom:12 }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:'#4ade80', marginBottom:10 }}>🎯 Tiến Độ Mở Khóa</div>
+                  {TREES.filter(t => t.cost === 'unlock').map(t => {
+                    const pct = Math.min(100, Math.round(totalEarned / t.unlockAt * 100));
+                    const done = totalEarned >= t.unlockAt;
+                    return (
+                      <div key={t.id} style={{ marginBottom:10 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, marginBottom:4 }}>
+                          <span>{t.icon} {t.name} {done ? '✅' : ''}</span>
+                          <span style={{ color:'#86efac' }}>{fmtM(totalEarned)}/{fmtM(t.unlockAt)}</span>
+                        </div>
+                        <div style={{ height:6, background:'rgba(255,255,255,0.08)', borderRadius:3, overflow:'hidden' }}>
+                          <div style={{ height:'100%', width:`${pct}%`, background: done ? '#4ade80' : 'linear-gradient(90deg, #16a34a, #4ade80)', borderRadius:3, transition:'width 0.3s' }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Yield per turn breakdown */}
+                <div style={{ background:'rgba(0,0,0,0.25)', borderRadius:12, padding:14, border:'1px solid rgba(74,222,128,0.15)' }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:'#4ade80', marginBottom:10 }}>📊 Vườn Hiện Tại</div>
+                  {garden.filter(g => g.count > 0).length === 0
+                    ? <div style={{ fontSize:12, color:'#64748b' }}>Chưa có cây nào được trồng.</div>
+                    : garden.filter(g => g.count > 0).map(g => {
+                        const tree = TREES.find(t => t.id === g.id);
+                        const effectiveWeather = greenhouse_protection(upgrades.greenhouse, weatherEvent);
+                        const yieldMult = getYieldMult(upgrades, effectiveWeather);
+                        const incomePerTree = Math.round(tree.income * yieldMult);
+                        return (
+                          <div key={g.id} style={{ display:'flex', justifyContent:'space-between', fontSize:12, padding:'5px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                            <span>{tree.icon} {tree.name} ×{g.count}</span>
+                            <span style={{ color:'#4ade80' }}>{fmtM(incomePerTree)}/cây · {fmtM(incomePerTree * g.count)} tổng</span>
+                          </div>
+                        );
+                      })
+                  }
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Fixed bottom bar on mobile */}
+          <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'rgba(10,26,0,0.95)', backdropFilter:'blur(12px)', borderTop:'1px solid rgba(74,222,128,0.2)', padding:'8px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', zIndex:200 }}>
+            <div style={{ fontSize:13, color:'#4ade80', fontWeight:700 }}>{fmtM(money)}</div>
+            <div style={{ fontSize:12, color:'#86efac' }}>🌳 {totalTrees}/{maxGardenTrees} · {totalReady > 0 ? `🍂 ${totalReady} sẵn sàng` : '⌛ Đang lớn'}</div>
+            <button onClick={doNextTurn} style={{ padding:'8px 16px', background:'linear-gradient(135deg, #0284c7, #0369a1)', color:'#fff', border:'none', borderRadius:20, fontWeight:700, fontSize:12, cursor:'pointer' }}>
+              ⏭️ Tiếp
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

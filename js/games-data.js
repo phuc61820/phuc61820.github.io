@@ -292,6 +292,17 @@ const GAMES = [
     border: '#ec4899',
     file: 'petshop.html',
     featured: true
+  },
+  {
+    id: 'fruit',
+    name: 'Vườn Trái Cây',
+    icon: '🍎',
+    desc: 'Trồng 10 loại cây ăn trái, thuê công nhân, nâng cấp vườn — từ Xoài đến Sầu Riêng vua trái cây!',
+    category: 'tycoon',
+    tags: ['nông trại', 'quản lý', 'nâng cấp'],
+    bg: 'linear-gradient(135deg, #0a1a00, #1a3300)',
+    border: '#4ade80',
+    file: 'fruit.html'
   }
 ];
 
