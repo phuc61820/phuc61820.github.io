@@ -268,6 +268,30 @@ const GAMES = [
     bg: 'linear-gradient(135deg, #0c4a6e, #0369a1)',
     border: '#7dd3fc',
     file: 'water.html'
+  },
+  {
+    id: 'park',
+    name: 'Công Viên Vui Chơi',
+    icon: '🎡',
+    desc: 'Xây đu quay, tàu lượn, vườn thú — vận hành công viên giải trí hàng đầu!',
+    category: 'tycoon',
+    tags: ['xây dựng', 'quản lý', 'lễ hội'],
+    bg: 'linear-gradient(135deg, #0a0a1f, #1a1040)',
+    border: '#a78bfa',
+    file: 'park.html',
+    featured: true
+  },
+  {
+    id: 'petshop',
+    name: 'Tiệm Thú Cưng',
+    icon: '🐾',
+    desc: 'Nhập thú cưng, chăm sóc, bán cho khách! 10 loài từ hamster đến Corgi siêu hiếm!',
+    category: 'tycoon',
+    tags: ['dễ thương', 'quản lý', 'kinh doanh'],
+    bg: 'linear-gradient(135deg, #1a0a1a, #2d1b3d)',
+    border: '#ec4899',
+    file: 'petshop.html',
+    featured: true
   }
 ];
 

@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐾 Tiệm Thú Cưng — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #1a0a1a, #2d1b3d);
+      min-height: 100vh;
+    }
+    #root { min-height: 100vh; }
+    button { transition: all 0.2s; cursor: pointer; border: none; outline: none; }
+    button:hover:not(:disabled) { transform: scale(1.02); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.98); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
+    ::-webkit-scrollbar-thumb { background: rgba(236,72,153,0.35); border-radius: 3px; }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ===================== DATA =====================
+    const PET_TYPES = [
+      { id:'dog_small',  name:'Chó Nhỏ',       icon:'🐶', buyCost:200000,  sellBase:350000,  careTime:8,  rarity:1, desc:'Dễ bán, dễ nuôi' },
+      { id:'cat',        name:'Mèo Con',        icon:'🐱', buyCost:180000,  sellBase:320000,  careTime:7,  rarity:1, desc:'Phổ biến với trẻ em' },
+      { id:'rabbit',     name:'Thỏ',            icon:'🐰', buyCost:120000,  sellBase:220000,  careTime:6,  rarity:1, desc:'Nhỏ nhắn dễ thương' },
+      { id:'hamster',    name:'Hamster',        icon:'🐹', buyCost:80000,   sellBase:150000,  careTime:5,  rarity:1, desc:'Giá rẻ, bán nhanh' },
+      { id:'parrot',     name:'Vẹt',            icon:'🦜', buyCost:350000,  sellBase:600000,  careTime:12, rarity:2, desc:'Biết nói, rất thu hút' },
+      { id:'goldfish',   name:'Cá Vàng',        icon:'🐠', buyCost:30000,   sellBase:75000,   careTime:3,  rarity:1, desc:'Nuôi dễ, bán nhiều' },
+      { id:'turtle',     name:'Rùa',            icon:'🐢', buyCost:150000,  sellBase:280000,  careTime:4,  rarity:2, desc:'Sống lâu, khách ưa thích' },
+      { id:'phu_quoc',   name:'Chó Phú Quốc',  icon:'🐕', buyCost:800000,  sellBase:1400000, careTime:15, rarity:3, desc:'Giống chó thuần Việt quý' },
+      { id:'persian',    name:'Mèo Ba Tư',      icon:'🐈', buyCost:1200000, sellBase:2100000, careTime:18, rarity:3, desc:'Lông dài sang trọng' },
+      { id:'corgi',      name:'Chó Corgi',      icon:'🐾', buyCost:2500000, sellBase:4500000, careTime:22, rarity:4, desc:'Cực hiếm, cực đắt!' },
+    ];
+
+    const UPGRADE_TYPES = [
+      { id:'cage',      name:'Chuồng Rộng Hơn',  icon:'🏠', baseCost:500000,   levels:5, desc:'Mở rộng chỗ chứa thú (+3 mỗi cấp)', effect:'capacity' },
+      { id:'food',      name:'Thức Ăn Ngon',      icon:'🍖', baseCost:400000,   levels:5, desc:'Thú cưng vui hơn, bán giá cao hơn (+8% mỗi cấp)', effect:'price' },
+      { id:'grooming',  name:'Salon Chải Chuốt',  icon:'✂️', baseCost:700000,   levels:4, desc:'Tiền thưởng thêm mỗi lần bán (+50,000₫ mỗi cấp)', effect:'bonus' },
+      { id:'vet',       name:'Phòng Khám Thú Y',  icon:'💉', baseCost:600000,   levels:4, desc:'Giảm tỉ lệ mất thú cưng (-15% mỗi cấp)', effect:'survival' },
+      { id:'marketing', name:'Quảng Cáo',         icon:'📢', baseCost:300000,   levels:5, desc:'Khách đến thường xuyên hơn (+20% mỗi cấp)', effect:'customers' },
+    ];
+
+    const STAFF_TYPES = [
+      { id:'caretaker', name:'Người Chăm Sóc', icon:'👩‍⚕️', hireCost:800000,  salary:50000, desc:'Tự động chăm sóc thú cưng mỗi 10 giây' },
+      { id:'seller',    name:'Nhân Viên Bán',  icon:'🧑‍💼', hireCost:1000000, salary:70000, desc:'Tự động bán thú khi khách đến' },
+    ];
+
+    const EVENTS = [
+      { id:'escape',   name:'Thú Cưng Bổ Trốn!',          icon:'💨', type:'bad',     desc:'Mất 1 con thú ngẫu nhiên' },
+      { id:'sick',     name:'Khách Mang Thú Bệnh Đến!',    icon:'🤒', type:'bad',     desc:'Mất 100,000₫ tiền thuốc' },
+      { id:'vip',      name:'Khách VIP Ghé Thăm!',         icon:'👑', type:'good',    desc:'Bán thú với giá gấp đôi lần này' },
+      { id:'viral',    name:'Video Thú Cưng Viral!',        icon:'📱', type:'good',    desc:'+5 khách trong 30 giây tới' },
+      { id:'sale',     name:'Nhà Cung Cấp Giảm Giá 30%!',  icon:'🎉', type:'good',    desc:'Mua thú giảm 30% trong 20 giây' },
+      { id:'award',    name:'Giải Thưởng Tiệm Đẹp Nhất!', icon:'🏆', type:'good',    desc:'Nhận thưởng 500,000₫' },
+      { id:'storm',    name:'Bão Lớn — Đóng Cửa!',         icon:'⛈️', type:'bad',     desc:'Không có khách trong 25 giây' },
+      { id:'twins',    name:'Thú Cưng Sinh Đôi!',          icon:'🥰', type:'good',    desc:'Nhận thêm 1 con thú ngẫu nhiên miễn phí' },
+    ];
+
+    const fmtM = (n) => {
+      if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + 'M₫';
+      if (n >= 1000) return (n / 1000).toFixed(0) + 'K₫';
+      return n.toLocaleString('vi-VN') + '₫';
+    };
+
+    const fmtFull = (n) => n.toLocaleString('vi-VN') + '₫';
+
+    const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+    const randChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    // ===================== MAIN APP =====================
+    function App() {
+      const [money, setMoney] = useState(6000000);
+      const [stock, setStock] = useState([]); // [{id, petId, happiness, age}]
+      const [upgrades, setUpgrades] = useState({ cage:0, food:0, grooming:0, vet:0, marketing:0 });
+      const [staff, setStaff] = useState({ caretaker:0, seller:0 });
+      const [stats, setStats] = useState({ sold:0, customers:0, revenue:0, days:1 });
+      const [log, setLog] = useState(['Tiệm thú cưng khai trương! Chào mừng bạn!']);
+      const [activeEvent, setActiveEvent] = useState(null);
+      const [customerQueue, setCustomerQueue] = useState(0);
+      const [tab, setTab] = useState('shop'); // shop | upgrades | staff | stats
+      const [notification, setNotification] = useState(null);
+      const [vipActive, setVipActive] = useState(false);
+      const [discountActive, setDiscountActive] = useState(false);
+      const [stormActive, setStormActive] = useState(false);
+      const [bonusCustomers, setBonusCustomers] = useState(0);
+
+      const tickRef = useRef(0);
+      const notifTimerRef = useRef(null);
+
+      const maxCapacity = 6 + upgrades.cage * 3;
+      const priceMulti = 1 + upgrades.food * 0.08;
+      const groomBonus = upgrades.grooming * 50000;
+      const survivalBonus = upgrades.vet * 0.15;
+      const customerRate = 1 + upgrades.marketing * 0.20 + bonusCustomers * 0.5 + (staff.seller > 0 ? 0.3 : 0);
+
+      const addLog = useCallback((msg) => {
+        setLog(prev => [msg, ...prev].slice(0, 5));
+      }, []);
+
+      const showNotif = useCallback((msg, color='#ec4899') => {
+        setNotification({ msg, color });
+        if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
+        notifTimerRef.current = setTimeout(() => setNotification(null), 2500);
+      }, []);
+
+      // Sell a pet from stock
+      const sellPet = useCallback((stockIdx, multiplier = 1) => {
+        setStock(prev => {
+          if (stockIdx >= prev.length) return prev;
+          const pet = prev[stockIdx];
+          const def = PET_TYPES.find(p => p.id === pet.petId);
+          const happyBonus = 1 + (pet.happiness - 50) / 200;
+          const price = Math.round(def.sellBase * priceMulti * happyBonus * multiplier) + groomBonus;
+
+          setMoney(m => m + price);
+          setStats(s => ({ ...s, sold: s.sold + 1, customers: s.customers + 1, revenue: s.revenue + price }));
+          addLog(`Bán ${def.icon} ${def.name} — +${fmtM(price)}`);
+          showNotif(`+${fmtM(price)} từ ${def.name}!`, '#a855f7');
+
+          return prev.filter((_, i) => i !== stockIdx);
+        });
+        setCustomerQueue(q => Math.max(0, q - 1));
+      }, [priceMulti, groomBonus, addLog, showNotif]);
+
+      // Auto-sell by staff
+      useEffect(() => {
+        if (staff.seller === 0) return;
+        const interval = setInterval(() => {
+          setCustomerQueue(q => {
+            if (q <= 0) return q;
+            setStock(prev => {
+              if (prev.length === 0) return prev;
+              const idx = 0;
+              const pet = prev[idx];
+              const def = PET_TYPES.find(p => p.id === pet.petId);
+              const happyBonus = 1 + (pet.happiness - 50) / 200;
+              const mult = vipActive ? 2 : 1;
+              const price = Math.round(def.sellBase * priceMulti * happyBonus * mult) + groomBonus;
+              setMoney(m => m + price);
+              setStats(s => ({ ...s, sold: s.sold + 1, customers: s.customers + 1, revenue: s.revenue + price }));
+              addLog(`[Nhân viên] Bán ${def.icon} ${def.name} — +${fmtM(price)}`);
+              return prev.filter((_, i) => i !== idx);
+            });
+            return q - 1;
+          });
+        }, 4000 / staff.seller);
+        return () => clearInterval(interval);
+      }, [staff.seller, priceMulti, groomBonus, vipActive, addLog]);
+
+      // Auto-care by caretaker
+      useEffect(() => {
+        if (staff.caretaker === 0) return;
+        const interval = setInterval(() => {
+          setStock(prev => prev.map(p => ({ ...p, happiness: Math.min(100, p.happiness + 5) })));
+        }, 10000 / staff.caretaker);
+        return () => clearInterval(interval);
+      }, [staff.caretaker]);
+
+      // Main game tick — customers arrive, happiness decay, random events
+      useEffect(() => {
+        const tick = setInterval(() => {
+          tickRef.current += 1;
+
+          // Happiness decay
+          setStock(prev => prev.map(p => ({
+            ...p,
+            happiness: Math.max(0, p.happiness - 1),
+            age: p.age + 1,
+          })));
+
+          // Pet loss if happiness = 0 (vet reduces chance)
+          setStock(prev => {
+            const loseProbability = Math.max(0.02, 0.12 - survivalBonus);
+            return prev.filter(p => {
+              if (p.happiness === 0 && Math.random() < loseProbability) {
+                const def = PET_TYPES.find(d => d.id === p.petId);
+                addLog(`💔 ${def.icon} ${def.name} bỏ đi do không được chăm sóc!`);
+                return false;
+              }
+              return true;
+            });
+          });
+
+          // Customer arrival
+          if (!stormActive) {
+            const baseRate = customerRate;
+            const arrive = Math.random() < (0.35 * baseRate);
+            if (arrive) {
+              setCustomerQueue(q => q + 1);
+              setStats(s => ({ ...s, customers: s.customers }));
+            }
+          }
+
+          // Random events every ~45 ticks
+          if (tickRef.current % 45 === 0 && Math.random() < 0.55) {
+            const ev = randChoice(EVENTS);
+            setActiveEvent(ev);
+            applyEvent(ev);
+            setTimeout(() => setActiveEvent(null), 4000);
+          }
+
+          // Day counter every 120 ticks
+          if (tickRef.current % 120 === 0) {
+            setStats(s => ({ ...s, days: s.days + 1 }));
+            // Pay staff salary
+            const totalSalary = staff.caretaker * 50000 + staff.seller * 70000;
+            if (totalSalary > 0) {
+              setMoney(m => {
+                const newM = m - totalSalary;
+                addLog(`💸 Trả lương nhân viên: -${fmtM(totalSalary)}`);
+                return Math.max(0, newM);
+              });
+            }
+          }
+        }, 1000);
+        return () => clearInterval(tick);
+      }, [customerRate, survivalBonus, stormActive, staff, addLog]);
+
+      const applyEvent = useCallback((ev) => {
+        addLog(`${ev.icon} SỰ KIỆN: ${ev.name}`);
+        if (ev.id === 'escape') {
+          setStock(prev => {
+            if (prev.length === 0) return prev;
+            const idx = randInt(0, prev.length - 1);
+            const def = PET_TYPES.find(d => d.id === prev[idx].petId);
+            addLog(`💨 ${def.icon} ${def.name} đã bổ trốn!`);
+            return prev.filter((_, i) => i !== idx);
+          });
+        } else if (ev.id === 'sick') {
+          setMoney(m => Math.max(0, m - 100000));
+          addLog('🤒 Mất 100,000₫ tiền thuốc!');
+        } else if (ev.id === 'vip') {
+          setVipActive(true);
+          showNotif('👑 Khách VIP! Giá x2 lần bán tiếp theo!', '#f59e0b');
+          setTimeout(() => setVipActive(false), 15000);
+        } else if (ev.id === 'viral') {
+          setBonusCustomers(b => b + 5);
+          setTimeout(() => setBonusCustomers(b => Math.max(0, b - 5)), 30000);
+          showNotif('📱 Video viral! Khách tràn vào!', '#22c55e');
+        } else if (ev.id === 'sale') {
+          setDiscountActive(true);
+          showNotif('🎉 Mua thú giảm 30% trong 20s!', '#22c55e');
+          setTimeout(() => setDiscountActive(false), 20000);
+        } else if (ev.id === 'award') {
+          setMoney(m => m + 500000);
+          showNotif('🏆 Nhận thưởng 500,000₫!', '#f59e0b');
+        } else if (ev.id === 'storm') {
+          setStormActive(true);
+          showNotif('⛈️ Bão lớn! Không có khách 25 giây!', '#ef4444');
+          setTimeout(() => setStormActive(false), 25000);
+        } else if (ev.id === 'twins') {
+          const randomPet = randChoice(PET_TYPES.filter(p => p.rarity <= 2));
+          setStock(prev => {
+            if (prev.length >= maxCapacity) return prev;
+            return [...prev, { id: Date.now(), petId: randomPet.id, happiness: 80, age: 0 }];
+          });
+          showNotif(`🥰 Nhận miễn phí: ${randomPet.icon} ${randomPet.name}!`, '#22c55e');
+        }
+      }, [addLog, showNotif, maxCapacity]);
+
+      const buyPet = (petDef) => {
+        if (stock.length >= maxCapacity) {
+          showNotif('Hết chỗ! Nâng cấp chuồng trước.', '#ef4444');
+          return;
+        }
+        const cost = discountActive ? Math.round(petDef.buyCost * 0.7) : petDef.buyCost;
+        if (money < cost) {
+          showNotif('Không đủ tiền!', '#ef4444');
+          return;
+        }
+        setMoney(m => m - cost);
+        setStock(prev => [...prev, { id: Date.now(), petId: petDef.id, happiness: 75, age: 0 }]);
+        addLog(`Nhập hàng: ${petDef.icon} ${petDef.name} — -${fmtM(cost)}`);
+      };
+
+      const buyUpgrade = (upg) => {
+        const level = upgrades[upg.id];
+        if (level >= upg.levels) return;
+        const cost = Math.round(upg.baseCost * Math.pow(1.8, level));
+        if (money < cost) { showNotif('Không đủ tiền!', '#ef4444'); return; }
+        setMoney(m => m - cost);
+        setUpgrades(u => ({ ...u, [upg.id]: u[upg.id] + 1 }));
+        addLog(`Nâng cấp: ${upg.icon} ${upg.name} lên cấp ${level + 1}`);
+        showNotif(`${upg.icon} ${upg.name} cấp ${level + 1}!`, '#a855f7');
+      };
+
+      const hireStaff = (s) => {
+        if (money < s.hireCost) { showNotif('Không đủ tiền!', '#ef4444'); return; }
+        setMoney(m => m - s.hireCost);
+        setStaff(st => ({ ...st, [s.id]: st[s.id] + 1 }));
+        addLog(`Tuyển: ${s.icon} ${s.name}`);
+        showNotif(`${s.icon} ${s.name} đã gia nhập!`, '#22c55e');
+      };
+
+      const carePet = (idx) => {
+        setStock(prev => prev.map((p, i) => i === idx ? { ...p, happiness: Math.min(100, p.happiness + 20) } : p));
+      };
+
+      // Colors
+      const C = {
+        bg: 'rgba(255,255,255,0.06)',
+        bgDark: 'rgba(0,0,0,0.3)',
+        pink: '#ec4899',
+        purple: '#a855f7',
+        green: '#22c55e',
+        yellow: '#f59e0b',
+        red: '#ef4444',
+        text: '#f0e6ff',
+        muted: '#c4a8d4',
+        border: 'rgba(236,72,153,0.2)',
+      };
+
+      const cardStyle = {
+        background: C.bg,
+        border: `1px solid ${C.border}`,
+        borderRadius: 12,
+        padding: '12px 14px',
+      };
+
+      const btnStyle = (color='#ec4899', disabled=false) => ({
+        background: disabled ? 'rgba(255,255,255,0.08)' : `linear-gradient(135deg, ${color}, ${color}bb)`,
+        color: disabled ? C.muted : '#fff',
+        padding: '8px 14px',
+        borderRadius: 8,
+        fontSize: 13,
+        fontWeight: 600,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        border: 'none',
+      });
+
+      const tabBtnStyle = (active) => ({
+        background: active ? 'linear-gradient(135deg, #ec4899, #a855f7)' : 'rgba(255,255,255,0.08)',
+        color: active ? '#fff' : C.muted,
+        padding: '9px 0',
+        flex: 1,
+        borderRadius: 10,
+        fontSize: 13,
+        fontWeight: active ? 700 : 500,
+        border: active ? 'none' : `1px solid ${C.border}`,
+      });
+
+      const rarityColor = (r) => r === 4 ? '#f59e0b' : r === 3 ? '#a855f7' : r === 2 ? '#22c55e' : C.muted;
+
+      return (
+        <div style={{ maxWidth: 520, margin: '0 auto', padding: '12px 12px 60px', color: C.text, minHeight: '100vh' }}>
+          {/* Header */}
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, paddingTop:8 }}>
+            <a href="../index.html" style={{ color: C.muted, textDecoration:'none', fontSize:20, lineHeight:1 }}>←</a>
+            <div>
+              <h1 style={{ fontSize:22, fontWeight:800, background:'linear-gradient(90deg,#ec4899,#a855f7)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                🐾 Tiệm Thú Cưng
+              </h1>
+              <div style={{ fontSize:11, color:C.muted }}>Ngày {stats.days} — {stock.length}/{maxCapacity} thú cưng</div>
+            </div>
+            <div style={{ marginLeft:'auto', textAlign:'right' }}>
+              <div style={{ fontSize:22, fontWeight:800, color:'#f0e6ff' }}>{fmtM(money)}</div>
+              <div style={{ fontSize:11, color:'#a855f7' }}>Doanh thu: {fmtM(stats.revenue)}</div>
+            </div>
+          </div>
+
+          {/* Notification */}
+          {notification && (
+            <div style={{ position:'fixed', top:16, left:'50%', transform:'translateX(-50%)', background:notification.color, color:'#fff', padding:'10px 20px', borderRadius:24, fontWeight:700, fontSize:14, zIndex:999, boxShadow:'0 4px 20px rgba(0,0,0,0.4)', maxWidth:300, textAlign:'center' }}>
+              {notification.msg}
+            </div>
+          )}
+
+          {/* Active event banner */}
+          {activeEvent && (
+            <div style={{ background: activeEvent.type === 'good' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', border:`1px solid ${activeEvent.type==='good'?'#22c55e':'#ef4444'}`, borderRadius:10, padding:'10px 14px', marginBottom:12, display:'flex', gap:10, alignItems:'center' }}>
+              <span style={{ fontSize:24 }}>{activeEvent.icon}</span>
+              <div>
+                <div style={{ fontWeight:700, fontSize:14, color: activeEvent.type==='good'?'#22c55e':'#ef4444' }}>{activeEvent.name}</div>
+                <div style={{ fontSize:12, color:C.muted }}>{activeEvent.desc}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Status badges */}
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
+            {vipActive && <span style={{ background:'rgba(245,158,11,0.2)', border:'1px solid #f59e0b', color:'#f59e0b', borderRadius:20, padding:'3px 10px', fontSize:12, fontWeight:700 }}>👑 VIP x2</span>}
+            {discountActive && <span style={{ background:'rgba(34,197,94,0.2)', border:'1px solid #22c55e', color:'#22c55e', borderRadius:20, padding:'3px 10px', fontSize:12, fontWeight:700 }}>🎉 Giảm 30%</span>}
+            {stormActive && <span style={{ background:'rgba(239,68,68,0.2)', border:'1px solid #ef4444', color:'#ef4444', borderRadius:20, padding:'3px 10px', fontSize:12, fontWeight:700 }}>⛈️ Bão — Đóng Cửa</span>}
+            {customerQueue > 0 && <span style={{ background:'rgba(168,85,247,0.2)', border:'1px solid #a855f7', color:'#a855f7', borderRadius:20, padding:'3px 10px', fontSize:12, fontWeight:700 }}>🧑‍🤝‍🧑 {customerQueue} khách chờ</span>}
+          </div>
+
+          {/* Tab bar */}
+          <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+            {[['shop','🏪 Cửa Hàng'],['upgrades','⚡ Nâng Cấp'],['staff','👥 Nhân Viên'],['stats','📊 Thống Kê']].map(([t,label]) => (
+              <button key={t} style={tabBtnStyle(tab===t)} onClick={() => setTab(t)}>{label}</button>
+            ))}
+          </div>
+
+          {/* ===== SHOP TAB ===== */}
+          {tab === 'shop' && (
+            <div>
+              {/* Current stock */}
+              <div style={{ ...cardStyle, marginBottom:14 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:C.pink, marginBottom:10 }}>
+                  📦 Kho thú cưng ({stock.length}/{maxCapacity})
+                </div>
+                {stock.length === 0 ? (
+                  <div style={{ color:C.muted, fontSize:13, textAlign:'center', padding:'12px 0' }}>Chưa có thú cưng nào. Mua thú để bắt đầu!</div>
+                ) : (
+                  <div style={{ display:'grid', gap:8 }}>
+                    {stock.map((s, i) => {
+                      const def = PET_TYPES.find(p => p.id === s.petId);
+                      const happyBonus = 1 + (s.happiness - 50) / 200;
+                      const mult = vipActive ? 2 : 1;
+                      const estPrice = Math.round(def.sellBase * priceMulti * happyBonus * mult) + groomBonus;
+                      const hasCustomer = i < customerQueue;
+                      return (
+                        <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, background: hasCustomer ? 'rgba(168,85,247,0.12)' : 'rgba(255,255,255,0.04)', borderRadius:10, padding:'8px 10px', border:`1px solid ${hasCustomer ? '#a855f7' : 'transparent'}` }}>
+                          <span style={{ fontSize:26 }}>{def.icon}</span>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:13, fontWeight:700, color:C.text }}>{def.name}</div>
+                            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:3 }}>
+                              <div style={{ flex:1, height:5, background:'rgba(255,255,255,0.1)', borderRadius:3, overflow:'hidden' }}>
+                                <div style={{ height:'100%', width:`${s.happiness}%`, background: s.happiness > 60 ? '#22c55e' : s.happiness > 30 ? '#f59e0b' : '#ef4444', borderRadius:3, transition:'width 0.5s' }} />
+                              </div>
+                              <span style={{ fontSize:11, color:C.muted, whiteSpace:'nowrap' }}>{s.happiness}%</span>
+                            </div>
+                          </div>
+                          <div style={{ textAlign:'right', marginRight:4 }}>
+                            <div style={{ fontSize:12, fontWeight:700, color:'#22c55e' }}>{fmtM(estPrice)}</div>
+                            {vipActive && <div style={{ fontSize:10, color:'#f59e0b' }}>x2!</div>}
+                          </div>
+                          <button style={{ ...btnStyle('#6b21a8'), padding:'5px 8px', fontSize:11 }} onClick={() => carePet(i)} title="Chăm sóc">❤️</button>
+                          <button style={{ ...btnStyle(hasCustomer?'#22c55e':'#374151', !hasCustomer), padding:'5px 10px', fontSize:11 }} onClick={() => hasCustomer && sellPet(i, vipActive?2:1)} disabled={!hasCustomer}>Bán</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Buy pets */}
+              <div style={{ ...cardStyle, marginBottom:14 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:C.pink, marginBottom:10 }}>
+                  🛒 Nhập thú cưng {discountActive && <span style={{ color:'#22c55e', fontSize:12 }}>(-30%)</span>}
+                </div>
+                <div style={{ display:'grid', gap:8 }}>
+                  {PET_TYPES.map(pet => {
+                    const cost = discountActive ? Math.round(pet.buyCost * 0.7) : pet.buyCost;
+                    const canBuy = money >= cost && stock.length < maxCapacity;
+                    return (
+                      <div key={pet.id} style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.03)', borderRadius:10, padding:'8px 10px', border:`1px solid rgba(${pet.rarity===4?'245,158,11':pet.rarity===3?'168,85,247':pet.rarity===2?'34,197,94':'255,255,255'},0.12)` }}>
+                        <span style={{ fontSize:24 }}>{pet.icon}</span>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                            <span style={{ fontSize:13, fontWeight:700 }}>{pet.name}</span>
+                            {pet.rarity >= 3 && <span style={{ fontSize:9, padding:'2px 6px', borderRadius:10, background:'rgba(168,85,247,0.2)', color:rarityColor(pet.rarity), fontWeight:700 }}>{pet.rarity===4?'HIẾM':'QUÝ'}</span>}
+                          </div>
+                          <div style={{ fontSize:11, color:C.muted }}>{pet.desc}</div>
+                          <div style={{ fontSize:11, color:'#22c55e', marginTop:2 }}>Bán: ~{fmtM(Math.round(pet.sellBase * priceMulti) + groomBonus)}</div>
+                        </div>
+                        <div style={{ textAlign:'right' }}>
+                          <div style={{ fontSize:12, color: canBuy ? C.text : '#ef4444', fontWeight:700 }}>{fmtM(cost)}</div>
+                          <button style={{ ...btnStyle(C.pink, !canBuy), marginTop:4, padding:'5px 12px', fontSize:12 }} onClick={() => buyPet(pet)} disabled={!canBuy}>Mua</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Activity log */}
+              <div style={{ ...cardStyle }}>
+                <div style={{ fontSize:13, fontWeight:700, color:C.pink, marginBottom:8 }}>📋 Nhật Ký Gần Đây</div>
+                {log.map((l, i) => (
+                  <div key={i} style={{ fontSize:12, color: i===0 ? C.text : C.muted, padding:'4px 0', borderBottom: i<log.length-1 ? `1px solid rgba(255,255,255,0.05)` : 'none' }}>{l}</div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ===== UPGRADES TAB ===== */}
+          {tab === 'upgrades' && (
+            <div style={{ display:'grid', gap:12 }}>
+              {UPGRADE_TYPES.map(upg => {
+                const level = upgrades[upg.id];
+                const maxed = level >= upg.levels;
+                const cost = maxed ? 0 : Math.round(upg.baseCost * Math.pow(1.8, level));
+                const canBuy = !maxed && money >= cost;
+                return (
+                  <div key={upg.id} style={{ ...cardStyle }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+                      <span style={{ fontSize:28 }}>{upg.icon}</span>
+                      <div style={{ flex:1 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                          <span style={{ fontSize:14, fontWeight:700 }}>{upg.name}</span>
+                          <span style={{ fontSize:11, padding:'2px 8px', borderRadius:10, background: maxed ? 'rgba(34,197,94,0.2)' : 'rgba(168,85,247,0.2)', color: maxed ? '#22c55e' : '#a855f7', fontWeight:700 }}>
+                            {maxed ? 'TỐI ĐA' : `Cấp ${level}/${upg.levels}`}
+                          </span>
+                        </div>
+                        <div style={{ fontSize:12, color:C.muted, marginBottom:8 }}>{upg.desc}</div>
+                        {/* Progress bar */}
+                        <div style={{ display:'flex', gap:4, marginBottom:8 }}>
+                          {Array.from({length:upg.levels}).map((_,i) => (
+                            <div key={i} style={{ flex:1, height:5, borderRadius:3, background: i < level ? 'linear-gradient(90deg,#ec4899,#a855f7)' : 'rgba(255,255,255,0.1)' }} />
+                          ))}
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                          <div style={{ fontSize:12, color: canBuy ? '#22c55e' : maxed ? '#22c55e' : '#ef4444', fontWeight:600 }}>
+                            {maxed ? '✅ Đã nâng cấp tối đa' : `Chi phí: ${fmtM(cost)}`}
+                          </div>
+                          {!maxed && <button style={btnStyle(C.purple, !canBuy)} onClick={() => buyUpgrade(upg)} disabled={!canBuy}>
+                            Nâng Cấp ↑
+                          </button>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ===== STAFF TAB ===== */}
+          {tab === 'staff' && (
+            <div>
+              <div style={{ ...cardStyle, marginBottom:12 }}>
+                <div style={{ fontSize:13, color:C.muted, marginBottom:4 }}>Lương nhân viên trả mỗi ngày (120 giây)</div>
+                <div style={{ fontSize:18, fontWeight:700, color:'#ef4444' }}>
+                  -{fmtM(staff.caretaker * 50000 + staff.seller * 70000)}/ngày
+                </div>
+              </div>
+              <div style={{ display:'grid', gap:12 }}>
+                {STAFF_TYPES.map(s => {
+                  const count = staff[s.id];
+                  const canHire = money >= s.hireCost;
+                  return (
+                    <div key={s.id} style={{ ...cardStyle }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                        <span style={{ fontSize:34 }}>{s.icon}</span>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:15, fontWeight:700, marginBottom:2 }}>{s.name}</div>
+                          <div style={{ fontSize:12, color:C.muted, marginBottom:6 }}>{s.desc}</div>
+                          <div style={{ fontSize:12, color:C.muted }}>Lương: <span style={{ color:'#ef4444' }}>{fmtM(s.salary)}/ngày</span></div>
+                        </div>
+                        <div style={{ textAlign:'center' }}>
+                          <div style={{ fontSize:26, fontWeight:800, color:C.purple, lineHeight:1 }}>{count}</div>
+                          <div style={{ fontSize:10, color:C.muted, marginBottom:6 }}>nhân viên</div>
+                          <div style={{ fontSize:12, color: canHire ? '#22c55e' : '#ef4444', marginBottom:4, fontWeight:600 }}>{fmtM(s.hireCost)}</div>
+                          <button style={btnStyle(C.green, !canHire)} onClick={() => hireStaff(s)} disabled={!canHire}>Thuê</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Staff perk info */}
+              <div style={{ ...cardStyle, marginTop:12 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:C.pink, marginBottom:8 }}>💡 Hiệu quả nhân viên</div>
+                <div style={{ fontSize:12, color:C.muted, lineHeight:1.8 }}>
+                  <div>👩‍⚕️ Người chăm sóc: tự động +5% hạnh phúc cho tất cả thú mỗi 10 giây</div>
+                  <div>🧑‍💼 Nhân viên bán: tự động bán khi có khách, +30% tỉ lệ khách đến</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ===== STATS TAB ===== */}
+          {tab === 'stats' && (
+            <div style={{ display:'grid', gap:12 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                {[
+                  ['🐾', 'Thú đã bán', stats.sold, C.purple],
+                  ['🧑‍🤝‍🧑', 'Khách phục vụ', stats.customers, C.pink],
+                  ['💰', 'Doanh thu', fmtM(stats.revenue), '#22c55e'],
+                  ['📅', 'Số ngày', stats.days, C.yellow],
+                  ['🏠', 'Sức chứa', `${stock.length}/${maxCapacity}`, C.text],
+                  ['👥', 'Nhân viên', staff.caretaker + staff.seller, C.purple],
+                ].map(([icon, label, val, color]) => (
+                  <div key={label} style={{ ...cardStyle, textAlign:'center' }}>
+                    <div style={{ fontSize:24, marginBottom:4 }}>{icon}</div>
+                    <div style={{ fontSize:20, fontWeight:800, color }}>{val}</div>
+                    <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>{label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Upgrade summary */}
+              <div style={{ ...cardStyle }}>
+                <div style={{ fontSize:13, fontWeight:700, color:C.pink, marginBottom:10 }}>⚡ Nâng Cấp Hiện Tại</div>
+                <div style={{ display:'grid', gap:6 }}>
+                  {UPGRADE_TYPES.map(upg => (
+                    <div key={upg.id} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <span style={{ fontSize:16 }}>{upg.icon}</span>
+                      <span style={{ flex:1, fontSize:12, color:C.muted }}>{upg.name}</span>
+                      <div style={{ display:'flex', gap:3 }}>
+                        {Array.from({length:upg.levels}).map((_,i) => (
+                          <div key={i} style={{ width:8, height:8, borderRadius:'50%', background: i < upgrades[upg.id] ? '#ec4899' : 'rgba(255,255,255,0.1)' }} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Log */}
+              <div style={{ ...cardStyle }}>
+                <div style={{ fontSize:13, fontWeight:700, color:C.pink, marginBottom:8 }}>📋 Hoạt Động Gần Đây</div>
+                {log.map((l, i) => (
+                  <div key={i} style={{ fontSize:12, color: i===0 ? C.text : C.muted, padding:'4px 0', borderBottom: i<log.length-1 ? `1px solid rgba(255,255,255,0.05)` : 'none' }}>{l}</div>
+                ))}
+              </div>
+
+              {/* Tips */}
+              <div style={{ ...cardStyle, background:'rgba(168,85,247,0.08)', border:'1px solid rgba(168,85,247,0.25)' }}>
+                <div style={{ fontSize:13, fontWeight:700, color:C.purple, marginBottom:8 }}>💡 Mẹo Chơi</div>
+                <div style={{ fontSize:12, color:C.muted, lineHeight:1.8 }}>
+                  <div>• Chăm sóc thú cưng (❤️) để tăng hạnh phúc và bán giá cao hơn</div>
+                  <div>• Thú cưng bất hạnh có thể bỏ trốn — hãy thuê người chăm sóc!</div>
+                  <div>• Nâng cấp Marketing để khách đến thường xuyên hơn</div>
+                  <div>• Sự kiện VIP cho phép bán x2 giá — đừng bỏ lỡ!</div>
+                  <div>• Corgi là loài hiếm nhất, lợi nhuận cao nhất</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
