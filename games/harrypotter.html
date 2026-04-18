@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚡ Đọc Harry Potter — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #0a0520, #1a0a3a);
+      min-height: 100vh;
+      color: #e2e8f0;
+    }
+    #root { min-height: 100vh; }
+    button { transition: all 0.2s; }
+    button:hover:not(:disabled) { transform: scale(1.03); filter: brightness(1.15); }
+    button:active:not(:disabled) { transform: scale(0.97); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(251,191,36,0.3); border-radius: 3px; }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ========== DỮ LIỆU 7 CUỐN SÁCH (tóm tắt nguyên gốc bằng tiếng Việt) ==========
+    const BOOKS = [
+      {
+        id: 1,
+        title: 'Hòn Đá Phù Thủy',
+        emoji: '📖',
+        year: 'Năm 1',
+        totalChapters: 17,
+        color: '#ef4444',
+        summary: 'Cậu bé Harry phát hiện mình là phù thủy và bước vào thế giới phép thuật tại trường Hogwarts.',
+        chapters: [
+          { num: 1, title: 'Cậu bé sống sót', summary: 'Một đêm khuya, các pháp sư bí ẩn xuất hiện trên phố Privet Drive và đặt một đứa bé trước cửa nhà Dursley. Đứa bé ấy mang vết sẹo hình tia chớp trên trán và được giao cho cô dì nuôi dưỡng.' },
+          { num: 2, title: 'Tấm kính biến mất', summary: 'Mười một năm sau, Harry sống cực khổ dưới gầm cầu thang nhà Dursley. Trong chuyến đi sở thú, cậu vô tình trò chuyện được với một con rắn và khiến lớp kính chuồng biến mất.' },
+          { num: 3, title: 'Những lá thư không ai mời', summary: 'Hàng loạt lá thư bí ẩn được gửi đến cho Harry nhưng chú Vernon cố hết sức để ngăn cản. Ông đưa cả gia đình trốn ra một túp lều ngoài biển để tránh thư.' },
+          { num: 4, title: 'Người giữ chìa khóa', summary: 'Đúng nửa đêm sinh nhật, một người khổng lồ tên Hagrid phá cửa bước vào và tiết lộ Harry là phù thủy. Ông trao cho cậu lá thư nhập học từ Hogwarts.' },
+          { num: 5, title: 'Hẻm Xéo', summary: 'Hagrid dẫn Harry đến Hẻm Xéo để mua đồ dùng học tập và rút tiền từ ngân hàng Gringotts. Harry chọn được cây đũa phép đặc biệt có lông phượng hoàng, cùng loại với đũa của kẻ đã giết cha mẹ cậu.' },
+          { num: 6, title: 'Hành trình từ sân ga 9¾', summary: 'Harry tìm cách lên tàu tốc hành Hogwarts tại sân ga ẩn 9¾ nhờ sự giúp đỡ của nhà Weasley. Trên tàu, cậu kết bạn với Ron Weasley và gặp cô bé thông minh Hermione Granger.' },
+          { num: 7, title: 'Chiếc nón phân loại', summary: 'Học sinh mới được chiếc nón biết nói phân vào bốn nhà của trường. Harry được xếp vào nhà Gryffindor sau một hồi tranh luận với chiếc nón.' },
+          { num: 8, title: 'Thầy giáo độc dược', summary: 'Harry làm quen với các môn học phép thuật và gặp thầy Snape lạnh lùng dạy môn độc dược. Thầy Snape tỏ ra ghét Harry ngay từ buổi học đầu tiên.' },
+          { num: 9, title: 'Trận đấu giữa đêm', summary: 'Trong giờ học bay, Harry thể hiện tài năng bất ngờ và được nhận vào đội Quidditch của nhà Gryffindor. Cùng đêm ấy, bộ ba tình cờ phát hiện một con chó ba đầu canh giữ khu cấm.' },
+          { num: 10, title: 'Lễ Halloween và con Troll', summary: 'Một con troll khổng lồ đột nhập vào Hogwarts trong đêm Halloween. Harry và Ron cứu Hermione khỏi con troll trong nhà vệ sinh, và tình bạn ba người chính thức hình thành.' },
+          { num: 11, title: 'Quidditch', summary: 'Harry chơi trận Quidditch đầu tiên nhưng cây chổi bị ai đó ếm phép suýt khiến cậu rơi. Hermione phát hiện thầy Snape đang lẩm bẩm và nghi ngờ ông là thủ phạm.' },
+          { num: 12, title: 'Tấm gương Ảo Ảnh', summary: 'Trong kỳ nghỉ Giáng sinh, Harry tình cờ tìm thấy tấm gương kỳ lạ phản chiếu khao khát sâu thẳm. Cậu nhìn thấy cha mẹ mình trong gương và thầy Dumbledore khuyên cậu đừng mải mê với nó.' },
+          { num: 13, title: 'Nicolas Flamel', summary: 'Bộ ba tìm hiểu được Nicolas Flamel là nhà giả kim chế tạo Hòn Đá Phù Thủy. Họ nhận ra con chó ba đầu đang canh giữ chính hòn đá ấy trong trường.' },
+          { num: 14, title: 'Rồng con của Hagrid', summary: 'Hagrid bí mật nuôi một con rồng con trong lều gỗ của mình. Bộ ba giúp ông gửi rồng đi nhưng bị phát hiện và phạt đi lao động trong Rừng Cấm.' },
+          { num: 15, title: 'Rừng Cấm', summary: 'Trong Rừng Cấm, Harry chứng kiến một sinh vật áo choàng đen đang uống máu kỳ lân. Nhân mã Firenze cứu cậu và cảnh báo rằng Voldemort có thể đang quay trở lại.' },
+          { num: 16, title: 'Hầm ngục', summary: 'Ba người bạn lẻn xuống căn hầm bí mật để ngăn kẻ gian đánh cắp hòn đá. Họ vượt qua hàng loạt thử thách của các giáo viên: cờ phù thủy, thuốc độc, chìa khóa biết bay.' },
+          { num: 17, title: 'Kẻ hai mặt', summary: 'Harry đối mặt với giáo sư Quirrell, người thực sự đang bị Voldemort chiếm hữu. Nhờ tình yêu của mẹ bảo vệ, Harry tiêu diệt được Quirrell và hòn đá được giữ an toàn.' }
+        ]
+      },
+      {
+        id: 2,
+        title: 'Phòng Chứa Bí Mật',
+        emoji: '📕',
+        year: 'Năm 2',
+        totalChapters: 18,
+        color: '#f59e0b',
+        summary: 'Một căn phòng cổ xưa được mở ra, và ai đó bắt đầu hóa đá học sinh ở Hogwarts.',
+        chapters: [
+          { num: 1, title: 'Sinh nhật tồi tệ nhất', summary: 'Harry bị nhà Dursley giam lỏng suốt kỳ nghỉ hè mà không một lá thư nào từ bạn bè. Cậu buồn bã vì nghĩ rằng Ron và Hermione đã quên mất mình.' },
+          { num: 2, title: 'Lời cảnh báo của Dobby', summary: 'Một con gia tinh tên Dobby đột nhập vào phòng Harry và khẩn cầu cậu không quay lại Hogwarts. Dobby gây ra rắc rối khiến Harry bị chú Vernon khóa kín trong phòng.' },
+          { num: 3, title: 'Cái Hang', summary: 'Ron và hai anh trai lái xe hơi bay đến giải cứu Harry khỏi nhà Dursley. Harry được chào đón ấm áp tại ngôi nhà kỳ quặc "Cái Hang" của gia đình Weasley.' },
+          { num: 4, title: 'Cửa hàng Flourish & Blotts', summary: 'Ở Hẻm Xéo, bộ ba gặp tác giả Gilderoy Lockhart, người sẽ là giáo viên mới. Harry cũng gặp Lucius Malfoy trong một cuộc cãi vã với ông Weasley tại tiệm sách.' },
+          { num: 5, title: 'Cây liễu roi', summary: 'Harry và Ron không thể qua được sân ga 9¾ nên đánh liều lái xe bay đến Hogwarts. Chiếc xe đâm vào cây Liễu Roi hung dữ và bị phá hỏng.' },
+          { num: 6, title: 'Gilderoy Lockhart', summary: 'Lockhart thể hiện sự khoe khoang trong các buổi học và gây cười nhiều hơn là dạy. Harry bắt đầu nhận thấy nhiều nhân vật của ông trong sách có thể là bịa đặt.' },
+          { num: 7, title: 'Những kẻ sinh bùn', summary: 'Draco Malfoy lần đầu dùng từ xúc phạm "sinh bùn" để gọi Hermione. Harry tình cờ phun ra một câu thần chú ngược khiến sên bò ra từ miệng Ron.' },
+          { num: 8, title: 'Lễ kỷ niệm ngày mất', summary: 'Harry và các bạn tham dự lễ kỷ niệm ngày mất của Ngài Nick Suýt Mất Đầu. Trên đường về, Harry nghe thấy một giọng nói lạnh lẽo đòi xé xác ai đó.' },
+          { num: 9, title: 'Dòng chữ trên tường', summary: 'Một thông điệp đẫm máu xuất hiện trên tường: Phòng Chứa Bí Mật đã được mở. Con mèo của thầy Filch bị hóa đá treo bất động trên chiếc đèn.' },
+          { num: 10, title: 'Quả bóng kỳ quái', summary: 'Trong trận Quidditch, một quả bóng lạ chỉ nhắm vào Harry và làm gãy tay cậu. Lockhart cố chữa trị nhưng chỉ khiến xương tay Harry biến mất hoàn toàn.' },
+          { num: 11, title: 'Câu lạc bộ đấu phép', summary: 'Lockhart mở câu lạc bộ đấu phép với Snape làm trợ lý. Harry vô tình nói được Xà Ngữ khi chặn một con rắn và khiến cả trường sợ hãi nghi ngờ cậu là người kế vị Slytherin.' },
+          { num: 12, title: 'Thuốc Đa Dịch', summary: 'Bộ ba lén pha thuốc Đa Dịch để biến thành ba học sinh Slytherin. Họ thẩm vấn Draco nhưng không thu được thông tin hữu ích nào.' },
+          { num: 13, title: 'Nhật ký của Tom Riddle', summary: 'Harry tìm thấy một cuốn nhật ký cũ có thể viết trả lời lại được. Cuốn nhật ký thuộc về một học sinh tên Tom Riddle từ năm mươi năm trước.' },
+          { num: 14, title: 'Cornelius Fudge', summary: 'Thêm nhiều học sinh bị hóa đá khiến Bộ trưởng Bộ Pháp Thuật phải can thiệp. Ông ra lệnh bắt Hagrid vào tù Azkaban vì nghi ngờ ông mở Phòng Chứa năm xưa.' },
+          { num: 15, title: 'Aragog', summary: 'Theo lời dặn bí ẩn của Hagrid, Harry và Ron đi tìm con nhện khổng lồ trong rừng. Aragog tiết lộ Hagrid vô tội và kẻ thực sự mở phòng đã giết một cô gái.' },
+          { num: 16, title: 'Phòng Chứa Bí Mật', summary: 'Em gái Ron là Ginny bị bắt vào Phòng Chứa. Harry và Ron dẫn theo Lockhart đi cứu nhưng ông ta hoảng sợ và cố ếm mất trí nhớ họ, kết quả bị ếm ngược lại.' },
+          { num: 17, title: 'Người kế vị Slytherin', summary: 'Harry đối đầu với Tom Riddle - phiên bản trẻ của Voldemort hiện ra từ nhật ký. Cậu triệu hồi phượng hoàng Fawkes và giết con tử xà bằng thanh kiếm Gryffindor.' },
+          { num: 18, title: 'Phần thưởng của Dobby', summary: 'Ginny được cứu an toàn và Lucius Malfoy bị phát hiện là kẻ đã lén bỏ nhật ký vào cặp cô bé. Harry lừa khéo để giải thoát Dobby khỏi nhà Malfoy bằng một chiếc tất.' }
+        ]
+      },
+      {
+        id: 3,
+        title: 'Tên Tù Nhân Azkaban',
+        emoji: '📗',
+        year: 'Năm 3',
+        totalChapters: 22,
+        color: '#10b981',
+        summary: 'Kẻ trốn tù Sirius Black được cho là đang truy tìm Harry để giết cậu.',
+        chapters: [
+          { num: 1, title: 'Cú đêm', summary: 'Harry làm bài tập hè bí mật trong đêm vì sợ nhà Dursley phát hiện. Hàng loạt cú mang đến những món quà sinh nhật đặc biệt từ bạn bè.' },
+          { num: 2, title: 'Sai lầm lớn của dì Marge', summary: 'Dì Marge đến thăm và buông lời xúc phạm bố mẹ Harry. Harry mất kiểm soát khiến bà phình to như quả bóng và bay lên trời, rồi cậu bỏ nhà đi.' },
+          { num: 3, title: 'Xe buýt Hiệp Sĩ', summary: 'Harry được xe buýt Hiệp Sĩ đón và đưa đến quán Vạc Lủng Lẳng ở London. Bộ trưởng Fudge chờ sẵn ở đó nhưng không trách phạt cậu như Harry tưởng.' },
+          { num: 4, title: 'Quán Vạc Lủng Lẳng', summary: 'Harry nghỉ tại quán trọ và tận hưởng những ngày tự do trước khai giảng. Cậu tình cờ nghe được rằng tù nhân Sirius Black trốn khỏi Azkaban đang truy tìm mình.' },
+          { num: 5, title: 'Những Giám Ngục', summary: 'Trên tàu đến Hogwarts, bộ ba gặp giáo viên mới Remus Lupin ngủ gục trong toa. Một Giám Ngục đột nhập làm Harry ngất xỉu vì hiệu ứng tinh thần khủng khiếp.' },
+          { num: 6, title: 'Móng vuốt và lá trà', summary: 'Bộ ba bắt đầu các môn học mới gồm Tiên Tri và Chăm Sóc Sinh Vật Huyền Bí. Giáo sư Trelawney tiên đoán cái chết của Harry còn Hagrid giới thiệu con Bằng Mã Buckbeak.' },
+          { num: 7, title: 'Tủ áo biết biến hóa', summary: 'Trong giờ Lupin dạy, các học sinh đối mặt với Boggart - sinh vật hóa thành nỗi sợ lớn nhất. Neville dùng phép "Riddikulus" biến Snape thành trang phục bà cụ trông hài hước.' },
+          { num: 8, title: 'Chuyến trốn của Bà Béo', summary: 'Sirius Black đột nhập vào lâu đài và xé nát bức tranh Bà Béo canh cổng Gryffindor. Cả trường phải ngủ trong Đại Sảnh Đường dưới sự canh gác chặt chẽ.' },
+          { num: 9, title: 'Đại sảnh đường', summary: 'Percy theo dõi Harry kỹ càng sau vụ đột nhập. Thầy Snape dạy thay Lupin một hôm và bài về người sói khiến Hermione nghi ngờ về thầy Lupin.' },
+          { num: 10, title: 'Tấm bản đồ Đạo Tặc', summary: 'Anh em Fred và George tặng Harry tấm bản đồ cho thấy vị trí tất cả mọi người trong lâu đài. Harry dùng nó lẻn vào làng Hogsmeade mà không cần giấy phép.' },
+          { num: 11, title: 'Cú Phất Cờ', summary: 'Trong một trận Quidditch bão tố, Harry ngã khỏi chổi khi đối mặt Giám Ngục. Cây Tia Chớp cũ của cậu bị cây Liễu Roi đập nát thành từng mảnh.' },
+          { num: 12, title: 'Thần Hộ Mệnh', summary: 'Lupin bắt đầu dạy riêng Harry câu thần chú Thần Hộ Mệnh chống Giám Ngục. Harry nghe thấy giọng mẹ van xin Voldemort tha mạng mình trong ký ức đau thương.' },
+          { num: 13, title: 'Gryffindor đấu Ravenclaw', summary: 'Harry nhận một cây chổi Tia Chớp mới bí mật được ai đó gửi tặng. Cậu đánh bại được ba Giám Ngục giả do Malfoy và bạn bè cải trang trong trận đấu.' },
+          { num: 14, title: 'Mối thù Snape', summary: 'Snape đe dọa Lupin và bóng gió về chuyện liên quan đến Sirius Black. Ron phát hiện con chuột Scabbers mất tích cùng vệt máu trên tấm ga giường.' },
+          { num: 15, title: 'Trận chung kết Quidditch', summary: 'Gryffindor thắng Cúp Quidditch sau trận đấu cuối kịch tính với Slytherin. Harry bắt được Snitch ngay trước mũi Malfoy sau nhiều năm mơ ước chiếc cúp.' },
+          { num: 16, title: 'Tiên đoán của giáo sư Trelawney', summary: 'Trong kỳ thi Tiên Tri, giáo sư Trelawney rơi vào trạng thái nhập đồng thật sự. Bà tiên đoán kẻ phụng sự Chúa tể Hắc ám sẽ trốn thoát đêm nay và giúp chủ tái sinh.' },
+          { num: 17, title: 'Mèo, chuột và chó', summary: 'Một con chó đen lớn xuất hiện và lôi Ron xuống gốc cây Liễu Roi. Harry và Hermione lao theo cứu bạn qua đường hầm bí mật dưới cây.' },
+          { num: 18, title: 'Moony, Wormtail, Padfoot và Prongs', summary: 'Trong Hét Xá, Sirius Black tiết lộ ông là người đỡ đầu của Harry và vô tội. Lupin xác nhận kẻ phản bội thật sự chính là Peter Pettigrew đang giả làm chuột Scabbers.' },
+          { num: 19, title: 'Kẻ đầy tớ của Chúa tể Hắc ám', summary: 'Peter Pettigrew bị lộ diện khi biến trở lại hình người. Hắn thú nhận đã phản bội gia đình Harry cho Voldemort và làm Sirius bị đổ oan suốt mười hai năm.' },
+          { num: 20, title: 'Cái hôn Giám Ngục', summary: 'Trên đường rời Hét Xá, Lupin hóa thành người sói khi trăng tròn. Hàng trăm Giám Ngục bao vây Harry và Sirius, suýt hút linh hồn hai người.' },
+          { num: 21, title: 'Bí mật của Hermione', summary: 'Hermione dùng chiếc Đồng Hồ Quay Ngược để cùng Harry quay lại ba giờ trước. Họ cứu được Buckbeak khỏi cái chết và cứu Sirius khỏi nhà tù bằng chính con Bằng Mã.' },
+          { num: 22, title: 'Cú đưa thư của Ngài', summary: 'Sirius trốn thoát an toàn trên lưng Buckbeak và gửi thư cảm ơn Harry. Peter Pettigrew đã chạy trốn còn Lupin phải từ chức vì bí mật người sói bị lộ.' }
+        ]
+      },
+      {
+        id: 4,
+        title: 'Chiếc Cốc Lửa',
+        emoji: '📘',
+        year: 'Năm 4',
+        totalChapters: 37,
+        color: '#3b82f6',
+        summary: 'Harry bất ngờ bị cuốn vào Giải Đấu Tam Pháp Thuật đầy nguy hiểm.',
+        chapters: [
+          { num: 1, title: 'Ngôi nhà Riddle', summary: 'Một ông già giữ nhà ở làng Little Hangleton bị giết bởi những giọng nói kỳ lạ trong đêm. Câu chuyện về gia đình Riddle giàu có nhưng bí ẩn lại được dân làng bàn tán.' },
+          { num: 2, title: 'Vết sẹo', summary: 'Harry thức giấc với vết sẹo đau nhói sau cơn ác mộng về Voldemort và một đầy tớ. Cậu gửi cú đêm báo cho Sirius về cơn đau kỳ lạ này.' },
+          { num: 3, title: 'Lời mời', summary: 'Gia đình Weasley viết thư mời Harry đi xem Cúp Quidditch Thế Giới. Nhà Dursley miễn cưỡng đồng ý sau khi đọc bức thư kỳ quặc của bà Weasley.' },
+          { num: 4, title: 'Trở lại Cái Hang', summary: 'Nhà Weasley dùng bột Floo để đến đón Harry từ lò sưởi bị chặn. Anh Fred và George nghịch kẹo Cao Su Biến Lưỡi khiến Dudley bị hại dở.' },
+          { num: 5, title: 'Phép thuật và mũi tên', summary: 'Harry về đến Cái Hang gặp lại gia đình đông đúc nhà Weasley. Anh Bill đi làm ở Ai Cập và anh Charlie nghiên cứu rồng ở Romania cũng trở về xem Quidditch.' },
+          { num: 6, title: 'Chiếc Cổng Di Chuyển', summary: 'Cả nhà thức dậy từ rạng sáng đi bộ đến đồi để dùng Cổng Di Chuyển. Họ gặp gia đình Diggory với cậu bé Cedric đẹp trai trên đường đi.' },
+          { num: 7, title: 'Bagman và Crouch', summary: 'Trong khu cắm trại Cúp thế giới, Harry gặp Ludo Bagman và Barty Crouch của Bộ. Ông Weasley giới thiệu những người bạn đồng nghiệp và cảnh báo về tin đồn kỳ lạ.' },
+          { num: 8, title: 'Trận chung kết Cúp Quidditch', summary: 'Ireland thắng Bulgaria trong trận chung kết gay cấn dù Krum bắt được Snitch. Harry được chứng kiến những tinh linh Veela và cầu thủ đẳng cấp thế giới.' },
+          { num: 9, title: 'Dấu Hiệu Hắc Ám', summary: 'Sau trận đấu, một nhóm Tử Thần Thực Tử tấn công khu cắm trại đốt phá. Dấu Hiệu Hắc Ám xuất hiện trên trời khiến ai cũng hoảng loạn sau mười ba năm yên bình.' },
+          { num: 10, title: 'Scandal ở Bộ Pháp Thuật', summary: 'Báo Nhật Báo Tiên Tri đăng bài chỉ trích cách Bộ xử lý vụ tấn công. Gia đình Weasley trở về Cái Hang chuẩn bị cho năm học mới đầy biến động.' },
+          { num: 11, title: 'Trên tàu tốc hành Hogwarts', summary: 'Trên đường đến trường, Malfoy ám chỉ điều gì đó thú vị sẽ xảy ra tại Hogwarts năm nay. Cậu ta chê cười rằng cha Draco biết thông tin mà người khác không hay.' },
+          { num: 12, title: 'Giải đấu Tam Pháp thuật', summary: 'Thầy Dumbledore thông báo Hogwarts sẽ tổ chức Giải đấu Tam Pháp thuật sau vài trăm năm gián đoạn. Ba trường sẽ cử đại diện tranh tài qua ba vòng thử thách nguy hiểm.' },
+          { num: 13, title: 'Mắt Điên Moody', summary: 'Giáo viên mới môn Phòng Chống Nghệ Thuật Hắc Ám tên Alastor "Mắt Điên" Moody xuất hiện. Ông biểu diễn ba lời nguyền không thể tha thứ lên con nhện trước mặt học sinh.' },
+          { num: 14, title: 'Ba lời nguyền không tha thứ', summary: 'Moody dạy về ba lời nguyền Imperius, Crucio và Avada Kedavra. Ông thử phép Imperius lên từng học sinh để dạy cách kháng cự lời nguyền điều khiển tâm trí.' },
+          { num: 15, title: 'Beauxbatons và Durmstrang', summary: 'Hai trường khách mời đến Hogwarts: Beauxbatons đến bằng xe ngựa bay, còn Durmstrang đến bằng thuyền nổi từ dưới hồ. Hiệu trưởng Karkaroff và Madame Maxime được chào đón.' },
+          { num: 16, title: 'Chiếc Cốc Lửa', summary: 'Chiếc Cốc Lửa cổ được đặt giữa đại sảnh để chọn ba đấu sĩ. Chỉ học sinh trên mười bảy tuổi mới được phép ghi tên vào vòng lửa.' },
+          { num: 17, title: 'Bốn đấu sĩ', summary: 'Cốc Lửa chọn Krum, Fleur, Cedric và bất ngờ thêm cả Harry làm đấu sĩ thứ tư. Dù Harry khẳng định không ghi tên, hợp đồng phép thuật ràng buộc cậu phải thi đấu.' },
+          { num: 18, title: 'Cân đo đũa phép', summary: 'Ký giả Rita Skeeter viết bài xuyên tạc về Harry cho Nhật Báo Tiên Tri. Bốn đấu sĩ được kiểm tra đũa phép trước khi thi đấu chính thức.' },
+          { num: 19, title: 'Rồng Đuôi Gai Hungary', summary: 'Hagrid lén dẫn Harry đi xem rồng - sinh vật của thử thách đầu tiên. Harry nhận được con Rồng Đuôi Gai Hungary hung dữ nhất trong bốn con rồng.' },
+          { num: 20, title: 'Thử thách thứ nhất', summary: 'Harry dùng thần chú Triệu Hồi để gọi cây chổi Tia Chớp từ trường đến giúp. Cậu bay lượn né rồng và lấy được quả trứng vàng nhanh nhất so với ba đối thủ.' },
+          { num: 21, title: 'Mặt trận giải phóng gia tinh', summary: 'Hermione phát động phong trào S.P.E.W. đòi quyền lợi cho gia tinh. Cô phẫn nộ khi biết nhà bếp Hogwarts sử dụng hàng trăm gia tinh làm việc không lương.' },
+          { num: 22, title: 'Rắc rối bất ngờ', summary: 'Harry và Ron hòa giải sau thời gian cãi nhau vì chuyện giải đấu. Ron thừa nhận mình đã ghen tị và xin lỗi bạn thân khi biết sự thật.' },
+          { num: 23, title: 'Vũ hội Giáng sinh', summary: 'Vũ hội Giáng sinh được tổ chức với bốn đấu sĩ và bạn nhảy mở màn. Harry bất ngờ khi thấy Hermione biến hóa xinh đẹp đi cùng Viktor Krum.' },
+          { num: 24, title: 'Tiết lộ của Rita Skeeter', summary: 'Rita Skeeter đăng bài đâm chọc Hagrid là người khổng lồ lai gây náo loạn. Hagrid bị tổn thương nặng nề và suýt nghỉ dạy vì áp lực dư luận.' },
+          { num: 25, title: 'Quả trứng và con mắt', summary: 'Với gợi ý của Cedric, Harry mở quả trứng dưới nước trong nhà tắm các đấu sĩ. Tấm bản đồ Đạo Tặc cho thấy Barty Crouch đang đi lang thang trong đêm một cách đáng ngờ.' },
+          { num: 26, title: 'Thử thách thứ hai', summary: 'Harry dùng cỏ nước nhân ngư để thở dưới nước suốt một giờ trong hồ. Cậu cứu cả Ron và em gái Fleur về an toàn sau khi hết thời gian nhưng chỉ xếp hạng tư.' },
+          { num: 27, title: 'Trở lại của Padfoot', summary: 'Sirius bí mật đến Hogsmeade dưới dạng chó đen gặp bộ ba trong hang. Ông cảnh báo về những bất thường liên quan đến Bộ Pháp Thuật và Crouch.' },
+          { num: 28, title: 'Sự điên loạn của ông Crouch', summary: 'Harry và Viktor tình cờ gặp ông Crouch hóa điên trong Rừng Cấm. Khi Harry chạy đi báo Dumbledore, Crouch biến mất không dấu vết.' },
+          { num: 29, title: 'Giấc mơ', summary: 'Harry chợp mắt trong lớp Tiên Tri và thấy Voldemort trừng phạt Wormtail. Vết sẹo đau nhói mạnh khiến cậu kể cho Dumbledore và dùng Tưởng Ký xem ký ức cũ.' },
+          { num: 30, title: 'Chậu Tưởng Ký', summary: 'Harry lén nhìn vào Chậu Tưởng Ký và thấy phiên tòa cũ của các Tử Thần Thực Tử. Cậu chứng kiến Barty Crouch Jr. bị chính cha mình tống vào Azkaban.' },
+          { num: 31, title: 'Thử thách thứ ba', summary: 'Mê cung bí ẩn được dựng lên cho thử thách cuối cùng. Bốn đấu sĩ phải vượt qua sinh vật và bẫy phép để chạm vào Cúp Tam Pháp thuật ở trung tâm.' },
+          { num: 32, title: 'Xương, thịt và máu', summary: 'Cúp hóa ra là Cổng Di Chuyển đưa Harry và Cedric đến nghĩa trang. Wormtail giết Cedric một cách lạnh lùng rồi thực hiện nghi lễ hồi sinh Voldemort.' },
+          { num: 33, title: 'Các Tử thần Thực tử', summary: 'Voldemort triệu hồi các Tử Thần Thực Tử trung thành đến quỳ dưới chân hắn. Hắn kể lại câu chuyện thất bại mười ba năm trước và chế giễu những kẻ đã bỏ rơi hắn.' },
+          { num: 34, title: 'Tiên Cao Thủ', summary: 'Harry đối đầu Voldemort trong trận đấu đũa phép một chọi một. Hai cây đũa cùng lõi lông phượng hoàng tạo hiệu ứng Priori Incantatem làm các bóng ma xuất hiện.' },
+          { num: 35, title: 'Huyết thanh Sự thật', summary: 'Ai đó giả Moody lôi Harry đi khi cậu vừa trở về trường. Dumbledore kịp thời phát hiện và dùng Huyết thanh Sự thật ép kẻ giả mạo thú tội.' },
+          { num: 36, title: 'Con đường chia ly', summary: 'Kẻ giả Moody thực chất là Barty Crouch Jr. đã trốn tù và thế chỗ Moody thật. Fudge từ chối tin Voldemort đã trở lại và còn để Giám Ngục giết Crouch Jr. trước khi bị xét xử.' },
+          { num: 37, title: 'Khởi đầu', summary: 'Dumbledore tập hợp các đồng minh cũ để chuẩn bị cho cuộc chiến sắp tới. Harry về lại Privet Drive với tâm trạng nặng nề vì Cedric đã hy sinh và Voldemort đã trở về.' }
+        ]
+      },
+      {
+        id: 5,
+        title: 'Hội Phượng Hoàng',
+        emoji: '📙',
+        year: 'Năm 5',
+        totalChapters: 38,
+        color: '#f97316',
+        summary: 'Harry gia nhập Hội Phượng Hoàng và chống lại Bộ Pháp Thuật đang phủ nhận sự trở lại của Voldemort.',
+        chapters: [
+          { num: 1, title: 'Dudley bị tấn công', summary: 'Hai Giám Ngục tấn công Harry và Dudley trong một con hẻm Privet Drive. Harry dùng phép Patronus để tự vệ nhưng bị Bộ Pháp Thuật đe dọa trục xuất khỏi Hogwarts.' },
+          { num: 2, title: 'Bầy cú bay lạc', summary: 'Hàng loạt cú mang thư đến nhà số 4 khuyên Harry đừng rời đi. Dượng Vernon nhốt gia đình lại vì hoảng sợ khi nghe câu chuyện về Giám Ngục.' },
+          { num: 3, title: 'Đội Hậu vệ Tiền trạm', summary: 'Một nhóm pháp sư lạ mặt đến đón Harry trên cây chổi bay đi. Họ bay qua London và đưa cậu đến một địa chỉ bí ẩn mà người thường không thể thấy được.' },
+          { num: 4, title: 'Số 12 quảng trường Grimmauld', summary: 'Harry đến nhà cũ của gia đình Black - trụ sở bí mật của Hội Phượng Hoàng. Cậu gặp lại Sirius và bà mẹ vợ hay la hét trong bức chân dung.' },
+          { num: 5, title: 'Hội Phượng Hoàng', summary: 'Harry tức giận khi mọi người giấu thông tin về Voldemort với cậu. Ron và Hermione giải thích mẹ Weasley muốn bảo vệ những người trẻ khỏi sự thật đáng sợ.' },
+          { num: 6, title: 'Gia đình Black cao quý', summary: 'Bộ ba dọn dẹp ngôi nhà ma ám đầy dơ bẩn suốt nhiều năm bị bỏ hoang. Họ tìm thấy tấm thảm gia phả nhà Black với những tên bị xóa sổ vì phản bội dòng dõi.' },
+          { num: 7, title: 'Bộ Pháp Thuật', summary: 'Harry đến Bộ Pháp Thuật để dự phiên tòa về việc dùng phép trước mặt Muggle. Dumbledore xuất hiện bào chữa và cậu được tha bổng nhờ chứng cứ Giám Ngục có thật.' },
+          { num: 8, title: 'Phiên tòa', summary: 'Cả hội đồng Wizengamot xét xử Harry một cách khắc nghiệt bất thường. Fudge cố gắng buộc tội cậu nhưng Dumbledore lật ngược tình thế nhờ lời khai của bà Figg.' },
+          { num: 9, title: 'Chia tay và cú sốc', summary: 'Harry trở về nhà Sirius ăn mừng chiến thắng phiên tòa. Nhưng bầu không khí u ám khi Percy Weasley tuyệt giao với cha mẹ vì đứng về phía Bộ.' },
+          { num: 10, title: 'Luna Lovegood', summary: 'Trên tàu đến Hogwarts, Ginny giới thiệu cô bạn Luna Lovegood kỳ quặc. Bộ ba cũng phát hiện Harry có thể nhìn thấy loài sinh vật Thestral kéo xe ngựa đến trường.' },
+          { num: 11, title: 'Bài hát của Phân Mũ', summary: 'Mũ Phân Loại hát bài cảnh báo về sự chia rẽ giữa các nhà Hogwarts. Dolores Umbridge của Bộ được giới thiệu làm giáo viên Phòng Chống Nghệ Thuật Hắc Ám mới.' },
+          { num: 12, title: 'Giáo sư Umbridge', summary: 'Umbridge bắt học sinh chỉ đọc sách mà không được thực hành phép. Harry cãi lại trong lớp khi bà phủ nhận Voldemort trở lại và bị phạt ở lại sau giờ.' },
+          { num: 13, title: 'Sự trừng phạt của Umbridge', summary: 'Umbridge bắt Harry viết câu "Tôi không được nói dối" bằng chiếc bút đặc biệt. Mỗi chữ viết ra lại khắc vết thương chảy máu lên chính mu bàn tay cậu.' },
+          { num: 14, title: 'Percy và Padfoot', summary: 'Percy viết thư khuyên Ron tránh xa Harry kẻo liên lụy công việc tương lai. Sirius liên lạc qua lò sưởi và kể về những hoạt động của Hội.' },
+          { num: 15, title: 'Tổng Thanh Tra Hogwarts', summary: 'Bộ Pháp Thuật phong Umbridge làm Tổng Thanh Tra giám sát toàn bộ giáo viên. Bà bắt đầu đuổi việc những giáo viên không theo quan điểm của Bộ.' },
+          { num: 16, title: 'Ở Đầu Lợn', summary: 'Hermione tập hợp học sinh phản kháng tại quán Đầu Lợn ở Hogsmeade. Cả nhóm đồng ý thành lập câu lạc bộ tự học phòng chống hắc ám với Harry làm thầy.' },
+          { num: 17, title: 'Sắc Lệnh Giáo Dục Số 24', summary: 'Umbridge ra sắc lệnh cấm mọi tổ chức học sinh chưa được phép. Nhóm Harry quyết định hoạt động bí mật dưới tên "Quân Đoàn Dumbledore".' },
+          { num: 18, title: 'Quân Đoàn Dumbledore', summary: 'Dobby chỉ cho Harry căn Phòng Điều Ước hoàn hảo cho việc tập luyện. Các thành viên QĐD bí mật học phép thuật dưới sự dẫn dắt của Harry mỗi tuần.' },
+          { num: 19, title: 'Sư tử và rắn', summary: 'Gryffindor thắng trận Quidditch đầu tiên nhưng Harry bị cấm thi đấu suốt đời. Umbridge cấm cậu và anh em sinh đôi Weasley chơi chổi vĩnh viễn.' },
+          { num: 20, title: 'Câu chuyện của Hagrid', summary: 'Hagrid trở về sau chuyến đi bí mật với khuôn mặt đầy vết thương. Ông kể lại chuyến đi tìm những người khổng lồ cùng Madame Maxime để kết minh.' },
+          { num: 21, title: 'Con rắn trong giấc mơ', summary: 'Harry mơ thấy mình là con rắn lớn tấn công ông Weasley trong Bộ. Cậu báo Dumbledore và ông Weasley được cứu kịp thời khỏi vũng máu.' },
+          { num: 22, title: 'Bệnh viện St. Mungo', summary: 'Bộ ba đến thăm ông Weasley ở bệnh viện phù thủy St. Mungo. Họ tình cờ gặp vợ chồng cha mẹ Neville - những pháp sư bị tra tấn đến mất trí.' },
+          { num: 23, title: 'Kỳ nghỉ Giáng sinh', summary: 'Cả gia đình Weasley và Harry nghỉ lễ tại nhà Sirius. Sirius cảm thấy mình bị nhốt và uống rượu nhiều, tâm trạng buồn bã vì không được ra ngoài chiến đấu.' },
+          { num: 24, title: 'Occlumency', summary: 'Dumbledore yêu cầu Snape dạy Harry môn Occlumency để chống Voldemort đột nhập tâm trí. Các buổi học căng thẳng vì Harry ghét Snape và không thể tập trung.' },
+          { num: 25, title: 'Con bọ bị dồn vào chân tường', summary: 'Hermione dùng con bọ Rita Skeeter để ép bà viết bài phỏng vấn Harry. Tạp chí The Quibbler của cha Luna đăng bài kể thật về đêm Voldemort trở lại.' },
+          { num: 26, title: 'Quá khứ và tương lai', summary: 'Giáo sư Trelawney bị Umbridge sa thải công khai giữa sân trường. Dumbledore phản đối và mời Firenze nhân mã thay thế dạy Tiên Tri.' },
+          { num: 27, title: 'Con bán nhân', summary: 'Firenze dạy Tiên Tri theo cách hoàn toàn khác - qua các vì sao. Umbridge cấm mọi tiếp xúc giữa học sinh và giáo viên không thuần máu.' },
+          { num: 28, title: 'Ký ức tồi tệ nhất của Snape', summary: 'Harry lén nhìn vào chậu Tưởng Ký của Snape khi thầy rời phòng. Cậu thấy ký ức cha mình James ngày xưa đã bắt nạt Snape một cách tàn nhẫn.' },
+          { num: 29, title: 'Tư vấn nghề nghiệp', summary: 'Bộ ba gặp các giáo viên để lên kế hoạch nghề nghiệp tương lai. Harry muốn làm Thần Sáng và McGonagall kiên quyết ủng hộ dù Umbridge phản đối.' },
+          { num: 30, title: 'Grawp', summary: 'Hagrid tiết lộ bí mật: ông giấu em trai khổng lồ Grawp trong Rừng Cấm. Ông nhờ Harry và Hermione chăm sóc Grawp nếu mình bị đuổi khỏi trường.' },
+          { num: 31, title: 'Kỳ thi OWLs', summary: 'Kỳ thi OWLs căng thẳng kéo dài suốt mấy tuần cho học sinh năm năm. Trong lúc thi Lịch Sử, Harry ngủ gật và thấy viễn cảnh Voldemort tra tấn Sirius.' },
+          { num: 32, title: 'Ngoài lò sưởi', summary: 'Harry lẻn vào văn phòng Umbridge dùng lò sưởi kiểm tra Sirius ở nhà. Bị Umbridge bắt quả tang cùng với Hermione và một số bạn bè.' },
+          { num: 33, title: 'Thất bại và chạy trốn', summary: 'Hermione đánh lừa Umbridge đi vào Rừng Cấm gặp "vũ khí bí mật". Nhân mã giận dữ mang bà đi còn nhóm Harry trốn thoát cùng Luna và Ginny.' },
+          { num: 34, title: 'Sở Bí ẩn', summary: 'Sáu bạn trẻ cưỡi Thestral bay đến Bộ Pháp Thuật ở London. Họ đột nhập Sở Bí ẩn đi tìm Sirius theo viễn cảnh Harry đã thấy.' },
+          { num: 35, title: 'Bên kia tấm màn', summary: 'Họ phát hiện đây là bẫy và Tử Thần Thực Tử đã phục kích. Lucius Malfoy đòi quả cầu tiên đoán mà chỉ Harry mới có thể lấy khỏi kệ.' },
+          { num: 36, title: 'Kẻ duy nhất mà ông ta sợ', summary: 'Hội Phượng Hoàng kịp thời đến cứu nhóm trẻ trong trận chiến kịch liệt. Sirius chết bi thảm khi bị Bellatrix đánh rơi qua tấm màn Chết, và Dumbledore đối đầu Voldemort.' },
+          { num: 37, title: 'Lời tiên tri bị mất', summary: 'Dumbledore kể cho Harry nghe toàn bộ lời tiên tri và lý do ông không nói sớm hơn. Harry là người duy nhất có thể giết hoặc bị Voldemort giết theo định mệnh.' },
+          { num: 38, title: 'Cuộc chiến thứ hai bắt đầu', summary: 'Báo chí công nhận Voldemort đã trở lại và Fudge bị buộc từ chức. Harry về Privet Drive mang theo nỗi đau mất Sirius nhưng cũng quyết tâm đối mặt với số phận.' }
+        ]
+      },
+      {
+        id: 6,
+        title: 'Hoàng Tử Lai',
+        emoji: '📔',
+        year: 'Năm 6',
+        totalChapters: 30,
+        color: '#8b5cf6',
+        summary: 'Harry tìm hiểu quá khứ của Voldemort cùng Dumbledore và khám phá bí mật của Hoàng Tử Lai.',
+        chapters: [
+          { num: 1, title: 'Thủ tướng khác', summary: 'Thủ tướng Muggle được bộ trưởng phù thủy mới Rufus Scrimgeour đến thăm. Ông thông báo về các vụ tấn công kỳ lạ ngày càng gia tăng trên khắp nước Anh.' },
+          { num: 2, title: 'Đường Spinner', summary: 'Bellatrix và Narcissa Malfoy đến gặp Snape tại nhà riêng của ông. Narcissa cầu xin Snape bảo vệ con trai Draco và lập Lời Thề Không Thể Phá Vỡ.' },
+          { num: 3, title: 'Sẽ và Không', summary: 'Dumbledore đích thân đến Privet Drive đón Harry. Ông kể cho nhà Dursley về di chúc Sirius và những gì Harry đã thừa kế từ người đỡ đầu.' },
+          { num: 4, title: 'Horace Slughorn', summary: 'Dumbledore thuyết phục giáo sư cũ Slughorn quay lại dạy tại Hogwarts. Họ dừng chân ở căn nhà trông hoang tàn trước khi Slughorn đồng ý đi.' },
+          { num: 5, title: 'Thái độ của Phlegm', summary: 'Tại Cái Hang, Fleur Delacour đã đính hôn với Bill Weasley khiến Ginny phát chán. Harry nghỉ hè vui vẻ cùng bạn bè dù những đám tang liên tục xảy ra.' },
+          { num: 6, title: 'Đường vòng của Draco', summary: 'Ba đứa trẻ đi mua đồ ở Hẻm Xéo nhưng thấy cửa hàng đóng cửa nhiều. Harry theo dõi Draco đến tiệm Borgin & Burkes và nghi ngờ cậu ta làm việc đen tối.' },
+          { num: 7, title: 'Slug Club', summary: 'Trên tàu đến trường, Slughorn mời Harry và Neville vào câu lạc bộ của ông. Harry lén theo dõi Draco nhưng bị bắt gặp và suýt bị bỏ rơi trên tàu.' },
+          { num: 8, title: 'Snape thắng thế', summary: 'Snape cuối cùng cũng được đứng trên giảng đường Phòng Chống Nghệ Thuật Hắc Ám. Slughorn dạy Độc Dược và Harry bất ngờ nổi trội nhờ cuốn sách cũ.' },
+          { num: 9, title: 'Hoàng Tử Lai', summary: 'Harry dùng cuốn sách cũ của "Hoàng Tử Lai" chứa đầy chú thích và mẹo hay. Nhờ đó cậu pha thuốc Felix Felicis xuất sắc và được thưởng một lọ may mắn.' },
+          { num: 10, title: 'Nhà Gaunt', summary: 'Dumbledore dẫn Harry xem ký ức về gia đình Gaunt - tổ tiên Voldemort. Họ là hậu duệ Slytherin nhưng đã suy tàn trong cảnh bần hàn và điên loạn.' },
+          { num: 11, title: 'Bàn tay giúp đỡ của Hermione', summary: 'Cô gái Lavender Brown theo đuổi Ron ráo riết khiến Hermione buồn. Harry cố giúp bạn thân hòa giải tình cảm nhưng không dễ dàng.' },
+          { num: 12, title: 'Bạc và Ngọc Bích', summary: 'Harry đi theo Draco đến khu Slytherin nhưng không chứng minh được âm mưu. Katie Bell bị ếm lời nguyền chạm vào chiếc vòng cổ bạc trong chuyến đi Hogsmeade.' },
+          { num: 13, title: 'Bí mật của Riddle', summary: 'Dumbledore cho Harry xem ký ức về Tom Riddle lúc nhỏ trong trại mồ côi. Cậu bé Tom đã thể hiện tính tàn nhẫn và thích hành hạ những đứa trẻ khác.' },
+          { num: 14, title: 'Felix Felicis', summary: 'Harry uống một chút Felix Felicis để may mắn khi đi gặp Slughorn. Cậu lấy được ký ức gốc mà Slughorn đã giấu về bí mật Horcrux với Riddle.' },
+          { num: 15, title: 'Lời Thề Không Thể Phá Vỡ', summary: 'Harry nghe lén Snape và Draco cãi nhau trong hành lang. Cậu nghi ngờ Snape đã lập Lời Thề giúp Draco thực hiện kế hoạch đen tối nào đó.' },
+          { num: 16, title: 'Lễ Giáng sinh lạnh lẽo', summary: 'Nhà Weasley tổ chức Giáng sinh ảm đạm trong bầu không khí chiến tranh. Scrimgeour đến nhà thuyết phục Harry làm biểu tượng cho Bộ nhưng bị từ chối.' },
+          { num: 17, title: 'Ký ức lờ mờ', summary: 'Dumbledore chia sẻ thêm nhiều ký ức về thời trẻ của Riddle. Harry dần hiểu được Voldemort đã tàn ác thế nào và tạo ra Horcrux như thế nào.' },
+          { num: 18, title: 'Bất ngờ sinh nhật', summary: 'Ron vô tình ăn bánh độc và suýt chết nếu Harry không cho cậu uống Bezoar. Snape hồi sức kịp thời còn nghi ngờ ai đó đang đầu độc trong trường.' },
+          { num: 19, title: 'Gia tinh theo dõi', summary: 'Harry nhờ Dobby và Kreacher theo dõi Draco suốt ngày đêm. Hai gia tinh báo cáo Draco thường xuyên biến mất vào Phòng Điều Ước làm việc gì đó bí ẩn.' },
+          { num: 20, title: 'Yêu cầu của Ngài Voldemort', summary: 'Dumbledore cho xem ký ức Voldemort xin công việc tại Hogwarts. Dumbledore từ chối và biết rằng Voldemort đã yểm một lời nguyền lên vị trí giáo viên phòng chống hắc ám.' },
+          { num: 21, title: 'Phòng Bí Ẩn', summary: 'Harry tìm hiểu thêm về căn Phòng Điều Ước mà Draco đang sử dụng. Cậu thử vào nhưng không thể vì Draco đã yêu cầu phòng ở dạng khác.' },
+          { num: 22, title: 'Sau đám tang', summary: 'Aragog con nhện khổng lồ của Hagrid chết và họ làm đám tang. Harry dùng Felix để Slughorn say sưa và nhận được ký ức quan trọng nhất.' },
+          { num: 23, title: 'Horcruxes', summary: 'Dumbledore giải thích Voldemort đã chia linh hồn thành bảy Horcrux. Họ đã tiêu diệt được hai (nhật ký, chiếc nhẫn) và còn phải tìm bốn nữa trước khi giết hắn.' },
+          { num: 24, title: 'Sectumsempra', summary: 'Harry dùng phép Sectumsempra từ sách Hoàng Tử Lai lên Draco trong nhà tắm. Lời nguyền gây thương tích khủng khiếp và Snape phải cứu Draco gấp.' },
+          { num: 25, title: 'Kẻ nghe lén', summary: 'Trelawney kể cho Harry về đêm bà làm lời tiên tri tại quán Đầu Lợn. Harry sốc khi biết Snape chính là kẻ đã nghe lén và báo lại cho Voldemort.' },
+          { num: 26, title: 'Cái hang', summary: 'Harry và Dumbledore đi đến một hang động ven biển tìm Horcrux. Họ vượt qua nhiều bẫy và Dumbledore phải uống hết thứ nước đen khủng khiếp.' },
+          { num: 27, title: 'Tháp bị sét đánh', summary: 'Trở về Hogwarts, họ thấy Dấu Hiệu Hắc Ám trên Tháp Thiên Văn. Dumbledore đóng băng Harry vô hình còn mình đối đầu Draco đang đe dọa giết ông.' },
+          { num: 28, title: 'Chuyến bay của Hoàng Tử', summary: 'Snape bước đến và dùng lời nguyền Avada Kedavra giết chết Dumbledore. Harry đuổi theo nhưng Snape tiết lộ mình chính là Hoàng Tử Lai rồi chạy thoát.' },
+          { num: 29, title: 'Phượng hoàng than khóc', summary: 'Cả trường Hogwarts đau thương trước cái chết của Dumbledore. Harry nhận ra chiếc Horcrux trong hang chỉ là đồ giả do một người ký tên "R.A.B." lấy mất.' },
+          { num: 30, title: 'Lăng mộ trắng', summary: 'Dumbledore được chôn cất trong lăng mộ trắng bên bờ hồ Hogwarts. Harry quyết tâm bỏ học năm cuối để đi săn Horcrux cùng Ron và Hermione.' }
+        ]
+      },
+      {
+        id: 7,
+        title: 'Bảo Bối Tử Thần',
+        emoji: '📓',
+        year: 'Năm 7',
+        totalChapters: 36,
+        color: '#ec4899',
+        summary: 'Ba người bạn bỏ học đi tìm các Horcrux còn lại và đối mặt cuộc chiến cuối cùng với Voldemort.',
+        chapters: [
+          { num: 1, title: 'Chúa Tể Hắc Ám trỗi dậy', summary: 'Voldemort họp các Tử Thần Thực Tử tại nhà Malfoy để lên kế hoạch. Snape báo cáo ngày Harry sẽ được di chuyển khỏi nhà Dursley cho Voldemort.' },
+          { num: 2, title: 'Kỷ niệm đã khuất', summary: 'Harry thu dọn phòng tại Privet Drive lần cuối trước khi rời đi. Cậu bất ngờ tìm được một mảnh gương vỡ còn lại từ bộ gương đôi của Sirius.' },
+          { num: 3, title: 'Chuyến đi của Dursley', summary: 'Hội Phượng Hoàng di tản nhà Dursley để họ không bị Voldemort hại. Dudley bất ngờ thể hiện tình cảm với Harry sau bao năm bắt nạt cậu.' },
+          { num: 4, title: 'Bảy Harry Potter', summary: 'Sáu người dùng thuốc Đa Dịch biến thành Harry để đánh lạc hướng. Họ bay khỏi nhà nhưng bị Tử Thần Thực Tử phục kích và Mắt Điên Moody hy sinh.' },
+          { num: 5, title: 'Người chiến binh ngã xuống', summary: 'Harry trở về Cái Hang đau đớn với tin Hedwig và Moody đã chết. George mất một tai trong cuộc chiến và Voldemort cướp được cây đũa phép cũ của Harry.' },
+          { num: 6, title: 'Ma trong bộ đồ ngủ', summary: 'Bộ trưởng Scrimgeour đến Cái Hang giao di chúc Dumbledore cho ba bạn trẻ. Harry nhận được thanh kiếm của Gryffindor nhưng bị Bộ giữ lại.' },
+          { num: 7, title: 'Di chúc của Albus Dumbledore', summary: 'Ron được cái Bật Lửa Tắt, Hermione được cuốn truyện cổ tích bằng ngôn ngữ Rune. Harry nhận được quả Snitch cậu bắt trong trận Quidditch đầu tiên.' },
+          { num: 8, title: 'Đám cưới', summary: 'Bill và Fleur tổ chức đám cưới tại Cái Hang trong tâm trạng căng thẳng. Kingsley thông báo Bộ đã thất thủ và bầy Tử Thần Thực Tử tấn công ngay giữa tiệc.' },
+          { num: 9, title: 'Nơi trú ẩn', summary: 'Ba bạn trẻ dùng phép Apparate đến London và trốn vào một quán cafe. Hai Tử Thần Thực Tử tìm thấy và họ buộc phải đánh ngất rồi xóa ký ức.' },
+          { num: 10, title: 'Kreacher kể chuyện', summary: 'Họ đến ẩn náu tại nhà số 12 quảng trường Grimmauld. Gia tinh Kreacher kể chuyện về Regulus Black chính là "R.A.B." đã lấy Horcrux giả năm xưa.' },
+          { num: 11, title: 'Lời hối lộ', summary: 'Kreacher tìm được Mundungus Fletcher để truy ra chiếc Medallion bị mất. Họ biết được Dolores Umbridge đã lấy Medallion và hiện đang giữ tại Bộ.' },
+          { num: 12, title: 'Phép thuật là sức mạnh', summary: 'Bộ Pháp Thuật bị Voldemort kiểm soát và truy đuổi người sinh bùn. Ba bạn trẻ dùng Đa Dịch biến thành nhân viên Bộ để xâm nhập vào trong.' },
+          { num: 13, title: 'Ủy ban đăng ký sinh bùn', summary: 'Bên trong Bộ, Umbridge đang xét xử các pháp sư sinh bùn. Harry giật được Medallion khỏi cổ bà và cứu các nạn nhân trốn thoát qua lò sưởi.' },
+          { num: 14, title: 'Tên trộm', summary: 'Họ không thể trở lại Grimmauld vì Yaxley đã bám theo. Họ đi cắm trại trong rừng và Ron bị thương trong lúc Apparate vội vàng.' },
+          { num: 15, title: 'Sự trả thù của yêu tinh', summary: 'Nhóm đổi chỗ cắm trại liên tục để tránh bị phát hiện. Họ nghe radio báo tin Bộ truy đuổi người sinh bùn và các pháp sư đồng minh.' },
+          { num: 16, title: 'Godric Hollow', summary: 'Harry và Hermione đi thăm Godric Hollow nơi cha mẹ cậu mất. Họ bị rắn khổng lồ tấn công từ thi thể Bathilda Bagshot và cây đũa của Harry vỡ tan.' },
+          { num: 17, title: 'Bí mật của Bathilda', summary: 'Hermione vừa kịp kéo Harry khỏi Nagini và hai người trốn thoát. Harry buồn bã vì cây đũa phép bị gãy và Ron đã bỏ đi từ trước đó.' },
+          { num: 18, title: 'Cuộc đời và lời nói dối của Albus Dumbledore', summary: 'Harry đọc cuốn sách của Rita Skeeter về Dumbledore gây sốc. Sách tiết lộ Dumbledore thời trẻ từng là bạn thân của pháp sư hắc ám Gellert Grindelwald.' },
+          { num: 19, title: 'Con nai bạc', summary: 'Một con Patronus hình nai bạc dẫn Harry đến hồ nước chứa thanh kiếm. Ron bất ngờ quay lại cứu Harry khỏi bị Medallion siết cổ và phá hủy Horcrux.' },
+          { num: 20, title: 'Xenophilius Lovegood', summary: 'Ba người đến thăm cha Luna để hỏi về biểu tượng tam giác bí ẩn. Ông Lovegood kể về truyền thuyết Bảo Bối Tử Thần gồm ba món báu vật phép thuật.' },
+          { num: 21, title: 'Câu chuyện về ba anh em', summary: 'Truyền thuyết kể về ba anh em nhận được Cây Đũa Trưởng Lão, Đá Hồi Sinh và Áo Choàng Tàng Hình. Người sở hữu cả ba sẽ trở thành "Chủ Nhân của Cái Chết".' },
+          { num: 22, title: 'Bảo Bối Tử Thần', summary: 'Harry bắt đầu ám ảnh với Bảo Bối Tử Thần thay vì tập trung Horcrux. Hermione phản đối nhưng Harry tin Dumbledore đã để lại manh mối này cố ý.' },
+          { num: 23, title: 'Dinh thự Malfoy', summary: 'Nhóm bị bắt và đưa đến dinh thự Malfoy dùng làm đại bản doanh của Voldemort. Bellatrix tra tấn Hermione trong lúc Harry và Ron bị nhốt dưới hầm.' },
+          { num: 24, title: 'Người làm đũa phép', summary: 'Dobby Apparate xuống giải cứu nhưng bị Bellatrix ném dao giết chết. Harry chôn cất Dobby và đến gặp người thợ làm đũa Ollivander để tìm hiểu.' },
+          { num: 25, title: 'Cottage Vỏ Sò', summary: 'Họ trốn ở Cottage Vỏ Sò của Bill và Fleur để hồi phục. Harry thuyết phục yêu tinh Griphook giúp họ đột nhập vào ngân hàng Gringotts.' },
+          { num: 26, title: 'Gringotts', summary: 'Nhóm xâm nhập ngân hàng phù thủy bằng Đa Dịch và phép khuếch đại. Họ đối đầu một con rồng canh hầm và thoát ra trên lưng nó sau khi lấy được ly Hufflepuff.' },
+          { num: 27, title: 'Cuộc đào tẩu cuối cùng', summary: 'Voldemort nổi cơn thịnh nộ khi biết Horcrux bị đánh cắp. Harry nhìn thấu tâm trí hắn và biết Horcrux cuối cùng được giấu tại Hogwarts.' },
+          { num: 28, title: 'Chiếc gương bị mất', summary: 'Ba người đến làng Hogsmeade nhưng bị Tử Thần Thực Tử phát hiện. Aberforth - em trai Dumbledore - cứu họ và dẫn đường vào Hogwarts qua đường hầm bí mật.' },
+          { num: 29, title: 'Vương miện bị mất', summary: 'Trong lâu đài Hogwarts, Luna giúp Harry tìm được vương miện Ravenclaw. Harry dò hỏi hồn ma Xám Nữ để lần ra nơi Voldemort đã giấu Horcrux.' },
+          { num: 30, title: 'Severus Snape bị sa thải', summary: 'Giáo sư McGonagall cuối cùng đã tống cổ Snape khỏi Hogwarts. Các giáo viên chuẩn bị phòng thủ trường trước khi quân Voldemort đến.' },
+          { num: 31, title: 'Trận chiến Hogwarts', summary: 'Trận chiến quyết định nổ ra trong khuôn viên và bên trong lâu đài. Fred Weasley hy sinh cùng nhiều pháp sư trẻ khác trong cuộc giao tranh ác liệt.' },
+          { num: 32, title: 'Cây đũa cơm nguội', summary: 'Harry, Ron và Hermione đi tìm Nagini - Horcrux sống cuối cùng. Ron và Hermione dùng răng nanh Basilisk phá hủy ly Hufflepuff dưới Phòng Chứa Bí Mật.' },
+          { num: 33, title: 'Câu chuyện của Hoàng Tử', summary: 'Nagini giết Snape theo lệnh Voldemort trong Hét Xá. Trước khi chết, Snape để lại ký ức tiết lộ cả đời ông yêu Lily và bảo vệ Harry bí mật.' },
+          { num: 34, title: 'Rừng Cấm lần nữa', summary: 'Harry xem ký ức Snape và hiểu mình là Horcrux cuối cùng phải chết. Cậu đi vào Rừng Cấm với Đá Hồi Sinh, gặp lại cha mẹ và Sirius trước khi chấp nhận cái chết.' },
+          { num: 35, title: 'Nhà ga Kings Cross', summary: 'Harry tỉnh lại ở một nơi giống nhà ga King Cross và gặp Dumbledore. Ông giải thích Harry không chết vì Voldemort đã tự hủy mảnh linh hồn đặt trong cậu.' },
+          { num: 36, title: 'Sai lầm của thiết kế', summary: 'Harry trở lại chiến đấu và tiết lộ sự thật Cây Đũa Trưởng Lão thuộc về cậu. Cậu giết Voldemort bằng phép phản đòn đơn giản và kết thúc cuộc chiến mãi mãi.' }
+        ]
+      }
+    ];
+
+    // ========== DỮ LIỆU QUIZ GỐC BẰNG TIẾNG VIỆT ==========
+    const QUIZZES = {
+      1: [
+        { q: 'Hagrid giao Harry lúc bé cho nhà Dursley vào đêm nào?', a: ['Halloween', 'Giáng sinh', 'Đêm cha mẹ Harry mất', 'Sinh nhật Harry'], correct: 2 },
+        { q: 'Cây đũa phép của Harry có lõi gì?', a: ['Lông kỳ lân', 'Lông phượng hoàng', 'Gân rồng', 'Tóc người sói'], correct: 1 },
+        { q: 'Ai là giáo viên Phòng Chống Nghệ Thuật Hắc Ám năm đầu?', a: ['Snape', 'Quirrell', 'Lockhart', 'Lupin'], correct: 1 },
+        { q: 'Con chó ba đầu canh giữ thứ gì?', a: ['Vàng của Gringotts', 'Hòn đá phù thủy', 'Chiếc cúp', 'Nhật ký cổ'], correct: 1 },
+        { q: 'Ai giúp Harry vượt qua phòng cờ phù thủy?', a: ['Hermione', 'Ron', 'Neville', 'Dumbledore'], correct: 1 },
+        { q: 'Hòn đá phù thủy do ai tạo ra?', a: ['Dumbledore', 'Voldemort', 'Nicolas Flamel', 'Salazar Slytherin'], correct: 2 },
+        { q: 'Nhà của Harry tại Hogwarts là nhà nào?', a: ['Slytherin', 'Hufflepuff', 'Ravenclaw', 'Gryffindor'], correct: 3 },
+        { q: 'Voldemort trong quyển một giấu mình ở đâu?', a: ['Trong Rừng Cấm', 'Sau đầu Quirrell', 'Trong gương Ảo Ảnh', 'Dưới hầm Hogwarts'], correct: 1 }
+      ],
+      2: [
+        { q: 'Ai là kẻ thực sự đứng sau việc mở Phòng Chứa Bí Mật?', a: ['Hagrid', 'Ginny Weasley (bị nhật ký điều khiển)', 'Draco Malfoy', 'Snape'], correct: 1 },
+        { q: 'Quái vật trong Phòng Chứa Bí Mật là gì?', a: ['Rồng', 'Tử xà (basilisk)', 'Troll', 'Bằng mã'], correct: 1 },
+        { q: 'Harry giết tử xà bằng vũ khí gì?', a: ['Đũa phép', 'Kiếm Gryffindor', 'Răng nanh', 'Đá phù thủy'], correct: 1 },
+        { q: 'Ai cứu Harry khỏi nọc tử xà?', a: ['Dumbledore', 'Fawkes (phượng hoàng)', 'Hagrid', 'Hermione'], correct: 1 },
+        { q: 'Gia tinh nào được Harry giải phóng?', a: ['Kreacher', 'Winky', 'Dobby', 'Hokey'], correct: 2 },
+        { q: 'Giáo viên mới năm hai là ai?', a: ['Lockhart', 'Lupin', 'Moody', 'Umbridge'], correct: 0 },
+        { q: 'Cuốn nhật ký thuộc về ai?', a: ['Dumbledore', 'Tom Riddle', 'Salazar Slytherin', 'Lucius Malfoy'], correct: 1 },
+        { q: 'Harry và Ron đến Hogwarts bằng phương tiện gì năm hai?', a: ['Tàu tốc hành', 'Cổng Di Chuyển', 'Xe hơi bay', 'Chổi'], correct: 2 }
+      ],
+      3: [
+        { q: 'Sirius Black là gì của Harry?', a: ['Cha đẻ', 'Chú', 'Cha đỡ đầu', 'Anh họ'], correct: 2 },
+        { q: 'Hình Animagus của Sirius là gì?', a: ['Chó đen', 'Chuột', 'Nai', 'Sói'], correct: 0 },
+        { q: 'Ai là kẻ phản bội gia đình Potter thật sự?', a: ['Sirius', 'Peter Pettigrew', 'Lupin', 'Snape'], correct: 1 },
+        { q: 'Thần Hộ Mệnh của Harry là hình gì?', a: ['Chó', 'Phượng hoàng', 'Nai', 'Sói'], correct: 2 },
+        { q: 'Lupin là sinh vật gì?', a: ['Ma cà rồng', 'Người sói', 'Yêu tinh', 'Khổng lồ'], correct: 1 },
+        { q: 'Hermione dùng thứ gì để học nhiều lớp cùng lúc?', a: ['Thuốc Đa Dịch', 'Đồng Hồ Quay Ngược', 'Áo tàng hình', 'Phép nhân bản'], correct: 1 },
+        { q: 'Giám Ngục hút thứ gì của con người?', a: ['Máu', 'Hạnh phúc', 'Trí nhớ', 'Tuổi thọ'], correct: 1 },
+        { q: 'Peter Pettigrew cải trang thành con vật gì?', a: ['Mèo', 'Cú', 'Chuột', 'Cóc'], correct: 2 }
+      ],
+      4: [
+        { q: 'Ba trường trong Giải đấu Tam Pháp thuật gồm?', a: ['Hogwarts, Beauxbatons, Durmstrang', 'Hogwarts, Ilvermorny, Mahoutokoro', 'Hogwarts, Castelobruxo, Uagadou', 'Hogwarts, Koldovstoretz, Beauxbatons'], correct: 0 },
+        { q: 'Cây Cốc Lửa chọn mấy đấu sĩ?', a: ['Hai', 'Ba', 'Bốn (bất thường)', 'Năm'], correct: 2 },
+        { q: 'Cedric Diggory bị ai giết?', a: ['Voldemort', 'Wormtail', 'Barty Crouch Jr.', 'Bellatrix'], correct: 1 },
+        { q: 'Ai giả làm Mắt Điên Moody?', a: ['Snape', 'Barty Crouch Jr.', 'Lucius Malfoy', 'Karkaroff'], correct: 1 },
+        { q: 'Thử thách đầu tiên Harry đối mặt gì?', a: ['Rồng', 'Nhân ngư', 'Mê cung', 'Giám Ngục'], correct: 0 },
+        { q: 'Harry dùng gì để thở dưới nước ở thử thách hai?', a: ['Thuốc Mang Cá', 'Cỏ nước nhân ngư', 'Phép tạo bong bóng', 'Bùa thở'], correct: 1 },
+        { q: 'Voldemort hồi sinh bằng nghi lễ nào?', a: ['Lời thề máu', 'Xương cha, thịt tôi tớ, máu kẻ thù', 'Tế rồng', 'Thuốc đen'], correct: 1 },
+        { q: 'Bạn nhảy Vũ hội của Hermione là ai?', a: ['Harry', 'Ron', 'Viktor Krum', 'Cedric'], correct: 2 }
+      ],
+      5: [
+        { q: 'Umbridge làm việc cho ai?', a: ['Dumbledore', 'Voldemort', 'Bộ Pháp Thuật', 'Hội Phượng Hoàng'], correct: 2 },
+        { q: 'QĐD là viết tắt của gì?', a: ['Quyền Đũa Đen', 'Quân Đoàn Dumbledore', 'Quỹ Đoàn Động', 'Quần Đội Dị'], correct: 1 },
+        { q: 'Sirius chết ở đâu?', a: ['Azkaban', 'Hogwarts', 'Sở Bí ẩn (tấm màn)', 'Cái Hang'], correct: 2 },
+        { q: 'Nhóm Harry cưỡi gì đến Bộ Pháp Thuật?', a: ['Chổi', 'Thestral', 'Bằng mã', 'Xe hơi bay'], correct: 1 },
+        { q: 'Umbridge dạy môn gì?', a: ['Độc Dược', 'Biến Hóa', 'Phòng Chống Nghệ Thuật Hắc Ám', 'Bùa Chú'], correct: 2 },
+        { q: 'Harry học phép gì từ Snape?', a: ['Legilimency', 'Occlumency', 'Apparate', 'Patronus'], correct: 1 },
+        { q: 'Lời tiên tri nói về?', a: ['Dumbledore và Grindelwald', 'Harry và Voldemort', 'Snape và Lily', 'Ba anh em Peverell'], correct: 1 },
+        { q: 'Ai tấn công Harry và Dudley ở đầu sách?', a: ['Tử Thần Thực Tử', 'Giám Ngục', 'Người sói', 'Troll'], correct: 1 }
+      ],
+      6: [
+        { q: 'Hoàng Tử Lai là ai?', a: ['Harry', 'Voldemort', 'Snape', 'Dumbledore'], correct: 2 },
+        { q: 'Dumbledore chết bởi phép nào?', a: ['Crucio', 'Avada Kedavra', 'Sectumsempra', 'Imperius'], correct: 1 },
+        { q: 'Draco được giao nhiệm vụ gì?', a: ['Đánh cắp tiên tri', 'Giết Dumbledore', 'Tạo Horcrux', 'Tìm Bảo Bối'], correct: 1 },
+        { q: 'Horcrux có chức năng gì?', a: ['Tăng sức mạnh', 'Chia linh hồn để bất tử', 'Gọi Tử Thần Thực Tử', 'Điều khiển tâm trí'], correct: 1 },
+        { q: 'Voldemort tạo bao nhiêu Horcrux?', a: ['Ba', 'Năm', 'Bảy', 'Chín'], correct: 2 },
+        { q: '"R.A.B." là ai?', a: ['Regulus Arcturus Black', 'Rabastan Lestrange', 'Rufus Scrimgeour', 'Ron Bilius'], correct: 0 },
+        { q: 'Ai đang yêu Ron ở năm sáu?', a: ['Hermione', 'Ginny', 'Lavender Brown', 'Fleur'], correct: 2 },
+        { q: 'Giáo viên Độc Dược mới là ai?', a: ['Snape', 'Slughorn', 'McGonagall', 'Flitwick'], correct: 1 }
+      ],
+      7: [
+        { q: 'Ba Bảo Bối Tử Thần gồm?', a: ['Cây đũa Trưởng Lão, Đá Hồi Sinh, Áo Tàng Hình', 'Cúp, Kiếm, Vương Miện', 'Nhật ký, Nhẫn, Medallion', 'Tim, Phổi, Não'], correct: 0 },
+        { q: 'Ai giết Dobby?', a: ['Voldemort', 'Bellatrix', 'Draco', 'Narcissa'], correct: 1 },
+        { q: 'Fred Weasley chết ở đâu?', a: ['Cái Hang', 'Trận chiến Hogwarts', 'Sở Bí ẩn', 'Azkaban'], correct: 1 },
+        { q: 'Harry là Horcrux thứ mấy?', a: ['Thứ nhất', 'Thứ bảy (vô tình)', 'Thứ ba', 'Không phải'], correct: 1 },
+        { q: 'Snape yêu ai cả đời?', a: ['Bellatrix', 'Lily Potter', 'Narcissa', 'Minerva'], correct: 1 },
+        { q: 'Harry giết Voldemort bằng phép gì?', a: ['Avada Kedavra', 'Expelliarmus', 'Sectumsempra', 'Crucio'], correct: 1 },
+        { q: 'Ly Hufflepuff bị phá hủy ở đâu?', a: ['Gringotts', 'Phòng Chứa Bí Mật', 'Rừng Cấm', 'Sở Bí ẩn'], correct: 1 },
+        { q: 'Ai cuối cùng là chủ Cây Đũa Trưởng Lão?', a: ['Voldemort', 'Snape', 'Draco', 'Harry'], correct: 3 }
+      ]
+    };
+
+    // ========== LOCALSTORAGE ==========
+    const loadProgress = () => {
+      try {
+        const saved = localStorage.getItem('hpProgress');
+        return saved ? JSON.parse(saved) : { read: {}, quizzes: {} };
+      } catch { return { read: {}, quizzes: {} }; }
+    };
+    const saveProgress = (p) => {
+      try { localStorage.setItem('hpProgress', JSON.stringify(p)); } catch {}
+    };
+
+    // ========== UI COMPONENTS ==========
+    function Header({ title, onBack, subtitle }) {
+      return (
+        <div style={{
+          padding: '20px 16px 16px',
+          background: 'linear-gradient(180deg, rgba(76,29,149,0.4), transparent)',
+          position: 'sticky', top: 0, zIndex: 10,
+          backdropFilter: 'blur(10px)'
+        }}>
+          <button onClick={onBack} style={{
+            background: 'rgba(251,191,36,0.15)',
+            color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)',
+            padding: '8px 14px', borderRadius: '10px',
+            cursor: 'pointer', fontSize: '14px', marginBottom: '12px', fontWeight: 600
+          }}>← Quay lại</button>
+          <h1 style={{ fontSize: '24px', color: '#fbbf24', textShadow: '0 0 20px rgba(251,191,36,0.4)' }}>{title}</h1>
+          {subtitle && <p style={{ color: '#cbd5e1', marginTop: 6, fontSize: '14px' }}>{subtitle}</p>}
+        </div>
+      );
+    }
+
+    function Home({ progress, onSelectBook }) {
+      const totalChapters = BOOKS.reduce((s, b) => s + b.totalChapters, 0);
+      const readCount = Object.keys(progress.read).filter(k => progress.read[k]).length;
+      const totalStars = Object.values(progress.quizzes).reduce((s, v) => s + v, 0);
+
+      return (
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '16px' }}>
+          <div style={{ paddingTop: 10 }}>
+            <a href="../index.html" style={{
+              display: 'inline-block',
+              background: 'rgba(251,191,36,0.15)',
+              color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)',
+              padding: '8px 14px', borderRadius: '10px',
+              cursor: 'pointer', fontSize: '14px', fontWeight: 600, textDecoration: 'none'
+            }}>← Game Hub</a>
+          </div>
+          <div style={{ textAlign: 'center', padding: '20px 16px 20px' }}>
+            <div style={{ fontSize: '60px', marginBottom: '8px' }}>⚡</div>
+            <h1 style={{
+              fontSize: '32px',
+              background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              marginBottom: 8
+            }}>Đọc Harry Potter</h1>
+            <p style={{ color: '#cbd5e1', fontSize: 14 }}>Tóm tắt 7 cuốn sách · Quiz kiểm tra kiến thức</p>
+          </div>
+
+          <div style={{
+            background: 'rgba(76,29,149,0.25)',
+            border: '1px solid rgba(251,191,36,0.2)',
+            borderRadius: 14, padding: '14px 16px', marginBottom: 16,
+            display: 'flex', justifyContent: 'space-around', textAlign: 'center', flexWrap: 'wrap', gap: 10
+          }}>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#fbbf24' }}>{readCount}/{totalChapters}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>Chương đã đọc</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#fbbf24' }}>⭐ {totalStars}/21</div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>Sao quiz</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#fbbf24' }}>{Math.round(readCount/totalChapters*100)}%</div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>Hoàn thành</div>
+            </div>
+          </div>
+
+          <div style={{
+            background: 'rgba(251,191,36,0.1)',
+            border: '1px solid rgba(251,191,36,0.3)',
+            borderRadius: 10, padding: 12, marginBottom: 20,
+            fontSize: 13, color: '#fef3c7', textAlign: 'center'
+          }}>
+            📚 Đây là phần tóm tắt. Hãy mua sách thật để đọc đầy đủ!
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+            gap: 14
+          }}>
+            {BOOKS.map(book => {
+              const bookRead = book.chapters.filter(c => progress.read[`${book.id}-${c.num}`]).length;
+              const pct = Math.round(bookRead / book.totalChapters * 100);
+              const stars = progress.quizzes[book.id] || 0;
+              const complete = bookRead === book.totalChapters && stars === 3;
+
+              return (
+                <div key={book.id} onClick={() => onSelectBook(book)} style={{
+                  background: `linear-gradient(145deg, ${book.color}22, rgba(76,29,149,0.35))`,
+                  border: `2px solid ${book.color}66`,
+                  borderRadius: 16, padding: 18, cursor: 'pointer',
+                  transition: 'all 0.25s', position: 'relative'
+                }}
+                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
+                  {complete && <div style={{
+                    position: 'absolute', top: 8, right: 8, fontSize: 18
+                  }}>✨</div>}
+                  <div style={{ fontSize: 48, marginBottom: 6, textAlign: 'center' }}>{book.emoji}</div>
+                  <div style={{ fontSize: 11, color: book.color, fontWeight: 700 }}>{book.year}</div>
+                  <h3 style={{ fontSize: 17, color: '#fbbf24', margin: '4px 0 8px' }}>{book.title}</h3>
+                  <p style={{ fontSize: 12, color: '#cbd5e1', marginBottom: 10, lineHeight: 1.4 }}>{book.summary}</p>
+
+                  <div style={{
+                    background: 'rgba(0,0,0,0.3)', borderRadius: 6, height: 6, overflow: 'hidden', marginBottom: 6
+                  }}>
+                    <div style={{
+                      width: `${pct}%`, height: '100%',
+                      background: `linear-gradient(90deg, ${book.color}, #fbbf24)`,
+                      transition: 'width 0.3s'
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8' }}>
+                    <span>{bookRead}/{book.totalChapters} chương</span>
+                    <span>{'⭐'.repeat(stars)}{'☆'.repeat(3-stars)}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ textAlign: 'center', padding: 24, color: '#64748b', fontSize: 12 }}>
+            Tóm tắt gốc bằng tiếng Việt · Không sao chép nguyên văn từ sách
+          </div>
+        </div>
+      );
+    }
+
+    function BookView({ book, progress, onBack, onSelectChapter, onStartQuiz }) {
+      const bookRead = book.chapters.filter(c => progress.read[`${book.id}-${c.num}`]).length;
+      const stars = progress.quizzes[book.id] || 0;
+
+      return (
+        <div>
+          <Header title={book.title} onBack={onBack} subtitle={`${book.year} · ${book.totalChapters} chương`} />
+          <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px 40px' }}>
+            <div style={{
+              background: `linear-gradient(145deg, ${book.color}33, rgba(76,29,149,0.4))`,
+              border: `2px solid ${book.color}77`,
+              borderRadius: 18, padding: 20, marginBottom: 18, textAlign: 'center'
+            }}>
+              <div style={{ fontSize: 72, marginBottom: 8 }}>{book.emoji}</div>
+              <p style={{ color: '#e2e8f0', fontSize: 14, lineHeight: 1.5 }}>{book.summary}</p>
+              <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ color: '#fbbf24', fontWeight: 700 }}>📖 {bookRead}/{book.totalChapters}</div>
+                <div style={{ color: '#fbbf24', fontWeight: 700 }}>⭐ {stars}/3</div>
+              </div>
+            </div>
+
+            <h3 style={{ color: '#fbbf24', marginBottom: 10, fontSize: 18 }}>📜 Danh sách chương</h3>
+            <div style={{ display: 'grid', gap: 8, marginBottom: 20 }}>
+              {book.chapters.map(ch => {
+                const isRead = progress.read[`${book.id}-${ch.num}`];
+                return (
+                  <button key={ch.num} onClick={() => onSelectChapter(ch)} style={{
+                    background: isRead ? 'rgba(34,197,94,0.12)' : 'rgba(76,29,149,0.25)',
+                    border: isRead ? '1px solid rgba(34,197,94,0.4)' : '1px solid rgba(251,191,36,0.2)',
+                    color: '#e2e8f0', padding: '12px 14px', borderRadius: 10,
+                    cursor: 'pointer', textAlign: 'left', fontSize: 14,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                  }}>
+                    <span><strong style={{ color: '#fbbf24' }}>Ch. {ch.num}</strong> — {ch.title}</span>
+                    <span>{isRead ? '✓' : '→'}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button onClick={onStartQuiz} style={{
+              width: '100%',
+              background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+              color: '#1a0a3a', border: 'none',
+              padding: '16px', borderRadius: 12, cursor: 'pointer',
+              fontSize: 16, fontWeight: 700, boxShadow: '0 4px 20px rgba(251,191,36,0.3)'
+            }}>🧪 Làm Quiz {book.title}</button>
+          </div>
+        </div>
+      );
+    }
+
+    function ChapterView({ book, chapter, progress, onBack, onMarkRead, onNav }) {
+      const key = `${book.id}-${chapter.num}`;
+      const isRead = progress.read[key];
+      const hasPrev = chapter.num > 1;
+      const hasNext = chapter.num < book.totalChapters;
+
+      return (
+        <div>
+          <Header title={`${book.emoji} Ch. ${chapter.num}`} onBack={onBack} subtitle={book.title} />
+          <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 16px 40px' }}>
+            <div style={{
+              background: 'rgba(76,29,149,0.3)',
+              border: '1px solid rgba(251,191,36,0.3)',
+              borderRadius: 16, padding: 22, marginBottom: 18
+            }}>
+              <div style={{ fontSize: 13, color: '#fbbf24', fontWeight: 700, marginBottom: 4 }}>CHƯƠNG {chapter.num}</div>
+              <h2 style={{ color: '#fbbf24', fontSize: 22, marginBottom: 14 }}>{chapter.title}</h2>
+              <p style={{ color: '#e2e8f0', fontSize: 15, lineHeight: 1.7 }}>{chapter.summary}</p>
+            </div>
+
+            <button onClick={() => onMarkRead(key)} style={{
+              width: '100%',
+              background: isRead ? 'rgba(34,197,94,0.25)' : 'linear-gradient(135deg, #22c55e, #16a34a)',
+              color: isRead ? '#86efac' : 'white', border: 'none',
+              padding: 14, borderRadius: 10, cursor: 'pointer',
+              fontSize: 15, fontWeight: 700, marginBottom: 12
+            }}>{isRead ? '✓ Đã đọc' : 'Đánh dấu đã đọc'}</button>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button disabled={!hasPrev} onClick={() => onNav(-1)} style={{
+                flex: 1, background: hasPrev ? 'rgba(251,191,36,0.15)' : 'rgba(100,100,100,0.15)',
+                border: '1px solid rgba(251,191,36,0.3)',
+                color: hasPrev ? '#fbbf24' : '#64748b',
+                padding: 12, borderRadius: 10, cursor: hasPrev ? 'pointer' : 'not-allowed',
+                fontSize: 14, fontWeight: 600
+              }}>← Chương trước</button>
+              <button disabled={!hasNext} onClick={() => onNav(1)} style={{
+                flex: 1, background: hasNext ? 'rgba(251,191,36,0.15)' : 'rgba(100,100,100,0.15)',
+                border: '1px solid rgba(251,191,36,0.3)',
+                color: hasNext ? '#fbbf24' : '#64748b',
+                padding: 12, borderRadius: 10, cursor: hasNext ? 'pointer' : 'not-allowed',
+                fontSize: 14, fontWeight: 600
+              }}>Chương tiếp →</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function QuizView({ book, onBack, onFinish }) {
+      const questions = QUIZZES[book.id];
+      const [idx, setIdx] = useState(0);
+      const [selected, setSelected] = useState(null);
+      const [score, setScore] = useState(0);
+      const [done, setDone] = useState(false);
+
+      if (done) {
+        const pct = Math.round(score / questions.length * 100);
+        const stars = pct >= 90 ? 3 : pct >= 65 ? 2 : pct >= 40 ? 1 : 0;
+        return (
+          <div>
+            <Header title="Kết quả Quiz" onBack={onBack} />
+            <div style={{ maxWidth: 500, margin: '40px auto', padding: '0 16px', textAlign: 'center' }}>
+              <div style={{ fontSize: 80, marginBottom: 16 }}>{stars === 3 ? '🏆' : stars === 2 ? '🥈' : stars === 1 ? '🥉' : '📚'}</div>
+              <h2 style={{ color: '#fbbf24', fontSize: 28, marginBottom: 8 }}>{score}/{questions.length}</h2>
+              <p style={{ color: '#cbd5e1', marginBottom: 12 }}>{pct}% chính xác</p>
+              <div style={{ fontSize: 40, marginBottom: 20 }}>
+                {'⭐'.repeat(stars)}{'☆'.repeat(3-stars)}
+              </div>
+              <p style={{ color: '#e2e8f0', marginBottom: 24 }}>
+                {stars === 3 ? 'Xuất sắc! Bạn là fan cuồng Harry Potter!' :
+                 stars === 2 ? 'Rất tốt! Kiến thức vững chắc.' :
+                 stars === 1 ? 'Ổn rồi! Hãy đọc thêm nhé.' : 'Cố gắng hơn nhé, hãy ôn lại sách!'}
+              </p>
+              <button onClick={() => onFinish(stars)} style={{
+                background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                color: '#1a0a3a', border: 'none',
+                padding: '14px 32px', borderRadius: 12, cursor: 'pointer',
+                fontSize: 15, fontWeight: 700
+              }}>Hoàn thành</button>
+            </div>
+          </div>
+        );
+      }
+
+      const q = questions[idx];
+      const answered = selected !== null;
+
+      return (
+        <div>
+          <Header title={`Quiz ${book.title}`} onBack={onBack} subtitle={`Câu ${idx+1}/${questions.length}`} />
+          <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 16px 40px' }}>
+            <div style={{
+              background: 'rgba(0,0,0,0.3)', borderRadius: 6, height: 6, overflow: 'hidden', marginBottom: 20
+            }}>
+              <div style={{
+                width: `${(idx/questions.length)*100}%`, height: '100%',
+                background: 'linear-gradient(90deg, #fbbf24, #f59e0b)',
+                transition: 'width 0.3s'
+              }} />
+            </div>
+
+            <div style={{
+              background: 'rgba(76,29,149,0.3)',
+              border: '1px solid rgba(251,191,36,0.3)',
+              borderRadius: 16, padding: 20, marginBottom: 16
+            }}>
+              <h3 style={{ color: '#fbbf24', fontSize: 18, lineHeight: 1.5 }}>{q.q}</h3>
+            </div>
+
+            <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
+              {q.a.map((ans, i) => {
+                let bg = 'rgba(76,29,149,0.25)';
+                let border = 'rgba(251,191,36,0.2)';
+                if (answered) {
+                  if (i === q.correct) { bg = 'rgba(34,197,94,0.3)'; border = 'rgba(34,197,94,0.6)'; }
+                  else if (i === selected) { bg = 'rgba(239,68,68,0.3)'; border = 'rgba(239,68,68,0.6)'; }
+                }
+                return (
+                  <button key={i} onClick={() => {
+                    if (answered) return;
+                    setSelected(i);
+                    if (i === q.correct) setScore(s => s + 1);
+                  }} disabled={answered} style={{
+                    background: bg,
+                    border: `1px solid ${border}`,
+                    color: '#e2e8f0', padding: '14px 16px', borderRadius: 10,
+                    cursor: answered ? 'default' : 'pointer',
+                    textAlign: 'left', fontSize: 14
+                  }}>{String.fromCharCode(65+i)}. {ans}</button>
+                );
+              })}
+            </div>
+
+            {answered && (
+              <div>
+                <div style={{
+                  textAlign: 'center', padding: 12, marginBottom: 12,
+                  background: selected === q.correct ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)',
+                  border: `1px solid ${selected === q.correct ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)'}`,
+                  borderRadius: 10, fontSize: 16, fontWeight: 700,
+                  color: selected === q.correct ? '#86efac' : '#fca5a5'
+                }}>{selected === q.correct ? '✓ Đúng!' : '✗ Sai!'}</div>
+                <button onClick={() => {
+                  if (idx < questions.length - 1) { setIdx(i => i+1); setSelected(null); }
+                  else { setDone(true); }
+                }} style={{
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                  color: '#1a0a3a', border: 'none',
+                  padding: 14, borderRadius: 10, cursor: 'pointer',
+                  fontSize: 15, fontWeight: 700
+                }}>{idx < questions.length - 1 ? 'Câu tiếp →' : 'Xem kết quả'}</button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ========== MAIN APP ==========
+    function App() {
+      const [progress, setProgress] = useState(loadProgress());
+      const [screen, setScreen] = useState('home'); // home, book, chapter, quiz
+      const [currentBook, setCurrentBook] = useState(null);
+      const [currentChapter, setCurrentChapter] = useState(null);
+
+      useEffect(() => { saveProgress(progress); }, [progress]);
+
+      const markRead = (key) => {
+        setProgress(p => ({ ...p, read: { ...p.read, [key]: !p.read[key] } }));
+      };
+
+      const navChapter = (dir) => {
+        const newNum = currentChapter.num + dir;
+        const newCh = currentBook.chapters.find(c => c.num === newNum);
+        if (newCh) setCurrentChapter(newCh);
+      };
+
+      const finishQuiz = (stars) => {
+        setProgress(p => ({
+          ...p,
+          quizzes: { ...p.quizzes, [currentBook.id]: Math.max(p.quizzes[currentBook.id] || 0, stars) }
+        }));
+        setScreen('book');
+      };
+
+      if (screen === 'home') {
+        return <Home progress={progress} onSelectBook={b => { setCurrentBook(b); setScreen('book'); }} />;
+      }
+      if (screen === 'book') {
+        return <BookView
+          book={currentBook}
+          progress={progress}
+          onBack={() => setScreen('home')}
+          onSelectChapter={ch => { setCurrentChapter(ch); setScreen('chapter'); }}
+          onStartQuiz={() => setScreen('quiz')}
+        />;
+      }
+      if (screen === 'chapter') {
+        return <ChapterView
+          book={currentBook}
+          chapter={currentChapter}
+          progress={progress}
+          onBack={() => setScreen('book')}
+          onMarkRead={markRead}
+          onNav={navChapter}
+        />;
+      }
+      if (screen === 'quiz') {
+        return <QuizView book={currentBook} onBack={() => setScreen('book')} onFinish={finishQuiz} />;
+      }
+
+      // Fallback: go home with back button to game hub
+      return <Home progress={progress} onSelectBook={b => { setCurrentBook(b); setScreen('book'); }} />;
+    }
+
+    // Home screen needs back-to-hub button too
+    const originalHome = Home;
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

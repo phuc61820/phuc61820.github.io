@@ -330,6 +330,19 @@ const GAMES = [
   file: 'alien.html',
   featured: true
 }
+,
+{
+  id: 'harrypotter',
+  name: 'Đọc Harry Potter',
+  icon: '⚡',
+  desc: 'Tóm tắt 7 cuốn Harry Potter + quiz kiểm tra kiến thức! 198 chương tóm lược.',
+  category: 'puzzle',
+  tags: ['học tập', 'tóm tắt', 'quiz'],
+  bg: 'linear-gradient(135deg, #0a0520, #4c1d95)',
+  border: '#fbbf24',
+  file: 'harrypotter.html',
+  featured: true
+}
 ];
 
 // Get games by category
