@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>👽 Tiêu Diệt Người Ngoài Hành Tinh — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #05051a, #1a0a2e);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0); }
+      20% { transform: translate(-6px, 3px); }
+      40% { transform: translate(5px, -4px); }
+      60% { transform: translate(-4px, 5px); }
+      80% { transform: translate(4px, 2px); }
+    }
+    @keyframes floatUp {
+      0% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(-60px); opacity: 0; }
+    }
+    @keyframes flashRed {
+      0%, 100% { background: transparent; }
+      50% { background: rgba(239, 68, 68, 0.35); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle 2s infinite ease-in-out;
+      pointer-events: none;
+    }
+    .glow-text {
+      text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+    }
+    .neon-btn {
+      background: linear-gradient(135deg, #7c3aed, #3b82f6);
+      color: #fff;
+      border: 2px solid #a78bfa;
+      padding: 14px 28px;
+      font-size: 18px;
+      font-weight: 800;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(167, 139, 250, 0.5);
+      text-shadow: 0 0 6px rgba(255,255,255,0.4);
+    }
+    .secondary-btn {
+      background: rgba(30, 30, 60, 0.8);
+      color: #a5f3fc;
+      border: 2px solid #22d3ee;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 0 14px rgba(34, 211, 238, 0.35);
+    }
+    .shake { animation: shake 0.4s; }
+    .flash-red { animation: flashRed 0.3s; }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ---------- Constants ----------
+    const GAME_W = 400;
+    const GAME_H = 600;
+    const PLAYER_W = 44;
+    const PLAYER_H = 44;
+    const PLAYER_SPEED = 6;
+    const BULLET_SPEED = 9;
+    const ENEMY_BULLET_SPEED = 4.5;
+    const SHOOT_COOLDOWN = 200;
+    const TICK_MS = 16;
+
+    // Detect touch device
+    const IS_TOUCH = typeof window !== 'undefined' &&
+      ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
+    const ALIEN_TYPES = {
+      common:  { icon: '👾', points: 10, hp: 1, speed: 1.2, size: 38, shootChance: 0.002, color: '#4ade80' },
+      medium:  { icon: '👽', points: 25, hp: 2, speed: 1.4, size: 42, shootChance: 0.004, color: '#a78bfa' },
+      elite:   { icon: '🤖', points: 40, hp: 3, speed: 1.6, size: 40, shootChance: 0.006, color: '#f59e0b' },
+      boss:    { icon: '🛸', points: 50, hp: 5, speed: 0.9, size: 56, shootChance: 0.009, color: '#f43f5e' }
+    };
+
+    const POWERUP_TYPES = {
+      heal:    { icon: '⭐', color: '#fbbf24' },
+      double:  { icon: '💎', color: '#22d3ee' },
+      shield:  { icon: '🛡️', color: '#a78bfa' }
+    };
+
+    // ---------- Background Stars ----------
+    function StarField() {
+      const starsRef = useRef(null);
+      if (!starsRef.current) {
+        starsRef.current = Array.from({ length: 60 }, (_, i) => ({
+          id: i,
+          x: Math.random() * 100,
+          y: Math.random() * 100,
+          size: Math.random() * 2 + 1,
+          delay: Math.random() * 2
+        }));
+      }
+      return (
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+          {starsRef.current.map(s => (
+            <div key={s.id} className="star" style={{
+              left: s.x + '%',
+              top: s.y + '%',
+              width: s.size + 'px',
+              height: s.size + 'px',
+              animationDelay: s.delay + 's'
+            }} />
+          ))}
+        </div>
+      );
+    }
+
+    // ---------- Menu Screen ----------
+    function Menu({ highScore, onStart, onBack }) {
+      return (
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          overflow: 'hidden'
+        }}>
+          <StarField />
+          <div style={{
+            position: 'relative',
+            zIndex: 2,
+            maxWidth: 460,
+            width: '100%',
+            background: 'rgba(15, 10, 35, 0.8)',
+            border: '2px solid #a78bfa',
+            borderRadius: 20,
+            padding: '32px 24px',
+            textAlign: 'center',
+            boxShadow: '0 0 40px rgba(167, 139, 250, 0.4)',
+            backdropFilter: 'blur(6px)'
+          }}>
+            <div style={{ fontSize: 64, marginBottom: 4 }}>👽</div>
+            <h1 className="glow-text" style={{
+              color: '#a5f3fc',
+              fontSize: 'clamp(20px, 5vw, 28px)',
+              fontWeight: 900,
+              marginBottom: 8,
+              letterSpacing: '1px'
+            }}>
+              TIÊU DIỆT NGƯỜI<br/>NGOÀI HÀNH TINH
+            </h1>
+            <p style={{ color: '#c4b5fd', fontSize: 14, marginBottom: 18 }}>
+              Bảo vệ Trái Đất khỏi cuộc xâm lăng!
+            </p>
+            <div style={{
+              background: 'rgba(34, 211, 238, 0.1)',
+              border: '1px solid #22d3ee',
+              borderRadius: 10,
+              padding: '10px 14px',
+              marginBottom: 20,
+              color: '#a5f3fc',
+              fontSize: 15,
+              fontWeight: 700
+            }}>
+              🏆 High Score: {highScore}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+              <button className="neon-btn" onClick={onStart}>🚀 Bắt Đầu</button>
+              <button className="secondary-btn" onClick={onBack}>🏠 Quay Về</button>
+            </div>
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.35)',
+              border: '1px solid rgba(167, 139, 250, 0.3)',
+              borderRadius: 10,
+              padding: '12px 14px',
+              fontSize: 13,
+              color: '#cbd5e1',
+              textAlign: 'left',
+              lineHeight: 1.6
+            }}>
+              <div style={{ color: '#a5f3fc', fontWeight: 700, marginBottom: 4 }}>📋 Hướng dẫn:</div>
+              {IS_TOUCH ? (
+                <>
+                  • Chạm/kéo để di chuyển tàu<br/>
+                  • Giữ nút 🔥 để bắn<br/>
+                  • Thu nhặt power-up: ⭐ +HP · 💎 bắn đôi · 🛡️ khiên
+                </>
+              ) : (
+                <>
+                  • A/D hoặc ←/→ để di chuyển<br/>
+                  • Space để bắn<br/>
+                  • Thu nhặt power-up: ⭐ +HP · 💎 bắn đôi · 🛡️ khiên
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Game Over Screen ----------
+    function GameOver({ score, wave, highScore, onRestart, onBack }) {
+      return (
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          overflow: 'hidden'
+        }}>
+          <StarField />
+          <div style={{
+            position: 'relative',
+            zIndex: 2,
+            maxWidth: 420,
+            width: '100%',
+            background: 'rgba(35, 10, 20, 0.85)',
+            border: '2px solid #f43f5e',
+            borderRadius: 20,
+            padding: '28px 24px',
+            textAlign: 'center',
+            boxShadow: '0 0 40px rgba(244, 63, 94, 0.4)',
+            backdropFilter: 'blur(6px)'
+          }}>
+            <div style={{ fontSize: 64, marginBottom: 4 }}>💀</div>
+            <h1 className="glow-text" style={{
+              color: '#fca5a5',
+              fontSize: 32,
+              fontWeight: 900,
+              marginBottom: 14
+            }}>
+              Thất Bại!
+            </h1>
+            <div style={{
+              background: 'rgba(0,0,0,0.35)',
+              borderRadius: 12,
+              padding: '14px 16px',
+              marginBottom: 20,
+              color: '#e2e8f0'
+            }}>
+              <div style={{ fontSize: 15, color: '#94a3b8', marginBottom: 6 }}>Điểm cuối</div>
+              <div style={{ fontSize: 36, fontWeight: 900, color: '#fde047', marginBottom: 10 }}>{score}</div>
+              <div style={{ fontSize: 14, color: '#cbd5e1' }}>Sống qua <b style={{color:'#a5f3fc'}}>{wave}</b> wave</div>
+              <div style={{ fontSize: 13, color: '#a5f3fc', marginTop: 6 }}>🏆 High Score: {highScore}</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button className="neon-btn" onClick={onRestart}>🔄 Chơi Lại</button>
+              <button className="secondary-btn" onClick={onBack}>🏠 Về Hub</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Main Game ----------
+    function GameScene({ onGameOver }) {
+      // Scene state (React-rendered, but we use refs for live game state)
+      const [, setTick] = useState(0);
+
+      const stateRef = useRef({
+        player: { x: GAME_W / 2 - PLAYER_W / 2, y: GAME_H - PLAYER_H - 20, hp: 3 },
+        bullets: [],          // { id, x, y }
+        enemyBullets: [],     // { id, x, y }
+        aliens: [],           // { id, type, x, y, hp, vx, vy, shotTimer }
+        powerups: [],         // { id, type, x, y }
+        explosions: [],       // { id, x, y, t }
+        popups: [],           // { id, x, y, text, color, t }
+        wave: 1,
+        waveAliensLeft: 0,
+        waveSpawnQueue: [],
+        betweenWaves: true,
+        betweenWavesTimer: 120, // ~2s
+        score: 0,
+        doubleShotUntil: 0,
+        shieldUntil: 0,
+        shakeUntil: 0,
+        flashUntil: 0,
+        lastShot: 0,
+        idCounter: 1,
+        gameOver: false
+      });
+
+      const keysRef = useRef({ left: false, right: false, shoot: false });
+      const touchRef = useRef({ active: false, x: 0 });
+      const containerRef = useRef(null);
+
+      // ---------- Input: keyboard ----------
+      useEffect(() => {
+        if (IS_TOUCH) return;
+        const down = (e) => {
+          if (e.code === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { keysRef.current.left = true; e.preventDefault(); }
+          if (e.code === 'ArrowRight' || e.key === 'd' || e.key === 'D') { keysRef.current.right = true; e.preventDefault(); }
+          if (e.code === 'Space') { keysRef.current.shoot = true; e.preventDefault(); }
+        };
+        const up = (e) => {
+          if (e.code === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keysRef.current.left = false;
+          if (e.code === 'ArrowRight' || e.key === 'd' || e.key === 'D') keysRef.current.right = false;
+          if (e.code === 'Space') keysRef.current.shoot = false;
+        };
+        window.addEventListener('keydown', down);
+        window.addEventListener('keyup', up);
+        return () => {
+          window.removeEventListener('keydown', down);
+          window.removeEventListener('keyup', up);
+        };
+      }, []);
+
+      // ---------- Wave generation ----------
+      const buildWave = (waveNum) => {
+        const queue = [];
+        const base = Math.min(5 + waveNum * 2, 22);
+        for (let i = 0; i < base; i++) {
+          let type;
+          if (waveNum <= 3) {
+            type = 'common';
+          } else if (waveNum <= 6) {
+            type = Math.random() < 0.7 ? 'common' : 'medium';
+          } else {
+            const r = Math.random();
+            if (r < 0.45) type = 'common';
+            else if (r < 0.75) type = 'medium';
+            else if (r < 0.92) type = 'elite';
+            else type = 'boss';
+          }
+          queue.push(type);
+        }
+        return queue;
+      };
+
+      // ---------- Main game loop ----------
+      useEffect(() => {
+        let raf;
+        let lastSpawn = performance.now();
+
+        const spawnAlien = (type) => {
+          const s = stateRef.current;
+          const def = ALIEN_TYPES[type];
+          const x = 20 + Math.random() * (GAME_W - 40 - def.size);
+          const speedMult = 1 + (s.wave - 1) * 0.08;
+          s.aliens.push({
+            id: s.idCounter++,
+            type,
+            x,
+            y: -def.size,
+            hp: def.hp,
+            vx: (Math.random() - 0.5) * 0.6,
+            vy: def.speed * speedMult,
+            shotTimer: 60 + Math.random() * 120
+          });
+          s.waveAliensLeft--;
+        };
+
+        const spawnPowerup = (x, y) => {
+          const s = stateRef.current;
+          if (Math.random() > 0.08) return; // 8% drop
+          const types = Object.keys(POWERUP_TYPES);
+          const type = types[Math.floor(Math.random() * types.length)];
+          s.powerups.push({ id: s.idCounter++, type, x, y });
+        };
+
+        const loop = () => {
+          const s = stateRef.current;
+          if (s.gameOver) return;
+          const now = performance.now();
+
+          // ---------- Between-waves handling ----------
+          if (s.betweenWaves) {
+            s.betweenWavesTimer--;
+            if (s.betweenWavesTimer <= 0) {
+              s.betweenWaves = false;
+              s.waveSpawnQueue = buildWave(s.wave);
+              s.waveAliensLeft = s.waveSpawnQueue.length;
+              lastSpawn = now;
+            }
+          } else {
+            // Spawn aliens over time
+            const spawnInterval = Math.max(400, 1200 - s.wave * 60);
+            if (s.waveSpawnQueue.length > 0 && now - lastSpawn > spawnInterval) {
+              const type = s.waveSpawnQueue.shift();
+              spawnAlien(type);
+              lastSpawn = now;
+            }
+          }
+
+          // ---------- Player movement ----------
+          if (IS_TOUCH) {
+            if (touchRef.current.active) {
+              // Smoothly glide toward touch x
+              const target = touchRef.current.x - PLAYER_W / 2;
+              const dx = target - s.player.x;
+              s.player.x += Math.sign(dx) * Math.min(Math.abs(dx), PLAYER_SPEED + 2);
+            }
+          } else {
+            if (keysRef.current.left) s.player.x -= PLAYER_SPEED;
+            if (keysRef.current.right) s.player.x += PLAYER_SPEED;
+          }
+          s.player.x = Math.max(0, Math.min(GAME_W - PLAYER_W, s.player.x));
+
+          // ---------- Shooting ----------
+          if (keysRef.current.shoot && now - s.lastShot > SHOOT_COOLDOWN) {
+            s.lastShot = now;
+            const cx = s.player.x + PLAYER_W / 2;
+            const cy = s.player.y;
+            if (now < s.doubleShotUntil) {
+              s.bullets.push({ id: s.idCounter++, x: cx - 12, y: cy });
+              s.bullets.push({ id: s.idCounter++, x: cx + 12, y: cy });
+            } else {
+              s.bullets.push({ id: s.idCounter++, x: cx, y: cy });
+            }
+          }
+
+          // ---------- Move bullets ----------
+          for (const b of s.bullets) b.y -= BULLET_SPEED;
+          s.bullets = s.bullets.filter(b => b.y > -20);
+
+          for (const b of s.enemyBullets) b.y += ENEMY_BULLET_SPEED;
+          s.enemyBullets = s.enemyBullets.filter(b => b.y < GAME_H + 20);
+
+          // ---------- Move aliens + shoot ----------
+          for (const a of s.aliens) {
+            a.x += a.vx;
+            a.y += a.vy;
+            if (a.x < 10 || a.x > GAME_W - ALIEN_TYPES[a.type].size - 10) a.vx *= -1;
+            a.shotTimer--;
+            if (a.shotTimer <= 0 && a.y > 20 && a.y < GAME_H - 120) {
+              if (Math.random() < ALIEN_TYPES[a.type].shootChance * 60) {
+                const size = ALIEN_TYPES[a.type].size;
+                s.enemyBullets.push({
+                  id: s.idCounter++,
+                  x: a.x + size / 2,
+                  y: a.y + size
+                });
+                a.shotTimer = 80 + Math.random() * 100;
+              } else {
+                a.shotTimer = 40 + Math.random() * 60;
+              }
+            }
+          }
+
+          // ---------- Move powerups ----------
+          for (const p of s.powerups) p.y += 2;
+          s.powerups = s.powerups.filter(p => p.y < GAME_H + 30);
+
+          // ---------- Collisions: bullet -> alien ----------
+          const deadAliens = new Set();
+          const spentBullets = new Set();
+          for (const b of s.bullets) {
+            for (const a of s.aliens) {
+              if (deadAliens.has(a.id)) continue;
+              const size = ALIEN_TYPES[a.type].size;
+              if (b.x >= a.x && b.x <= a.x + size && b.y >= a.y && b.y <= a.y + size) {
+                spentBullets.add(b.id);
+                a.hp--;
+                if (a.hp <= 0) {
+                  deadAliens.add(a.id);
+                  const def = ALIEN_TYPES[a.type];
+                  s.score += def.points;
+                  s.explosions.push({
+                    id: s.idCounter++,
+                    x: a.x + size / 2,
+                    y: a.y + size / 2,
+                    t: 20
+                  });
+                  s.popups.push({
+                    id: s.idCounter++,
+                    x: a.x + size / 2,
+                    y: a.y,
+                    text: '+' + def.points,
+                    color: def.color,
+                    t: 40
+                  });
+                  spawnPowerup(a.x + size / 2, a.y + size / 2);
+                }
+                break;
+              }
+            }
+          }
+          s.bullets = s.bullets.filter(b => !spentBullets.has(b.id));
+          s.aliens = s.aliens.filter(a => !deadAliens.has(a.id));
+
+          // ---------- Collisions: alien -> player (reach bottom or touch) ----------
+          const px = s.player.x, py = s.player.y;
+          const pw = PLAYER_W, ph = PLAYER_H;
+          const shielded = now < s.shieldUntil;
+          const hitAliens = new Set();
+          for (const a of s.aliens) {
+            const size = ALIEN_TYPES[a.type].size;
+            // Reached bottom or collided with player
+            const collidesPlayer =
+              a.x < px + pw && a.x + size > px &&
+              a.y < py + ph && a.y + size > py;
+            const reachedBottom = a.y + size >= GAME_H - 10;
+            if (collidesPlayer || reachedBottom) {
+              hitAliens.add(a.id);
+              if (!shielded) {
+                s.player.hp--;
+                s.shakeUntil = now + 350;
+                s.flashUntil = now + 300;
+              }
+              s.explosions.push({
+                id: s.idCounter++,
+                x: a.x + size / 2,
+                y: a.y + size / 2,
+                t: 20
+              });
+            }
+          }
+          if (hitAliens.size) {
+            s.aliens = s.aliens.filter(a => !hitAliens.has(a.id));
+          }
+
+          // ---------- Collisions: enemy bullet -> player ----------
+          const spentEnemyBullets = new Set();
+          for (const b of s.enemyBullets) {
+            if (b.x >= px - 4 && b.x <= px + pw + 4 && b.y >= py && b.y <= py + ph) {
+              spentEnemyBullets.add(b.id);
+              if (!shielded) {
+                s.player.hp--;
+                s.shakeUntil = now + 350;
+                s.flashUntil = now + 300;
+              }
+            }
+          }
+          if (spentEnemyBullets.size) {
+            s.enemyBullets = s.enemyBullets.filter(b => !spentEnemyBullets.has(b.id));
+          }
+
+          // ---------- Collisions: powerups -> player ----------
+          const grabbed = new Set();
+          for (const p of s.powerups) {
+            if (p.x >= px - 10 && p.x <= px + pw + 10 && p.y >= py - 10 && p.y <= py + ph + 10) {
+              grabbed.add(p.id);
+              if (p.type === 'heal') {
+                s.player.hp = Math.min(5, s.player.hp + 1);
+                s.popups.push({ id: s.idCounter++, x: px + pw/2, y: py, text: '+HP', color: '#fbbf24', t: 40 });
+              } else if (p.type === 'double') {
+                s.doubleShotUntil = now + 10000;
+                s.popups.push({ id: s.idCounter++, x: px + pw/2, y: py, text: 'DOUBLE!', color: '#22d3ee', t: 40 });
+              } else if (p.type === 'shield') {
+                s.shieldUntil = now + 5000;
+                s.popups.push({ id: s.idCounter++, x: px + pw/2, y: py, text: 'SHIELD!', color: '#a78bfa', t: 40 });
+              }
+            }
+          }
+          if (grabbed.size) {
+            s.powerups = s.powerups.filter(p => !grabbed.has(p.id));
+          }
+
+          // ---------- Tick explosions & popups ----------
+          for (const e of s.explosions) e.t--;
+          s.explosions = s.explosions.filter(e => e.t > 0);
+          for (const p of s.popups) { p.t--; p.y -= 1.2; }
+          s.popups = s.popups.filter(p => p.t > 0);
+
+          // ---------- Game over check ----------
+          if (s.player.hp <= 0) {
+            s.gameOver = true;
+            setTimeout(() => onGameOver(s.score, s.wave), 100);
+            return;
+          }
+
+          // ---------- Advance wave ----------
+          if (!s.betweenWaves && s.waveSpawnQueue.length === 0 && s.aliens.length === 0) {
+            s.wave++;
+            s.betweenWaves = true;
+            s.betweenWavesTimer = 120;
+          }
+
+          // Trigger re-render
+          setTick(t => (t + 1) & 0x3fffffff);
+          raf = requestAnimationFrame(loop);
+        };
+
+        raf = requestAnimationFrame(loop);
+        return () => cancelAnimationFrame(raf);
+      }, [onGameOver]);
+
+      // ---------- Touch handlers ----------
+      const onTouchStart = (e) => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const t = e.touches[0];
+        const scaleX = GAME_W / rect.width;
+        touchRef.current.active = true;
+        touchRef.current.x = (t.clientX - rect.left) * scaleX;
+      };
+      const onTouchMove = (e) => {
+        if (!containerRef.current || !touchRef.current.active) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const t = e.touches[0];
+        const scaleX = GAME_W / rect.width;
+        touchRef.current.x = (t.clientX - rect.left) * scaleX;
+      };
+      const onTouchEnd = () => {
+        touchRef.current.active = false;
+      };
+
+      const s = stateRef.current;
+      const now = performance.now();
+      const shaking = now < s.shakeUntil;
+      const flashing = now < s.flashUntil;
+      const shielded = now < s.shieldUntil;
+      const doubling = now < s.doubleShotUntil;
+
+      const hpHearts = Array.from({ length: Math.max(s.player.hp, 0) }, (_, i) => i);
+
+      return (
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: '8px',
+          overflow: 'hidden'
+        }}>
+          <StarField />
+
+          {/* Top HUD */}
+          <div style={{
+            position: 'relative',
+            zIndex: 3,
+            width: '100%',
+            maxWidth: GAME_W,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '6px 10px',
+            color: '#a5f3fc',
+            fontWeight: 700,
+            fontSize: 14
+          }}>
+            <div className="glow-text" style={{ color: '#fde047' }}>
+              💯 {s.score}
+            </div>
+            <div className="glow-text" style={{ color: '#a5f3fc' }}>
+              🌊 Wave {s.wave}
+            </div>
+            <div style={{ display: 'flex', gap: 3, fontSize: 16 }}>
+              {hpHearts.length
+                ? hpHearts.map(i => <span key={i}>❤️</span>)
+                : <span>💔</span>}
+            </div>
+          </div>
+
+          {/* Game viewport */}
+          <div
+            ref={containerRef}
+            className={shaking ? 'shake' : ''}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: GAME_W,
+              aspectRatio: GAME_W + '/' + GAME_H,
+              background: 'linear-gradient(180deg, #0a0a2e 0%, #1a0a3e 60%, #2d0a4e 100%)',
+              border: '2px solid #a78bfa',
+              borderRadius: 14,
+              overflow: 'hidden',
+              boxShadow: '0 0 30px rgba(167, 139, 250, 0.4)',
+              touchAction: 'none',
+              userSelect: 'none'
+            }}
+          >
+            {/* Inner viewport = fixed GAME_W / GAME_H in logical coords, scaled */}
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              width: GAME_W,
+              height: GAME_H,
+              transform: 'scale(var(--s))',
+              transformOrigin: 'top left'
+            }} ref={(el) => {
+              if (!el) return;
+              const parent = el.parentElement;
+              if (!parent) return;
+              const pw = parent.clientWidth;
+              const scale = pw / GAME_W;
+              el.style.setProperty('--s', scale);
+              el.style.width = GAME_W + 'px';
+              el.style.height = GAME_H + 'px';
+            }}>
+              {/* Inner starfield (darker, closer) */}
+              <StarField />
+
+              {/* Aliens */}
+              {s.aliens.map(a => {
+                const def = ALIEN_TYPES[a.type];
+                return (
+                  <div key={a.id} style={{
+                    position: 'absolute',
+                    left: a.x + 'px',
+                    top: a.y + 'px',
+                    width: def.size + 'px',
+                    height: def.size + 'px',
+                    fontSize: def.size * 0.8 + 'px',
+                    lineHeight: def.size + 'px',
+                    textAlign: 'center',
+                    filter: `drop-shadow(0 0 6px ${def.color})`,
+                    animation: a.type === 'boss' ? 'pulse 0.8s infinite ease-in-out' : 'none'
+                  }}>
+                    {def.icon}
+                  </div>
+                );
+              })}
+
+              {/* Player bullets */}
+              {s.bullets.map(b => (
+                <div key={b.id} style={{
+                  position: 'absolute',
+                  left: (b.x - 6) + 'px',
+                  top: b.y + 'px',
+                  width: 12,
+                  height: 20,
+                  fontSize: 16,
+                  lineHeight: '20px',
+                  textAlign: 'center',
+                  color: '#22d3ee',
+                  textShadow: '0 0 8px #22d3ee, 0 0 14px #22d3ee'
+                }}>⚡</div>
+              ))}
+
+              {/* Enemy bullets */}
+              {s.enemyBullets.map(b => (
+                <div key={b.id} style={{
+                  position: 'absolute',
+                  left: (b.x - 8) + 'px',
+                  top: b.y + 'px',
+                  width: 16,
+                  height: 20,
+                  fontSize: 16,
+                  lineHeight: '20px',
+                  textAlign: 'center',
+                  filter: 'drop-shadow(0 0 6px #f97316)'
+                }}>🔥</div>
+              ))}
+
+              {/* Powerups */}
+              {s.powerups.map(p => {
+                const def = POWERUP_TYPES[p.type];
+                return (
+                  <div key={p.id} style={{
+                    position: 'absolute',
+                    left: (p.x - 14) + 'px',
+                    top: p.y + 'px',
+                    width: 28,
+                    height: 28,
+                    fontSize: 22,
+                    lineHeight: '28px',
+                    textAlign: 'center',
+                    filter: `drop-shadow(0 0 8px ${def.color})`,
+                    animation: 'pulse 0.8s infinite'
+                  }}>{def.icon}</div>
+                );
+              })}
+
+              {/* Explosions */}
+              {s.explosions.map(e => (
+                <div key={e.id} style={{
+                  position: 'absolute',
+                  left: (e.x - 22) + 'px',
+                  top: (e.y - 22) + 'px',
+                  width: 44,
+                  height: 44,
+                  fontSize: 36,
+                  lineHeight: '44px',
+                  textAlign: 'center',
+                  opacity: e.t / 20,
+                  filter: 'drop-shadow(0 0 10px #fbbf24)'
+                }}>💥</div>
+              ))}
+
+              {/* Score popups */}
+              {s.popups.map(p => (
+                <div key={p.id} style={{
+                  position: 'absolute',
+                  left: (p.x - 30) + 'px',
+                  top: p.y + 'px',
+                  width: 60,
+                  color: p.color,
+                  fontWeight: 900,
+                  fontSize: 14,
+                  textAlign: 'center',
+                  textShadow: '0 0 6px rgba(0,0,0,0.7)',
+                  opacity: p.t / 40,
+                  pointerEvents: 'none'
+                }}>{p.text}</div>
+              ))}
+
+              {/* Player ship */}
+              <div style={{
+                position: 'absolute',
+                left: s.player.x + 'px',
+                top: s.player.y + 'px',
+                width: PLAYER_W,
+                height: PLAYER_H,
+                fontSize: 36,
+                lineHeight: PLAYER_H + 'px',
+                textAlign: 'center',
+                filter: shielded
+                  ? 'drop-shadow(0 0 14px #a78bfa) drop-shadow(0 0 20px #22d3ee)'
+                  : 'drop-shadow(0 0 8px #22d3ee)'
+              }}>
+                🚀
+              </div>
+
+              {/* Shield ring */}
+              {shielded && (
+                <div style={{
+                  position: 'absolute',
+                  left: (s.player.x - 8) + 'px',
+                  top: (s.player.y - 8) + 'px',
+                  width: PLAYER_W + 16,
+                  height: PLAYER_H + 16,
+                  borderRadius: '50%',
+                  border: '2px solid #a78bfa',
+                  boxShadow: '0 0 14px #a78bfa, inset 0 0 10px #a78bfa',
+                  animation: 'spin 2s linear infinite',
+                  pointerEvents: 'none'
+                }} />
+              )}
+
+              {/* Wave banner */}
+              {s.betweenWaves && (
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  zIndex: 10
+                }}>
+                  <div className="glow-text" style={{
+                    fontSize: 48,
+                    fontWeight: 900,
+                    color: '#a5f3fc',
+                    textAlign: 'center'
+                  }}>
+                    🌊 Wave {s.wave}
+                    <div style={{ fontSize: 16, color: '#c4b5fd', marginTop: 8, fontWeight: 600 }}>
+                      {s.wave === 1 ? 'Bắt đầu bảo vệ Trái Đất!' : 'Sẵn sàng...'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Red damage flash */}
+              {flashing && (
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(239, 68, 68, 0.35)',
+                  pointerEvents: 'none',
+                  zIndex: 9
+                }} />
+              )}
+            </div>
+          </div>
+
+          {/* Status row (power-up timers) */}
+          <div style={{
+            position: 'relative',
+            zIndex: 3,
+            width: '100%',
+            maxWidth: GAME_W,
+            display: 'flex',
+            gap: 8,
+            justifyContent: 'center',
+            padding: '6px 10px',
+            fontSize: 13,
+            color: '#cbd5e1',
+            flexWrap: 'wrap',
+            minHeight: 26
+          }}>
+            {doubling && (
+              <span style={{ color: '#22d3ee', fontWeight: 700 }}>
+                💎 Double: {Math.ceil((s.doubleShotUntil - now) / 1000)}s
+              </span>
+            )}
+            {shielded && (
+              <span style={{ color: '#a78bfa', fontWeight: 700 }}>
+                🛡️ Shield: {Math.ceil((s.shieldUntil - now) / 1000)}s
+              </span>
+            )}
+          </div>
+
+          {/* Mobile controls */}
+          {IS_TOUCH && (
+            <div style={{
+              position: 'relative',
+              zIndex: 3,
+              width: '100%',
+              maxWidth: GAME_W,
+              display: 'flex',
+              justifyContent: 'space-between',
+              padding: '8px 10px',
+              gap: 10
+            }}>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onTouchStart={(e) => { e.preventDefault(); keysRef.current.left = true; }}
+                  onTouchEnd={(e) => { e.preventDefault(); keysRef.current.left = false; }}
+                  style={{
+                    width: 60, height: 60, borderRadius: 14,
+                    background: 'rgba(30,30,60,0.8)',
+                    border: '2px solid #a78bfa',
+                    color: '#a5f3fc', fontSize: 24, fontWeight: 900,
+                    boxShadow: '0 0 10px rgba(167,139,250,0.4)'
+                  }}
+                >←</button>
+                <button
+                  onTouchStart={(e) => { e.preventDefault(); keysRef.current.right = true; }}
+                  onTouchEnd={(e) => { e.preventDefault(); keysRef.current.right = false; }}
+                  style={{
+                    width: 60, height: 60, borderRadius: 14,
+                    background: 'rgba(30,30,60,0.8)',
+                    border: '2px solid #a78bfa',
+                    color: '#a5f3fc', fontSize: 24, fontWeight: 900,
+                    boxShadow: '0 0 10px rgba(167,139,250,0.4)'
+                  }}
+                >→</button>
+              </div>
+              <button
+                onTouchStart={(e) => { e.preventDefault(); keysRef.current.shoot = true; }}
+                onTouchEnd={(e) => { e.preventDefault(); keysRef.current.shoot = false; }}
+                style={{
+                  width: 82, height: 60, borderRadius: 14,
+                  background: 'linear-gradient(135deg, #dc2626, #f59e0b)',
+                  border: '2px solid #fde047',
+                  color: '#fff', fontSize: 22, fontWeight: 900,
+                  boxShadow: '0 0 14px rgba(251, 191, 36, 0.6)'
+                }}
+              >🔥 BẮN</button>
+            </div>
+          )}
+
+          {/* Desktop shoot hint: invisible key listener already installed; also show a fire button fallback on desktop */}
+          {!IS_TOUCH && (
+            <div style={{
+              position: 'relative',
+              zIndex: 3,
+              width: '100%',
+              maxWidth: GAME_W,
+              textAlign: 'center',
+              padding: '6px 10px',
+              fontSize: 12,
+              color: '#94a3b8'
+            }}>
+              A/D hoặc ←/→ để di chuyển · Space để bắn
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ---------- Root App ----------
+    function App() {
+      const [screen, setScreen] = useState('menu'); // menu | game | over
+      const [lastScore, setLastScore] = useState(0);
+      const [lastWave, setLastWave] = useState(0);
+      const [highScore, setHighScore] = useState(() => {
+        try {
+          return parseInt(localStorage.getItem('alienHighScore') || '0', 10) || 0;
+        } catch (e) {
+          return 0;
+        }
+      });
+
+      const onBack = () => { window.location.href = '../index.html'; };
+
+      const handleGameOver = useCallback((score, wave) => {
+        setLastScore(score);
+        setLastWave(wave);
+        try {
+          const prev = parseInt(localStorage.getItem('alienHighScore') || '0', 10) || 0;
+          if (score > prev) {
+            localStorage.setItem('alienHighScore', String(score));
+            setHighScore(score);
+          }
+        } catch (e) {}
+        setScreen('over');
+      }, []);
+
+      if (screen === 'menu') {
+        return <Menu highScore={highScore} onStart={() => setScreen('game')} onBack={onBack} />;
+      }
+      if (screen === 'game') {
+        return <GameScene onGameOver={handleGameOver} />;
+      }
+      return (
+        <GameOver
+          score={lastScore}
+          wave={lastWave}
+          highScore={highScore}
+          onRestart={() => setScreen('game')}
+          onBack={onBack}
+        />
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

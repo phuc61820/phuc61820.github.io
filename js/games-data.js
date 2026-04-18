@@ -317,6 +317,19 @@ const GAMES = [
   file: 'species.html',
   featured: true
 }
+,
+{
+  id: 'alien',
+  name: 'Tiêu Diệt Người Ngoài HH',
+  icon: '👽',
+  desc: 'Bắn hạ người ngoài hành tinh! Waves tăng khó, boss khổng lồ, power-ups!',
+  category: 'arcade',
+  tags: ['bắn súng', 'phản xạ', 'không gian'],
+  bg: 'linear-gradient(135deg, #1a0a2e, #4c1d95)',
+  border: '#a78bfa',
+  file: 'alien.html',
+  featured: true
+}
 ];
 
 // Get games by category
