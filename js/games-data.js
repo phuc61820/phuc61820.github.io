@@ -304,6 +304,19 @@ const GAMES = [
     border: '#4ade80',
     file: 'fruit.html'
   }
+,
+{
+  id: 'species',
+  name: 'Động Vật Thông Minh',
+  icon: '🦁',
+  desc: '1000 loài động vật, thực vật, khủng long — chăm sóc, học hỏi, khám phá thế giới tự nhiên!',
+  category: 'simulation',
+  tags: ['giáo dục', 'thu thập', 'dễ thương'],
+  bg: 'linear-gradient(135deg, #0a1f0a, #14532d)',
+  border: '#4ade80',
+  file: 'species.html',
+  featured: true
+}
 ];
 
 // Get games by category

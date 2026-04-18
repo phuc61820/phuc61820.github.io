@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🦁 Động Vật Thông Minh — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #0a1f0a, #0f2d1a);
+      min-height: 100vh;
+      color: #e6f4e6;
+    }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.03); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.97); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(34,197,94,0.3); border-radius: 3px; }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useMemo, useCallback } = React;
+
+    // ===================== DATA SOURCES =====================
+
+    // Animal base names (realistic Vietnamese species)
+    const ANIMAL_NAMES = [
+      "Hổ Đông Dương","Báo Hoa Mai","Sư Tử Châu Phi","Voi Châu Á","Tê Giác Trắng","Hà Mã","Gấu Trúc","Gấu Đen","Gấu Ngựa","Gấu Bắc Cực",
+      "Sói Xám","Cáo Đỏ","Linh Cẩu","Báo Tuyết","Báo Đốm","Mèo Rừng","Lạc Đà Hai Bướu","Lạc Đà Một Bướu","Ngựa Vằn","Hươu Cao Cổ",
+      "Hươu Sao","Nai Sừng Tấm","Linh Dương","Tuần Lộc","Bò Tót","Bò Rừng","Trâu Nước","Bò Xạ Hương","Cừu Núi","Dê Núi",
+      "Khỉ Đột","Tinh Tinh","Đười Ươi","Khỉ Mặt Đỏ","Khỉ Đuôi Dài","Vượn Má Vàng","Vượn Đen","Culi Lùn","Chồn Hôi","Chồn Bạc",
+      "Thỏ Rừng","Thỏ Tuyết","Sóc Bay","Sóc Chuột","Nhím Đuôi Dài","Nhím Tua","Chuột Túi","Gấu Túi","Thú Mỏ Vịt","Kangaroo Đỏ",
+      "Kangaroo Xám","Koala","Wombat","Tasmanian Devil","Cá Heo","Cá Voi Xanh","Cá Voi Sát Thủ","Cá Nhà Táng","Cá Voi Lưng Gù","Cá Mập Trắng",
+      "Cá Mập Búa","Cá Mập Voi","Cá Đuối","Cá Ngừ Vây Xanh","Cá Hồi Đại Tây Dương","Cá Chép","Cá Trê","Cá Vược","Cá Lóc","Cá Mè",
+      "Cá Basa","Cá Tra","Cá Rô","Cá Diếc","Cá Hề","Cá Ngựa","Cá Mặt Trăng","Cá Thu","Cá Trích","Cá Cờ",
+      "Cá Kiếm","Cá Sấu","Rùa Biển Xanh","Rùa Luýt","Rùa Hộp","Rùa Đá","Trăn Vàng","Trăn Gấm","Rắn Hổ Mang Chúa","Rắn Lục",
+      "Rắn Cạp Nong","Rắn Lục Đuôi Đỏ","Rắn Ráo","Rắn Nước","Thằn Lằn Komodo","Tắc Kè Hoa","Kỳ Đà","Tắc Kè","Cắc Kè Núi","Ếch Ương",
+      "Ếch Cây","Ếch Xanh","Ếch Độc Phi Tiêu","Ếch Bò","Cóc Mía","Kỳ Giông","Sa Giông","Đại Bàng","Chim Ưng","Chim Cắt",
+      "Cú Mèo","Cú Tai Mèo","Cú Trắng","Đại Bàng Đầu Trắng","Kền Kền","Quạ Đen","Chim Sáo","Chim Sẻ","Chim Én","Chim Yến",
+      "Chim Sơn Ca","Chim Vàng Anh","Chim Chích Chòe","Vẹt Xanh","Vẹt Đỏ","Vẹt Mào","Chim Cánh Cụt Hoàng Đế","Chim Cánh Cụt Vua","Bồ Câu","Bồ Câu Đưa Thư",
+      "Công","Gà Lôi","Gà Rừng","Gà Sao","Chim Trĩ","Vịt Trời","Ngan","Ngỗng Trời","Thiên Nga","Diệc Xám",
+      "Cò Trắng","Bồ Nông","Chim Hồng Hạc","Đà Điểu Châu Phi","Đà Điểu Emu","Chim Kiwi","Chim Ruồi","Chim Gõ Kiến","Hải Âu","Hải Âu Mày Đen",
+      "Chim Bói Cá","Chim Đuôi Cụt","Ong Mật","Ong Bắp Cày","Kiến Lửa","Kiến Càng","Bướm Phượng","Bướm Vua","Chuồn Chuồn Kim","Chuồn Chuồn Ngô",
+      "Bọ Ngựa","Bọ Hung","Bọ Rùa","Bọ Cánh Cứng Hercules","Nhện Tarantula","Nhện Góa Phụ Đen","Bọ Cạp","Cua Biển","Cua Hoàng Đế","Tôm Hùm",
+      "Tôm Sú","Bạch Tuộc","Mực Khổng Lồ","Mực Nang","Sứa","Sao Biển","Hải Quỳ","Nhím Biển","Hải Sâm","Cầu Gai",
+      "Chó Sói Bắc Cực","Mèo Bengal","Mèo Xiêm","Mèo Ba Tư","Mèo Maine Coon","Chó Husky","Chó Poodle","Chó Beagle","Chó Bulldog","Chó Shiba",
+      "Lợn Rừng","Lợn Mán","Lợn Nái","Bò Sữa","Gà Nhà","Gà Tây","Vịt Nhà","Ngỗng Nhà","Thỏ Nhà","Chuột Hamster",
+      "Chuột Lang","Chuột Cống","Chuột Đồng","Chuột Nhắt","Dơi Ma Cà Rồng","Dơi Quạ","Dơi Tai To","Chồn Ecmin","Rái Cá Sông","Rái Cá Biển",
+      "Hải Cẩu Voi","Hải Cẩu Hoàng Đế","Sư Tử Biển","Hải Mã","Gấu Lười","Thú Ăn Kiến","Tê Tê","Lười Ba Ngón","Lười Hai Ngón","Khỉ Hú",
+      "Khỉ Nhện","Khỉ Đột Núi","Báo Sư Tử","Mèo Cát","Mèo Châu Á","Mèo Bạc Má","Linh Miêu","Chồn Sable","Chồn Nâu","Chồn Hương",
+      "Sói Than","Sói Đồng Cỏ","Sói Đỏ","Sói Ethiopia","Cáo Bắc Cực","Cáo Tuyết","Cáo Tai To","Cáo Fennec","Lửng Mật","Lửng Châu Âu",
+      "Bò Yak","Linh Dương Đầu Bò","Linh Dương Sừng Xoắn","Linh Dương Impala","Linh Dương Springbok","Bò Rừng Bison","Bò Xạ Hương Musk","Dê Tuyết Himalaya","Cừu Ông Cụ","Dê Núi Alpine",
+      "Hải Cẩu Xám","Hải Cẩu Harp","Hải Cẩu Leopard","Cá Voi Beluga","Cá Voi Narwhal","Cá Heo Sông Amazon","Cá Heo Sông Hằng","Cá Nhám Voi","Cá Mập Đầu Búa","Cá Mập Mako",
+      "Cá Mập Tiger","Cá Mập Bò","Cá Mập Reef","Cá Chình Điện","Cá Chình Biển","Cá Đá Độc","Cá Nóc","Cá Mú","Cá Hồng","Cá Bơn",
+      "Cá Thờn Bơn","Cá Mó","Cá Thiên Thần","Cá Bướm","Cá Sư Tử","Cá Rồng","Cá Vàng","Cá Koi","Cá Thủy Tinh","Cá Mặt Quỷ",
+      "Rùa Galapagos","Rùa Sa Mạc","Rùa Cá Sấu","Rùa Tai Đỏ","Rùa Núi Vàng","Thằn Lằn Núi Đá","Thằn Lằn Bay","Thằn Lằn Gai Úc","Kỳ Nhông","Kỳ Nhông Khổng Lồ",
+      "Rắn Hổ Chúa","Rắn Lục Xanh","Rắn Đuôi Chuông","Rắn Mamba Đen","Rắn Boa Constrictor","Rắn Anaconda","Rắn Biển","Rắn Cỏ","Rắn Mũi Hếch","Rắn Cây",
+      "Chim Đà Điểu Nandu","Chim Cassowary","Chim Moa","Chim Dodo","Chim Lạc","Chim Chào Mào","Chim Họa Mi","Chim Yểng","Chim Đại Bàng Philippines","Chim Đại Bàng Harpy",
+      "Chim Ưng Đuôi Đỏ","Chim Cắt Peregrine","Chim Cú Chúa","Chim Cú Lửa","Chim Cú Đục Lỗ","Bồ Câu Viking","Chim Hoét","Chim Ri","Chim Manh Manh","Chim Diệc Xanh",
+      "Chim Hồng Hoàng","Chim Toucan","Chim Thiên Đường","Chim Quetzal","Chim Lyrebird","Chim Đuôi Én","Chim Sâu","Chim Vành Khuyên","Chim Vẹt Kea","Chim Vẹt Macaw",
+      "Ong Vò Vẽ","Ong Đất","Ong Ruồi","Bướm Morpho","Bướm Monarch","Bướm Atlas","Bọ Que","Bọ Lá","Bọ Ngựa Hoa Lan","Dế Mèn",
+      "Dế Cối","Cào Cào","Châu Chấu","Ve Sầu","Bọ Xít","Bọ Hung Vàng","Bọ Ngựa Châu Phi","Nhện Sói","Nhện Nhảy","Nhện Cua",
+      "Bọ Cạp Hoàng Đế","Rết Khổng Lồ","Cuốn Chiếu","Đỉa Trâu","Giun Đất","Ốc Sên","Sên Biển","Hàu","Sò Huyết","Trai Ngọc",
+      "Mực Lá","Mực Ống","Bạch Tuộc Đốm Xanh","Cua Dừa","Cua Nhện","Cua Tuyết","Tôm Càng Xanh","Tôm Tít","Tôm Hùm Gai","Cá Mập Yêu Tinh",
+      "Cá Mập Megamouth","Cá Nhám Phơi Nắng","Cá Đuối Manta","Cá Đuối Điện","Cá Lưỡi Trâu","Cá Mập Trắng Lùn","Cá Heo Mũi Chai","Cá Heo Spinner","Cá Voi Minke","Cá Voi Sei",
+      "Cá Voi Bryde","Cá Voi Xám","Cá Voi Đầu Bò","Cá Voi Hoa Tiêu","Cá Heo Risso","Cá Heo Commerson","Chồn Sói","Chồn Honey","Lửng Hoa Kỳ","Lửng Nhật",
+      "Thú Mỏ Vịt Úc","Echidna","Gấu Chuột Túi","Thylacine","Quokka","Numbat","Bilby","Bandicoot","Possum","Sugar Glider",
+      "Thỏ Pika","Thỏ Jackrabbit","Thỏ Angora","Chuột Chuột Chinchilla","Chuột Chuột Capybara","Chuột Lang Mara","Chuột Nhảy Jerboa","Chuột Chũi","Chuột Chũi Sao","Chuột Chuột Viscacha",
+      "Hươu Xạ","Hươu Vàng","Hươu Chó","Hươu Nước","Hươu Đốm","Hươu Mule","Hươu Fallow","Hươu Pudu","Hươu Pampas","Hươu Marsh",
+      "Voi Ma Mút","Voi Rừng Châu Phi","Voi Bụi Châu Phi","Voi Pygmy","Tê Giác Đen","Tê Giác Java","Tê Giác Sumatra","Tê Giác Ấn Độ","Hà Mã Pygmy","Heo Vòi Malayan",
+      "Heo Vòi Brazil","Heo Vòi Núi","Báo Gấm","Mèo Pampas","Mèo Geoffroy","Mèo Núi Andes","Mèo Borneo","Mèo Rusty","Mèo Iriomote","Mèo Châu Phi Vàng"
+    ];
+
+    // Plant base names
+    const PLANT_NAMES = [
+      "Cây Bồ Đề","Cây Đa","Cây Sao Đen","Cây Dầu Rái","Cây Gõ Đỏ","Cây Lim Xanh","Cây Pơ Mu","Cây Thông Đỏ","Cây Trầm Hương","Cây Sưa Đỏ",
+      "Cây Hoàng Đàn","Cây Sến Mật","Cây Táu Mật","Cây Chò Chỉ","Cây Dổi","Cây Xoan Đào","Cây Xoan Ta","Cây Bàng","Cây Phượng Vỹ","Cây Bằng Lăng",
+      "Cây Sấu","Cây Me","Cây Sữa","Cây Lộc Vừng","Cây Hoa Sữa","Cây Hoa Ban","Cây Osaka","Cây Muồng Hoàng Yến","Cây Ngọc Lan","Cây Mộc",
+      "Hoa Hồng","Hoa Sen","Hoa Súng","Hoa Cúc","Hoa Hướng Dương","Hoa Đào","Hoa Mai","Hoa Mận","Hoa Tulip","Hoa Lan",
+      "Hoa Lan Hồ Điệp","Hoa Lan Vanda","Hoa Lan Cattleya","Hoa Lan Dendrobium","Hoa Lily","Hoa Ly","Hoa Cẩm Tú Cầu","Hoa Thược Dược","Hoa Cẩm Chướng","Hoa Đồng Tiền",
+      "Hoa Dâm Bụt","Hoa Giấy","Hoa Sứ","Hoa Leo Cúc","Hoa Mười Giờ","Hoa Thạch Thảo","Hoa Baby","Hoa Tường Vi","Hoa Trạng Nguyên","Hoa Đỗ Quyên",
+      "Hoa Mộc Lan","Hoa Anh Đào","Hoa Pensée","Hoa Cosmos","Hoa Păng Xê","Hoa Mãn Đình Hồng","Hoa Nguyệt Quế","Hoa Xuyến Chi","Hoa Dạ Yên Thảo","Hoa Violet",
+      "Xoài Cát Hòa Lộc","Xoài Tứ Quý","Bưởi Năm Roi","Bưởi Da Xanh","Cam Sành","Cam Vinh","Quýt Đường","Chanh Không Hạt","Sầu Riêng Ri6","Sầu Riêng Monthong",
+      "Măng Cụt","Chôm Chôm","Nhãn Lồng","Vải Thiều","Mít Nghệ","Mít Tố Nữ","Ổi Lê","Ổi Xá Lị","Dứa Queen","Dứa Cayenne",
+      "Thanh Long Ruột Đỏ","Thanh Long Ruột Trắng","Dưa Hấu","Dưa Lưới","Dưa Gang","Đu Đủ","Chuối Tiêu","Chuối Tây","Chuối Sứ","Chuối Hột",
+      "Táo Envy","Táo Gala","Nho Đỏ","Nho Xanh","Nho Mẫu Đơn","Dâu Tây","Việt Quất","Kiwi Vàng","Kiwi Xanh","Cherry",
+      "Lê Hàn Quốc","Lê Nam Phi","Mận Hậu","Mận Tam Hoa","Mơ Lào","Đào Nhật","Hồng Giòn","Hồng Xiêm","Bơ Booth","Bơ Hass",
+      "Rau Muống","Rau Cải Xanh","Cải Ngọt","Cải Thảo","Cải Bó Xôi","Cải Cúc","Cải Xoong","Rau Dền","Rau Mồng Tơi","Rau Đay",
+      "Xà Lách","Xà Lách Xoăn","Bắp Cải","Súp Lơ Xanh","Súp Lơ Trắng","Cà Chua","Cà Tím","Cà Pháo","Cà Rốt","Củ Cải Trắng",
+      "Khoai Tây","Khoai Lang","Khoai Môn","Khoai Mì","Củ Dền","Hành Tây","Hành Lá","Hành Tím","Tỏi","Gừng",
+      "Rau Thơm","Rau Húng Quế","Rau Húng Láng","Rau Mùi","Rau Răm","Rau Diếp Cá","Rau Kinh Giới","Rau Tía Tô","Rau Ngò Gai","Rau Ngò Om",
+      "Lá Lốt","Lá Mơ","Lá Sung","Lá Chanh","Lá Dứa","Lá Nguyệt Quế","Hương Thảo","Bạc Hà","Sả","Nghệ",
+      "Bí Đỏ","Bí Xanh","Bí Đao","Bí Ngòi","Dưa Chuột","Mướp Hương","Mướp Đắng","Đậu Cove","Đậu Hà Lan","Đậu Rồng",
+      "Đậu Phộng","Đậu Nành","Đậu Đen","Đậu Đỏ","Đậu Xanh","Bắp Ngô","Bắp Sữa","Bắp Tím","Lúa Mì","Lúa Mạch",
+      "Lúa Gạo","Lúa Nếp","Lúa Japonica","Yến Mạch","Kê","Hạt Chia","Hạt Quinoa","Hạt Hạnh Nhân","Hạt Óc Chó","Hạt Điều",
+      "Hạt Macca","Hạt Dẻ","Hạt Bí","Hạt Hướng Dương","Hạt Mè","Hạt Lanh","Nấm Hương","Nấm Linh Chi","Nấm Kim Châm","Nấm Rơm",
+      "Nấm Mèo","Nấm Đông Cô","Nấm Bào Ngư","Nấm Mối","Nấm Truffle Đen","Nấm Truffle Trắng","Nấm Porcini","Nấm Morel","Nấm Chanterelle","Nấm Matsutake",
+      "Nấm Enoki","Nấm Shiitake","Nấm Reishi","Nấm Agaricus","Nấm Tuyết","Cây Nhân Sâm","Cây Đương Quy","Cây Tam Thất","Cây Hà Thủ Ô","Cây Bạch Quả",
+      "Cây Cam Thảo","Cây Đinh Lăng","Cây Lô Hội","Cây Chè Xanh","Cây Cà Phê","Cây Ca Cao","Cây Quế","Cây Đậu Khấu","Cây Đinh Hương","Cây Hồi",
+      "Cây Tiêu Đen","Cây Ớt Hiểm","Cây Ớt Chuông","Cây Vani","Cây Oải Hương","Cây Hoa Nhài","Cây Hoa Cúc La Mã","Cây Bạc Hà Chanh","Cây Ngải Cứu","Cây Xô Thơm",
+      "Cây Dừa","Cây Cau","Cây Cọ Dầu","Cây Chà Là","Cây Vả","Cây Sung","Cây Ô Liu","Cây Nguyệt Quế","Cây Bách","Cây Tùng",
+      "Cây Sồi","Cây Phong","Cây Liễu","Cây Dương Liễu","Cây Bạch Dương","Cây Tre","Cây Trúc","Cây Nứa","Cây Vầu","Cây Mây",
+      "Cây Song","Cây Xanh Bốn Mùa","Cây Si","Cây Gừa","Cây Đa Lông","Cây Bodhi","Cây Kim Giao","Cây Lan Chi","Cây Thường Xuân","Cây Vạn Niên Thanh",
+      "Cây Trầu Bà","Cây Lưỡi Hổ","Cây Phú Quý","Cây Kim Tiền","Cây Phát Tài","Cây Ngũ Gia Bì","Cây Thiên Điểu","Cây Cau Cảnh","Cây Dương Xỉ","Cây Rêu",
+      "Cây Địa Y","Cây Tảo Biển","Rong Biển","Rong Mơ","Tảo Xoắn","Cây Sen Đá","Xương Rồng Càng Cua","Xương Rồng Thanh Long","Xương Rồng Saguaro","Xương Rồng Tai Thỏ"
+    ];
+
+    // Dinosaur / prehistoric names
+    const DINO_NAMES = [
+      "Khủng Long Bạo Chúa","Velociraptor","Triceratops","Khủng Long Cánh Cụt","Stegosaurus","Brachiosaurus","Diplodocus","Spinosaurus","Allosaurus","Carnotaurus",
+      "Ankylosaurus","Iguanodon","Parasaurolophus","Pachycephalosaurus","Gallimimus","Oviraptor","Deinonychus","Utahraptor","Troodon","Compsognathus",
+      "Giganotosaurus","Mapusaurus","Tyrannosaurus Rex","Nanotyrannus","Albertosaurus","Daspletosaurus","Gorgosaurus","Tarbosaurus","Yutyrannus","Dilong",
+      "Argentinosaurus","Patagotitan","Dreadnoughtus","Sauroposeidon","Puertasaurus","Alamosaurus","Futalognkosaurus","Turiasaurus","Amphicoelias","Seismosaurus",
+      "Protoceratops","Styracosaurus","Centrosaurus","Chasmosaurus","Pentaceratops","Torosaurus","Einiosaurus","Achelousaurus","Pachyrhinosaurus","Psittacosaurus",
+      "Mamenchisaurus","Omeisaurus","Shunosaurus","Camarasaurus","Apatosaurus","Brontosaurus","Barosaurus","Supersaurus","Haplocanthosaurus","Europasaurus",
+      "Microraptor","Sinornithosaurus","Anchiornis","Archaeopteryx","Confuciusornis","Hesperornis","Ichthyornis","Enantiornis","Yanornis","Jeholornis",
+      "Pterodactylus","Pteranodon","Quetzalcoatlus","Rhamphorhynchus","Dimorphodon","Tapejara","Tupuxuara","Hatzegopteryx","Anhanguera","Ornithocheirus",
+      "Mosasaurus","Tylosaurus","Plesiosaurus","Elasmosaurus","Kronosaurus","Liopleurodon","Ichthyosaurus","Shonisaurus","Nothosaurus","Plateosaurus",
+      "Coelophysis","Herrerasaurus","Eoraptor","Staurikosaurus","Pisanosaurus","Heterodontosaurus","Lesothosaurus","Scutellosaurus","Scelidosaurus","Hypsilophodon",
+      "Dryosaurus","Camptosaurus","Tenontosaurus","Muttaburrasaurus","Ouranosaurus","Edmontosaurus","Corythosaurus","Lambeosaurus","Maiasaura","Hypacrosaurus",
+      "Saurolophus","Shantungosaurus","Anatotitan","Hadrosaurus","Amurosaurus","Tsintaosaurus","Nipponosaurus","Charonosaurus","Prosaurolophus","Olorotitan",
+      "Stygimoloch","Dracorex","Prenocephale","Homalocephale","Goyocephale","Stegoceras","Wannanosaurus","Tylocephale","Colepiocephale","Alaskacephale",
+      "Euoplocephalus","Saichania","Tarchia","Pinacosaurus","Nodosaurus","Sauropelta","Edmontonia","Panoplosaurus","Gastonia","Polacanthus",
+      "Kentrosaurus","Tuojiangosaurus","Huayangosaurus","Wuerhosaurus","Dacentrurus","Lexovisaurus","Miragaia","Hesperosaurus","Paranthodon","Chungkingosaurus",
+      "Ma Mút Lông Xoắn","Ma Mút Columbian","Voi Răng Kiếm","Hổ Răng Kiếm Smilodon","Gấu Hang","Sư Tử Hang","Lười Đất Khổng Lồ","Tê Giác Lông","Nai Sừng Khổng Lồ","Chó Sói Khổng Lồ",
+      "Titanoboa","Gigantopithecus","Megalodon","Dunkleosteus","Helicoprion","Leedsichthys","Xiphactinus","Sarcosuchus","Deinosuchus","Purussaurus",
+      "Arthropleura","Meganeura","Pulmonoscorpius","Jaekelopterus","Anomalocaris","Opabinia","Hallucigenia","Wiwaxia","Marrella","Ottoia",
+      "Dimetrodon","Edaphosaurus","Inostrancevia","Gorgonopsid","Lystrosaurus","Cynognathus","Moschops","Scutosaurus","Estemmenosuchus","Diictodon"
+    ];
+
+    const ANIMAL_EMOJIS = ["🦁","🐘","🦒","🐆","🐅","🐯","🐺","🦊","🐻","🐼","🐨","🐵","🦝","🐰","🐇","🐹","🦔","🐿️","🦫","🦌","🐐","🐪","🦘","🐖","🐄","🐎","🦓","🦏","🦛","🐑","🦙","🐬","🐳","🐋","🦈","🐟","🐠","🐡","🦑","🐙","🦐","🦀","🦞","🐢","🐍","🦎","🦕","🐸","🦂","🕷️","🦗","🦋","🐝","🐞","🐜","🦟","🦅","🦉","🦆","🐓","🦃","🦢","🦚","🦜","🦩","🐧","🕊️","🦇","🦔","🐁","🐀","🦡","🦦","🦨","🐾"];
+    const PLANT_EMOJIS = ["🌳","🌲","🌴","🌵","🎋","🎍","🌿","☘️","🍀","🌱","🌾","🌷","🌹","🥀","🌺","🌸","🌼","🌻","💐","🍄","🍁","🍂","🍃","🌽","🥕","🥔","🍠","🌰","🥜","🫘","🥬","🥒","🥦","🧄","🧅","🌶️","🫑","🍅","🍆","🥑","🍎","🍏","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🫒","🌻"];
+    const DINO_EMOJIS = ["🦖","🦕","🐉","🐊","🦎","🦣","🦤","🦬","🐲","🦐","🦀","🐚"];
+
+    const ANIMAL_HABITATS = ["Rừng nhiệt đới","Rừng ôn đới","Sa mạc khô cằn","Đại dương sâu","Đồng cỏ savanna","Núi cao Alps","Đầm lầy Amazon","Sông suối","Hang động đá vôi","Bắc cực băng giá","Rạn san hô","Rừng ngập mặn","Đồng bằng","Cao nguyên","Bờ biển","Rừng lá kim","Rừng mưa","Sa mạc lạnh","Đảo nhiệt đới","Vịnh kín","Hồ nước ngọt","Suối nước nóng"];
+    const PLANT_HABITATS = ["Rừng nguyên sinh","Ven sông","Đồng bằng phù sa","Núi cao","Vườn nhà","Sa mạc","Rừng ngập mặn","Đồng cỏ","Rạn san hô","Đất chua","Đất phèn","Đất đỏ bazan","Ven biển","Cao nguyên","Rừng nhiệt đới","Thung lũng","Đầm lầy","Vùng ôn đới","Vùng cận nhiệt đới","Vùng lạnh"];
+    const DINO_HABITATS = ["Kỷ Jura (rừng cổ đại)","Kỷ Phấn Trắng (đồng bằng cổ)","Kỷ Tam Điệp","Biển cổ Tethys","Rừng dương xỉ kỷ Carbon","Sa mạc Gobi cổ đại","Đồng bằng Bắc Mỹ cổ","Rừng Nam Mỹ cổ","Đầm lầy Châu Á cổ","Bờ biển Châu Âu cổ","Vùng cực cổ","Đảo Madagascar cổ"];
+
+    const ANIMAL_FOODS = ["Thịt tươi","Cá hồi","Cỏ non","Lá cây xanh","Côn trùng nhỏ","Hoa quả chín","Hạt ngũ cốc","Rễ cây","Mật hoa","Phấn hoa","Trứng","Máu","Xác thối","Động vật có vú nhỏ","Chim non","Sinh vật phù du","Rong biển","Nấm","Quả hạch","Mầm non"];
+    const PLANT_FOODS = ["Nước sạch","Ánh nắng trực tiếp","Đất giàu mùn","CO2","Khoáng chất","Phân hữu cơ","Nitơ","Phốt pho","Kali","Nước mưa","Sương đêm","Ánh sáng tán xạ","Đất chua nhẹ","Đất cát pha","Đất thịt","Mùn lá mục"];
+    const DINO_FOODS = ["Thịt khủng long khác","Lá cây cổ","Dương xỉ khổng lồ","Cá cổ đại","Côn trùng kỷ Jura","Trứng khủng long","Thực vật hạt trần","Thân cây cổ","Động vật thân mềm","Bọ cạp cổ","Cua tiền sử","Sinh vật nhỏ dưới biển"];
+
+    const SIZES_ANIMAL = ["Nhỏ (10-30 cm)","Vừa (30-80 cm)","Lớn (1-2 m)","Rất lớn (2-5 m)","Khổng lồ (5-10 m)","Siêu khổng lồ (>10 m)","Tí hon (<5 cm)"];
+    const SIZES_PLANT = ["Thảo mộc nhỏ (<30 cm)","Cây bụi (30 cm - 2 m)","Cây nhỡ (2-10 m)","Cây cao (10-30 m)","Cây cổ thụ (>30 m)","Cây leo","Cây thân bò"];
+    const SIZES_DINO = ["Nhỏ (1-2 m)","Vừa (3-5 m)","Lớn (6-10 m)","Khổng lồ (11-20 m)","Siêu khổng lồ (>20 m)"];
+
+    const LIFESPANS_ANIMAL = ["2-5 năm","5-10 năm","10-20 năm","20-50 năm","50-100 năm","100+ năm"];
+    const LIFESPANS_PLANT = ["1 năm (cây hàng năm)","2-5 năm","10-30 năm","50-100 năm","100-500 năm","500-1000 năm","Hơn 1000 năm"];
+    const LIFESPANS_DINO = ["Đã tuyệt chủng ~65 triệu năm","Đã tuyệt chủng ~150 triệu năm","Đã tuyệt chủng ~200 triệu năm","Đã tuyệt chủng ~250 triệu năm","Đã tuyệt chủng ~300 triệu năm"];
+
+    const ANIMAL_DESC_TEMPLATES = [
+      "{name} là một loài {type} đặc biệt sống ở {habitat}. Chúng nổi tiếng với khả năng thích nghi tuyệt vời và trí thông minh cao.",
+      "Loài {name} có vóc dáng {size} và thường ăn {food}. Đây là một trong những loài quan trọng trong hệ sinh thái {habitat}.",
+      "{name} là sinh vật {type} hoang dã, sinh sống chủ yếu ở {habitat}. Chúng có tuổi thọ trung bình {life} và đóng vai trò quan trọng trong chuỗi thức ăn.",
+      "Loài {name} rất thu hút với màu sắc đặc trưng và tập tính xã hội phức tạp. Chúng thường tìm kiếm {food} ở {habitat} để duy trì sự sống."
+    ];
+    const PLANT_DESC_TEMPLATES = [
+      "{name} là loài thực vật {type} phổ biến ở {habitat}. Cây cần nhiều {food} để phát triển tốt và có thể sống đến {life}.",
+      "Loài {name} có kích thước {size}, thường mọc ở {habitat}. Đây là loài cây có giá trị về mặt sinh thái và kinh tế.",
+      "{name} thuộc nhóm thực vật {type}, rất được yêu thích vì vẻ đẹp và công dụng. Cây phát triển mạnh khi có đủ {food}.",
+      "Loài {name} nổi bật với hình dáng đặc trưng và hương thơm dễ chịu. Chúng mọc ở {habitat} và là một phần quan trọng của hệ thực vật."
+    ];
+    const DINO_DESC_TEMPLATES = [
+      "{name} là một loài khủng long {type} sống vào {habitat}. Chúng có kích thước {size} và đã tuyệt chủng từ rất lâu.",
+      "Loài {name} là kẻ săn mồi đáng sợ của kỷ nguyên khủng long, thường ăn {food}. Hóa thạch của chúng được tìm thấy ở nhiều nơi.",
+      "{name} sinh sống ở {habitat} và nổi bật với bộ khung xương đồ sộ. Các nhà khoa học ước tính chúng nặng đến hàng tấn.",
+      "Loài {name} là một trong những sinh vật tiền sử ấn tượng nhất từng tồn tại. Chúng có chế độ ăn chủ yếu là {food}."
+    ];
+
+    const ANIMAL_FACTS = [
+      "{name} có thể giao tiếp bằng những tín hiệu phức tạp mà con người chưa giải mã hết!",
+      "Người ta từng phát hiện {name} có trí nhớ dài hơn cả voi!",
+      "{name} có khả năng nhận biết bản thân trong gương — dấu hiệu của trí thông minh cao.",
+      "Loài {name} có thể di chuyển hàng ngàn km mỗi năm để tìm thức ăn.",
+      "Nghe nói {name} có thể nhịn ăn tới vài tuần liền nếu cần.",
+      "{name} được xem là biểu tượng văn hóa trong nhiều quốc gia.",
+      "DNA của {name} đã được giải mã hoàn chỉnh để phục vụ nghiên cứu bảo tồn.",
+      "Tiếng kêu của {name} có thể vang xa hàng kilômét!"
+    ];
+    const PLANT_FACTS = [
+      "{name} có khả năng sinh trưởng nhanh đáng kinh ngạc sau mưa.",
+      "Người xưa tin rằng {name} mang lại may mắn và thịnh vượng.",
+      "{name} chứa nhiều hoạt chất có lợi cho sức khỏe con người.",
+      "Có những cây {name} được ghi nhận sống đến hàng trăm năm!",
+      "Loài {name} hấp thụ CO2 rất hiệu quả, giúp chống biến đổi khí hậu.",
+      "Rễ của {name} có thể lan xa đến hàng chục mét dưới lòng đất.",
+      "Hoa của {name} chỉ nở vào một thời điểm đặc biệt trong năm.",
+      "{name} được trồng phổ biến làm cây cảnh và thuốc quý."
+    ];
+    const DINO_FACTS = [
+      "Hóa thạch của {name} đầu tiên được phát hiện vào thế kỷ 19.",
+      "{name} có bộ hàm mạnh nhất trong số các loài khủng long cùng thời.",
+      "Các nhà khoa học từng tìm thấy dấu chân {name} dài tới 1 mét!",
+      "{name} có thể chạy với tốc độ ngang ngựa đua nếu còn sống.",
+      "Bộ não của {name} chỉ bằng một quả óc chó — nhưng đủ để săn mồi hiệu quả!",
+      "Có giả thuyết {name} có lông vũ như chim hiện đại.",
+      "Tên khoa học của {name} có nghĩa là 'thằn lằn khổng lồ' trong tiếng Hy Lạp.",
+      "{name} sinh sản bằng cách đẻ trứng trong tổ lá mục."
+    ];
+
+    const ANIMAL_TYPES = ["động vật có vú","động vật có xương sống","loài ăn thịt","loài ăn cỏ","loài ăn tạp","loài có lông vũ","loài máu lạnh","loài biển"];
+    const PLANT_TYPES = ["thân gỗ","thân thảo","cây bụi","cây leo","dương xỉ","cây lá kim","cây hạt kín","cây cảnh","cây ăn quả","thảo dược"];
+    const DINO_TYPES = ["theropod ăn thịt","sauropod cổ dài","ornithopod ăn cỏ","ceratopsian sừng","ankylosaur áo giáp","pterosaur bay lượn","thủy quái biển","khủng long bọc giáp"];
+
+    const ANIMAL_CARE = ["🍖 Cho ăn","❤️ Vuốt ve","🛁 Tắm","🏃 Chơi","💉 Khám sức khỏe"];
+    const PLANT_CARE = ["💧 Tưới nước","☀️ Phơi nắng","🌱 Bón phân","✂️ Tỉa cây","🌾 Nhổ cỏ"];
+    const DINO_CARE = ["🦴 Cho ăn thịt","🔬 Nghiên cứu","⚒️ Khai quật","🧪 Nhân bản DNA","🏛️ Trưng bày"];
+
+    const REACTIONS_ANIMAL = ["kêu lên vui sướng!","dụi đầu vào bạn!","vẫy đuôi liên tục!","nhảy cẫng lên vui vẻ!","chạy vòng quanh thích thú!","phát ra tiếng gừ gừ dễ thương!"];
+    const REACTIONS_PLANT = ["đơm hoa rực rỡ!","vươn mình đón nắng!","lá xanh tươi hơn!","rễ bám chặt đất!","tỏa hương thơm ngát!","mọc thêm chồi non!"];
+    const REACTIONS_DINO = ["gầm gừ hài lòng!","đập đuôi mạnh mẽ!","phát ra tiếng rống cổ đại!","lóe mắt sáng rực!","dậm chân rung đất!","tỏa ra khí thế vương giả!"];
+
+    const LATIN_PREFIX = ["Aetus","Draco","Felis","Panthera","Ursus","Canis","Equus","Bos","Cervus","Quercus","Ficus","Rosa","Rex","Saurus","Cauda","Spina","Dens","Magnus","Rapidus","Sylvanus","Aquaticus","Terra","Ignis","Luna","Solaris"];
+    const LATIN_SUFFIX = ["orientalis","magnificus","grandis","elegans","vulgaris","imperialis","rex","maximus","minor","gigas","asiaticus","africanus","europaeus","indicus","tropicus","polaris","serrata","aurora","nocturnus","argentum"];
+
+    // ===================== GENERATOR =====================
+
+    function pick(arr, seed) { return arr[seed % arr.length]; }
+
+    function hashStr(s) {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+      return Math.abs(h);
+    }
+
+    function generateLatin(name, i) {
+      const a = pick(LATIN_PREFIX, hashStr(name) + i);
+      const b = pick(LATIN_SUFFIX, hashStr(name) * 3 + i * 7);
+      return a + " " + b;
+    }
+
+    function buildSpecies(kind, idx, totalOfKind) {
+      let names, emojis, habitats, foods, sizes, lifes, descTmpl, factTmpl, types, careList, reactions;
+      if (kind === 'animal') {
+        names = ANIMAL_NAMES; emojis = ANIMAL_EMOJIS; habitats = ANIMAL_HABITATS; foods = ANIMAL_FOODS;
+        sizes = SIZES_ANIMAL; lifes = LIFESPANS_ANIMAL; descTmpl = ANIMAL_DESC_TEMPLATES; factTmpl = ANIMAL_FACTS;
+        types = ANIMAL_TYPES; careList = ANIMAL_CARE; reactions = REACTIONS_ANIMAL;
+      } else if (kind === 'plant') {
+        names = PLANT_NAMES; emojis = PLANT_EMOJIS; habitats = PLANT_HABITATS; foods = PLANT_FOODS;
+        sizes = SIZES_PLANT; lifes = LIFESPANS_PLANT; descTmpl = PLANT_DESC_TEMPLATES; factTmpl = PLANT_FACTS;
+        types = PLANT_TYPES; careList = PLANT_CARE; reactions = REACTIONS_PLANT;
+      } else {
+        names = DINO_NAMES; emojis = DINO_EMOJIS; habitats = DINO_HABITATS; foods = DINO_FOODS;
+        sizes = SIZES_DINO; lifes = LIFESPANS_DINO; descTmpl = DINO_DESC_TEMPLATES; factTmpl = DINO_FACTS;
+        types = DINO_TYPES; careList = DINO_CARE; reactions = REACTIONS_DINO;
+      }
+
+      // Ensure every species has a unique displayed name by appending a variant suffix when wrapping
+      let baseName = names[idx % names.length];
+      const cycle = Math.floor(idx / names.length);
+      let displayName = baseName;
+      if (cycle > 0) {
+        const VARIANTS = [" (phân loài phương Bắc)"," (phân loài phương Nam)"," (biến thể Đông)"," (biến thể Tây)"," (dòng quý hiếm)"," (dòng cổ đại)"," (giống thuần)"];
+        displayName = baseName + VARIANTS[(cycle - 1) % VARIANTS.length];
+      }
+
+      const seed = hashStr(displayName) + idx * 13;
+      return {
+        id: kind + "_" + idx,
+        kind,
+        n: displayName,
+        e: pick(emojis, seed),
+        sci: generateLatin(displayName, idx),
+        h: pick(habitats, seed + 1),
+        f: pick(foods, seed + 2),
+        sz: pick(sizes, seed + 3),
+        life: pick(lifes, seed + 4),
+        typ: pick(types, seed + 5),
+        descIdx: seed % descTmpl.length,
+        factIdx: (seed + 17) % factTmpl.length,
+        care: careList,
+        reactions
+      };
+    }
+
+    const ALL_SPECIES = [
+      ...Array.from({ length: 500 }, (_, i) => buildSpecies('animal', i, 500)),
+      ...Array.from({ length: 300 }, (_, i) => buildSpecies('plant', i, 300)),
+      ...Array.from({ length: 200 }, (_, i) => buildSpecies('dino', i, 200))
+    ];
+
+    // Ensure uniqueness of id
+    const KIND_LABEL = { animal: "🦁 Động vật", plant: "🌳 Thực vật", dino: "🦖 Khủng long" };
+    const KIND_TEMPLATES = {
+      animal: ANIMAL_DESC_TEMPLATES,
+      plant: PLANT_DESC_TEMPLATES,
+      dino: DINO_DESC_TEMPLATES
+    };
+    const KIND_FACTS = {
+      animal: ANIMAL_FACTS,
+      plant: PLANT_FACTS,
+      dino: DINO_FACTS
+    };
+
+    function renderTemplate(tmpl, s) {
+      return tmpl
+        .replace(/\{name\}/g, s.n)
+        .replace(/\{type\}/g, s.typ)
+        .replace(/\{habitat\}/g, s.h)
+        .replace(/\{food\}/g, s.f)
+        .replace(/\{size\}/g, s.sz)
+        .replace(/\{life\}/g, s.life);
+    }
+
+    function getDesc(s) { return renderTemplate(KIND_TEMPLATES[s.kind][s.descIdx], s); }
+    function getFact(s) { return renderTemplate(KIND_FACTS[s.kind][s.factIdx], s); }
+
+    // ===================== COMPONENTS =====================
+
+    const MILESTONES = [
+      { n: 10, msg: "🎉 Bạn đã chăm sóc 10 loài! Nhà sinh vật tập sự!" },
+      { n: 50, msg: "🌟 50 loài! Bạn đang trở thành chuyên gia!" },
+      { n: 100, msg: "🏆 100 loài! Chuyên gia sinh học thực thụ!" },
+      { n: 500, msg: "👑 500 loài! Bậc thầy của thiên nhiên!" },
+      { n: 1000, msg: "🔥 1000 loài! Huyền thoại Động Vật Thông Minh!" }
+    ];
+
+    function Header({ viewedCount, caredCount, totalHappiness }) {
+      return (
+        <div style={{
+          padding: '20px 16px 12px',
+          textAlign: 'center',
+          borderBottom: '2px solid rgba(74,222,128,0.2)',
+          background: 'rgba(10,31,10,0.6)'
+        }}>
+          <button
+            onClick={() => window.location.href = "../index.html"}
+            style={{
+              position: 'absolute', left: 12, top: 12,
+              background: 'rgba(34,197,94,0.15)', color: '#86efac',
+              border: '1px solid rgba(74,222,128,0.3)', padding: '6px 12px',
+              borderRadius: 8, cursor: 'pointer', fontSize: 14
+            }}
+          >← Trang chủ</button>
+          <h1 style={{ color: '#86efac', fontSize: 24, margin: '4px 0 8px' }}>
+            🦁 Động Vật Thông Minh
+          </h1>
+          <div style={{ color: '#bbf7d0', fontSize: 13, opacity: 0.85 }}>
+            Bách khoa sinh vật — 1000 loài để khám phá & chăm sóc
+          </div>
+          <div style={{
+            display: 'flex', justifyContent: 'center', gap: 14, marginTop: 12,
+            flexWrap: 'wrap', fontSize: 13
+          }}>
+            <StatPill icon="👁️" label="Đã xem" value={viewedCount} />
+            <StatPill icon="💚" label="Đã chăm sóc" value={caredCount} />
+            <StatPill icon="😊" label="Hạnh phúc tổng" value={totalHappiness} />
+          </div>
+        </div>
+      );
+    }
+
+    function StatPill({ icon, label, value }) {
+      return (
+        <div style={{
+          background: 'rgba(34,197,94,0.1)',
+          border: '1px solid rgba(74,222,128,0.25)',
+          borderRadius: 20, padding: '5px 12px', color: '#d1fae5'
+        }}>
+          <span style={{ marginRight: 4 }}>{icon}</span>
+          <span style={{ opacity: 0.75 }}>{label}:</span>
+          <strong style={{ marginLeft: 5, color: '#86efac' }}>{value}</strong>
+        </div>
+      );
+    }
+
+    function Tabs({ current, onChange }) {
+      const tabs = [
+        { id: 'all', label: 'Tất cả', count: 1000 },
+        { id: 'animal', label: '🦁 Động vật', count: 500 },
+        { id: 'plant', label: '🌳 Thực vật', count: 300 },
+        { id: 'dino', label: '🦖 Khủng long', count: 200 }
+      ];
+      return (
+        <div style={{
+          display: 'flex', gap: 8, padding: '12px 14px', overflowX: 'auto',
+          justifyContent: 'center', flexWrap: 'wrap'
+        }}>
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => onChange(t.id)}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 16,
+                border: current === t.id ? '2px solid #4ade80' : '1px solid rgba(74,222,128,0.3)',
+                background: current === t.id ? 'rgba(74,222,128,0.25)' : 'rgba(10,31,10,0.4)',
+                color: current === t.id ? '#ecfccb' : '#a7f3d0',
+                cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap', fontWeight: 600
+              }}
+            >
+              {t.label} <span style={{ opacity: 0.7 }}>({t.count})</span>
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    function SearchBar({ value, onChange }) {
+      return (
+        <div style={{ padding: '0 14px 10px', display: 'flex', justifyContent: 'center' }}>
+          <input
+            type="text"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder="🔍 Tìm kiếm loài (VD: Hổ, Hoa Sen, T-Rex)..."
+            style={{
+              width: '100%', maxWidth: 480,
+              padding: '10px 14px',
+              borderRadius: 10,
+              border: '1px solid rgba(74,222,128,0.3)',
+              background: 'rgba(10,31,10,0.6)',
+              color: '#e6f4e6', fontSize: 14, outline: 'none'
+            }}
+          />
+        </div>
+      );
+    }
+
+    function SpeciesCard({ species, happiness, onClick }) {
+      return (
+        <button
+          onClick={onClick}
+          style={{
+            background: 'linear-gradient(160deg, rgba(20,83,45,0.5), rgba(10,31,10,0.8))',
+            border: happiness > 0 ? '2px solid #4ade80' : '1px solid rgba(74,222,128,0.2)',
+            borderRadius: 14, padding: '12px 6px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            cursor: 'pointer', color: '#e6f4e6', position: 'relative',
+            minHeight: 120
+          }}
+        >
+          {happiness > 0 && (
+            <div style={{
+              position: 'absolute', top: 4, right: 6,
+              fontSize: 10, color: '#bbf7d0',
+              background: 'rgba(34,197,94,0.3)', borderRadius: 8,
+              padding: '2px 6px'
+            }}>💚 {happiness}</div>
+          )}
+          <div style={{ fontSize: 40, marginBottom: 6 }}>{species.e}</div>
+          <div style={{
+            fontSize: 12, fontWeight: 600, color: '#ecfccb',
+            textAlign: 'center', lineHeight: 1.25, padding: '0 4px'
+          }}>{species.n}</div>
+        </button>
+      );
+    }
+
+    function Grid({ species, happinessMap, onSelect, pageSize, onLoadMore, shown }) {
+      const visible = species.slice(0, shown);
+      return (
+        <div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+            gap: 10, padding: '4px 14px 16px'
+          }}>
+            {visible.map(s => (
+              <SpeciesCard
+                key={s.id}
+                species={s}
+                happiness={happinessMap[s.id] || 0}
+                onClick={() => onSelect(s)}
+              />
+            ))}
+          </div>
+          {shown < species.length && (
+            <div style={{ textAlign: 'center', padding: '0 0 24px' }}>
+              <button
+                onClick={onLoadMore}
+                style={{
+                  padding: '10px 24px', borderRadius: 22,
+                  border: '1px solid #4ade80', background: 'rgba(34,197,94,0.2)',
+                  color: '#ecfccb', cursor: 'pointer', fontSize: 14, fontWeight: 600
+                }}
+              >
+                Tải thêm ({species.length - shown} loài còn lại)
+              </button>
+            </div>
+          )}
+          {species.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 40, color: '#86efac', opacity: 0.6 }}>
+              Không tìm thấy loài nào 😢
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function InfoRow({ label, value }) {
+      return (
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', gap: 12,
+          padding: '8px 12px', borderBottom: '1px dashed rgba(74,222,128,0.15)'
+        }}>
+          <span style={{ color: '#86efac', opacity: 0.85 }}>{label}</span>
+          <span style={{ color: '#ecfccb', textAlign: 'right', fontWeight: 600 }}>{value}</span>
+        </div>
+      );
+    }
+
+    function Detail({ species, happiness, onBack, onCare, message }) {
+      const [caring, setCaring] = useState(false);
+      const desc = getDesc(species);
+      const fact = getFact(species);
+      const kindLabel = KIND_LABEL[species.kind];
+
+      return (
+        <div style={{ maxWidth: 640, margin: '0 auto', padding: '14px 14px 40px' }}>
+          <button
+            onClick={onBack}
+            style={{
+              background: 'rgba(34,197,94,0.2)', color: '#ecfccb',
+              border: '1px solid rgba(74,222,128,0.3)', padding: '8px 14px',
+              borderRadius: 10, cursor: 'pointer', fontSize: 13, marginBottom: 12
+            }}
+          >← Quay lại danh sách</button>
+
+          <div style={{
+            background: 'linear-gradient(160deg, rgba(20,83,45,0.5), rgba(10,31,10,0.9))',
+            borderRadius: 18, padding: 20,
+            border: '2px solid rgba(74,222,128,0.3)'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: 10 }}>
+              <div style={{ fontSize: 96, lineHeight: 1 }}>{species.e}</div>
+              <h2 style={{ color: '#ecfccb', fontSize: 22, margin: '10px 0 4px' }}>{species.n}</h2>
+              <div style={{ color: '#86efac', fontStyle: 'italic', fontSize: 13, opacity: 0.8 }}>
+                {species.sci}
+              </div>
+            </div>
+
+            <div style={{
+              background: 'rgba(10,31,10,0.6)', borderRadius: 12,
+              marginTop: 14, overflow: 'hidden',
+              border: '1px solid rgba(74,222,128,0.15)'
+            }}>
+              <InfoRow label="Loại" value={kindLabel} />
+              <InfoRow label="Phân loại" value={species.typ} />
+              <InfoRow label="Môi trường sống" value={species.h} />
+              <InfoRow label="Thức ăn" value={species.f} />
+              <InfoRow label="Kích thước" value={species.sz} />
+              <InfoRow label="Tuổi thọ" value={species.life} />
+            </div>
+
+            <div style={{
+              marginTop: 14, padding: 14, borderRadius: 12,
+              background: 'rgba(10,31,10,0.5)', color: '#d1fae5',
+              lineHeight: 1.55, fontSize: 14
+            }}>
+              {desc}
+            </div>
+
+            <div style={{
+              marginTop: 12, padding: 14, borderRadius: 12,
+              background: 'rgba(250,204,21,0.12)',
+              border: '1px solid rgba(250,204,21,0.3)',
+              color: '#fef9c3', lineHeight: 1.55, fontSize: 14
+            }}>
+              <strong>💡 Bạn có biết: </strong>{fact}
+            </div>
+
+            {!caring ? (
+              <button
+                onClick={() => setCaring(true)}
+                style={{
+                  display: 'block', width: '100%',
+                  marginTop: 16, padding: '12px',
+                  borderRadius: 12, border: 'none',
+                  background: 'linear-gradient(90deg, #16a34a, #4ade80)',
+                  color: '#042f1a', fontWeight: 700, fontSize: 15,
+                  cursor: 'pointer'
+                }}
+              >🎮 Chăm sóc {species.n}</button>
+            ) : (
+              <CarePanel
+                species={species}
+                happiness={happiness}
+                onCare={onCare}
+                message={message}
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function CarePanel({ species, happiness, onCare, message }) {
+      return (
+        <div style={{
+          marginTop: 16, padding: 14, borderRadius: 14,
+          background: 'rgba(34,197,94,0.1)',
+          border: '1px solid rgba(74,222,128,0.3)'
+        }}>
+          <div style={{ marginBottom: 10, color: '#ecfccb', fontWeight: 600, textAlign: 'center' }}>
+            Hạnh phúc: {happiness}/100
+          </div>
+          <div style={{
+            height: 14, background: 'rgba(0,0,0,0.3)', borderRadius: 10,
+            overflow: 'hidden', marginBottom: 14
+          }}>
+            <div style={{
+              height: '100%',
+              width: Math.min(100, happiness) + '%',
+              background: 'linear-gradient(90deg, #facc15, #22c55e)',
+              transition: 'width 0.3s'
+            }}/>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: 8
+          }}>
+            {species.care.map((action, i) => (
+              <button
+                key={i}
+                onClick={() => onCare(species, action)}
+                disabled={happiness >= 100}
+                style={{
+                  padding: '10px 8px', borderRadius: 10,
+                  border: '1px solid rgba(74,222,128,0.35)',
+                  background: happiness >= 100 ? 'rgba(100,100,100,0.2)' : 'rgba(22,101,52,0.6)',
+                  color: '#ecfccb', fontSize: 13, cursor: happiness >= 100 ? 'not-allowed' : 'pointer',
+                  fontWeight: 600
+                }}
+              >{action}</button>
+            ))}
+          </div>
+
+          {message && (
+            <div style={{
+              marginTop: 12, padding: 10, borderRadius: 10,
+              background: 'rgba(74,222,128,0.2)',
+              color: '#ecfccb', textAlign: 'center', fontSize: 14
+            }}>{message}</div>
+          )}
+
+          {happiness >= 100 && (
+            <div style={{
+              marginTop: 10, padding: 10, borderRadius: 10,
+              background: 'rgba(250,204,21,0.2)',
+              color: '#fef9c3', textAlign: 'center', fontSize: 13
+            }}>⭐ Đã đạt hạnh phúc tối đa! Tuyệt vời!</div>
+          )}
+        </div>
+      );
+    }
+
+    function MilestoneToast({ text, onClose }) {
+      if (!text) return null;
+      return (
+        <div style={{
+          position: 'fixed', top: 70, left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'linear-gradient(90deg, #facc15, #4ade80)',
+          color: '#052e16', padding: '12px 20px',
+          borderRadius: 20, fontWeight: 700, fontSize: 14,
+          boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
+          zIndex: 999, cursor: 'pointer'
+        }} onClick={onClose}>
+          {text} <span style={{ marginLeft: 8, opacity: 0.7 }}>(nhấn để đóng)</span>
+        </div>
+      );
+    }
+
+    // ===================== MAIN APP =====================
+
+    function App() {
+      const [tab, setTab] = useState('all');
+      const [search, setSearch] = useState('');
+      const [shown, setShown] = useState(60);
+      const [selected, setSelected] = useState(null);
+      const [happinessMap, setHappinessMap] = useState({});
+      const [viewed, setViewed] = useState(new Set());
+      const [careMsg, setCareMsg] = useState('');
+      const [milestone, setMilestone] = useState('');
+      const [reachedMilestones, setReachedMilestones] = useState(new Set());
+
+      const filtered = useMemo(() => {
+        let base = ALL_SPECIES;
+        if (tab !== 'all') base = base.filter(s => s.kind === tab);
+        if (search.trim()) {
+          const q = search.trim().toLowerCase();
+          base = base.filter(s => s.n.toLowerCase().includes(q));
+        }
+        return base;
+      }, [tab, search]);
+
+      const caredCount = useMemo(
+        () => Object.values(happinessMap).filter(v => v > 0).length,
+        [happinessMap]
+      );
+      const totalHappiness = useMemo(
+        () => Object.values(happinessMap).reduce((a, b) => a + b, 0),
+        [happinessMap]
+      );
+
+      const handleSelect = useCallback((s) => {
+        setSelected(s);
+        setViewed(prev => {
+          if (prev.has(s.id)) return prev;
+          const next = new Set(prev);
+          next.add(s.id);
+          return next;
+        });
+        setCareMsg('');
+      }, []);
+
+      const handleCare = useCallback((s, action) => {
+        setHappinessMap(prev => {
+          const cur = prev[s.id] || 0;
+          const inc = 8 + Math.floor(Math.random() * 8); // +8~15
+          const next = Math.min(100, cur + inc);
+          const updated = { ...prev, [s.id]: next };
+
+          // milestone check
+          const caredNow = Object.values(updated).filter(v => v > 0).length;
+          const ms = MILESTONES.find(m => m.n === caredNow);
+          if (ms && !reachedMilestones.has(ms.n)) {
+            setMilestone(ms.msg);
+            setReachedMilestones(prevMs => {
+              const n = new Set(prevMs); n.add(ms.n); return n;
+            });
+          }
+          return updated;
+        });
+        const r = s.reactions[Math.floor(Math.random() * s.reactions.length)];
+        setCareMsg(`${s.e} ${s.n} ${r}`);
+      }, [reachedMilestones]);
+
+      // reset shown when filter changes
+      useMemo(() => { setShown(60); }, [tab, search]);
+
+      if (selected) {
+        return (
+          <div>
+            <MilestoneToast text={milestone} onClose={() => setMilestone('')} />
+            <Detail
+              species={selected}
+              happiness={happinessMap[selected.id] || 0}
+              onBack={() => setSelected(null)}
+              onCare={handleCare}
+              message={careMsg}
+            />
+          </div>
+        );
+      }
+
+      return (
+        <div>
+          <MilestoneToast text={milestone} onClose={() => setMilestone('')} />
+          <Header
+            viewedCount={viewed.size}
+            caredCount={caredCount}
+            totalHappiness={totalHappiness}
+          />
+          <Tabs current={tab} onChange={setTab} />
+          <SearchBar value={search} onChange={setSearch} />
+          <Grid
+            species={filtered}
+            happinessMap={happinessMap}
+            onSelect={handleSelect}
+            shown={shown}
+            onLoadMore={() => setShown(s => s + 60)}
+          />
+          <div style={{
+            textAlign: 'center', padding: '20px 14px 30px',
+            color: '#86efac', opacity: 0.5, fontSize: 12
+          }}>
+            Tổng cộng 1000 loài • 500 động vật • 300 thực vật • 200 khủng long
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
