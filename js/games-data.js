@@ -342,119 +342,166 @@ const GAMES = [
   border: '#fbbf24',
   file: 'harrypotter.html',
   featured: true
-},
-{
-  id: 'rblx-obby',
-  name: 'Obby 10 Cấp',
-  icon: '🟩',
-  desc: '10 màn vượt chướng ngại vật: Lava, Ice, Space, Neon, Haunted...',
-  category: 'arcade',
-  tags: ['Roblox', 'nhảy nhót', 'phản xạ'],
-  bg: 'linear-gradient(135deg, #0a2e0a, #14532d)',
-  border: '#22c55e',
-  file: 'rblx-obby.html',
-  featured: true
-},
-{
-  id: 'rblx-td',
-  name: 'Tower Defense 10 Map',
-  icon: '🏰',
-  desc: '10 bản đồ phòng thủ, 3 loại tháp, 10 waves, boss cuối!',
-  category: 'strategy',
-  tags: ['Roblox', 'chiến thuật', 'phòng thủ'],
-  bg: 'linear-gradient(135deg, #1a0a2e, #4c1d95)',
-  border: '#a855f7',
-  file: 'rblx-td.html'
-},
-{
-  id: 'rblx-sim',
-  name: 'Simulator 10 Loại',
-  icon: '⚡',
-  desc: 'Strength, Mining, Ninja, Fishing... 10 simulator click-to-earn!',
-  category: 'clicker',
-  tags: ['Roblox', 'click', 'nâng cấp'],
-  bg: 'linear-gradient(135deg, #0a1a2e, #1e40af)',
-  border: '#3b82f6',
-  file: 'rblx-sim.html'
-},
-{
-  id: 'rblx-parkour',
-  name: 'Parkour 10 Map',
-  icon: '🏃',
-  desc: 'Auto-runner qua 10 map: City, Desert, Volcano, Neon...',
-  category: 'arcade',
-  tags: ['Roblox', 'chạy nhảy', 'phản xạ'],
-  bg: 'linear-gradient(135deg, #1a2e1a, #166534)',
-  border: '#4ade80',
-  file: 'rblx-parkour.html'
-},
-{
-  id: 'rblx-survival',
-  name: 'Sinh Tồn 10 Kịch Bản',
-  icon: '🏕️',
-  desc: 'Sống sót 30 ngày: Đảo Hoang, Bắc Cực, Sahara, Atlantis...',
-  category: 'simulation',
-  tags: ['Roblox', 'sinh tồn', 'chiến lược'],
-  bg: 'linear-gradient(135deg, #1a1a0a, #3d3d00)',
-  border: '#fde047',
-  file: 'rblx-survival.html'
-},
-{
-  id: 'rblx-racing',
-  name: 'Đua Xe 10 Track',
-  icon: '🏎️',
-  desc: '10 đường đua: City Night, Desert, Ice, Space, Portal...',
-  category: 'arcade',
-  tags: ['Roblox', 'tốc độ', 'lái xe'],
-  bg: 'linear-gradient(135deg, #2e1a0a, #7c2d12)',
-  border: '#fb923c',
-  file: 'rblx-racing.html'
-},
-{
-  id: 'rblx-puzzle',
-  name: 'Puzzle 10 Loại',
-  icon: '🧩',
-  desc: 'Memory, Sudoku, Match-3, Sliding, Jigsaw, Simon... 10 puzzle!',
-  category: 'puzzle',
-  tags: ['Roblox', 'tư duy', 'logic'],
-  bg: 'linear-gradient(135deg, #1a0a2e, #6b21a8)',
-  border: '#c084fc',
-  file: 'rblx-puzzle.html'
-},
-{
-  id: 'rblx-shooter',
-  name: 'Bắn Súng 10 Theme',
-  icon: '🎯',
-  desc: 'Duck Hunt, Zombie, Alien, Dragon... 10 mini-game bắn súng!',
-  category: 'arcade',
-  tags: ['Roblox', 'bắn súng', 'phản xạ'],
-  bg: 'linear-gradient(135deg, #2e0a0a, #991b1b)',
-  border: '#f87171',
-  file: 'rblx-shooter.html'
-},
-{
-  id: 'rblx-pets',
-  name: 'Pet Simulator 10 Hoạt Động',
-  icon: '🐾',
-  desc: 'Hatching, Racing, Battle, Evolution... 10 mini-game thú cưng!',
-  category: 'simulation',
-  tags: ['Roblox', 'thu thập', 'dễ thương'],
-  bg: 'linear-gradient(135deg, #2e0a2e, #86198f)',
-  border: '#ec4899',
-  file: 'rblx-pets.html'
-},
-{
-  id: 'rblx-adventure',
-  name: 'Phiêu Lưu 10 Câu Chuyện',
-  icon: '🗺️',
-  desc: '10 câu chuyện phiêu lưu: Hải tặc, Rồng, Robot, Atlantis...',
-  category: 'simulation',
-  tags: ['Roblox', 'phiêu lưu', 'kể chuyện'],
-  bg: 'linear-gradient(135deg, #0a2e1a, #047857)',
-  border: '#34d399',
-  file: 'rblx-adventure.html'
-}
+}];
+
+// ============================================================
+// 100 Roblox-style games — auto-generated from 10 hub files
+// Each entry deep-links into a specific level via URL hash
+// ============================================================
+const RBLX_GAMES = [
+  // OBBY (10 levels)
+  ['rblx-obby', 'classic',  'Obby Classic',    '🟩', 'Vượt chướng ngại vật cổ điển — spikes và vực sâu', '#14532d', '#22c55e'],
+  ['rblx-obby', 'lava',     'Obby Lava',       '🌋', 'Nhảy qua hồ dung nham nóng bỏng', '#7c2d12', '#f97316'],
+  ['rblx-obby', 'ice',      'Obby Băng',       '❄️', 'Sàn trơn trượt, khó kiểm soát', '#0c4a6e', '#38bdf8'],
+  ['rblx-obby', 'jungle',   'Obby Rừng',       '🌴', 'Vượt rừng rậm với cá sấu', '#14532d', '#65a30d'],
+  ['rblx-obby', 'space',    'Obby Vũ Trụ',     '🚀', 'Trọng lực thấp, né thiên thạch', '#1e1b4b', '#818cf8'],
+  ['rblx-obby', 'sky',      'Obby Trên Mây',   '☁️', 'Nhảy mây, gió thổi bay', '#0369a1', '#93c5fd'],
+  ['rblx-obby', 'desert',   'Obby Sa Mạc',     '🏜️', 'Cát lún và bọ cạp', '#92400e', '#f59e0b'],
+  ['rblx-obby', 'candy',    'Obby Kẹo',        '🍭', 'Thế giới kẹo ngọt siêu dễ thương', '#9d174d', '#ec4899'],
+  ['rblx-obby', 'neon',     'Obby Neon',       '💡', 'Ánh đèn laser nguy hiểm', '#3730a3', '#a78bfa'],
+  ['rblx-obby', 'haunted',  'Obby Ma',         '👻', 'Ngôi mộ ma quái với ghost và pumpkin', '#581c87', '#c084fc'],
+
+  // TOWER DEFENSE (10 maps)
+  ['rblx-td', 'meadow',   'TD Đồng Cỏ',   '🌿', 'Phòng thủ trên đồng cỏ xanh, đường zigzag', '#1f3a1f', '#22c55e'],
+  ['rblx-td', 'desert',   'TD Sa Mạc',    '🏜️', 'Phòng thủ trên sa mạc, đường S-curve', '#3d2a15', '#f59e0b'],
+  ['rblx-td', 'mountain', 'TD Núi Cao',   '🏔️', 'Phòng thủ trên núi, đường xoắn ốc', '#2a3040', '#94a3b8'],
+  ['rblx-td', 'volcano',  'TD Núi Lửa',   '🌋', 'Phòng thủ cạnh núi lửa, đường rẽ nhánh', '#3d1515', '#f87171'],
+  ['rblx-td', 'ocean',    'TD Đại Dương', '🌊', 'Phòng thủ biển khơi, đường gợn sóng', '#0f2a3d', '#38bdf8'],
+  ['rblx-td', 'tundra',   'TD Băng Giá',  '❄️', 'Phòng thủ vùng cực, đường zigzag băng', '#1a3a4a', '#7dd3fc'],
+  ['rblx-td', 'space',    'TD Vũ Trụ',    '🌌', 'Phòng thủ trong không gian, đường chéo', '#0a0a2a', '#a78bfa'],
+  ['rblx-td', 'castle',   'TD Lâu Đài',   '🏰', 'Phòng thủ lâu đài, đường hình U', '#2a2015', '#fbbf24'],
+  ['rblx-td', 'farm',     'TD Nông Trại', '🌾', 'Phòng thủ trang trại, đường grid', '#2a3015', '#fde047'],
+  ['rblx-td', 'crystal',  'TD Thủy Tinh', '💎', 'Phòng thủ hầm pha lê, đường kim cương', '#2a1a3d', '#c084fc'],
+
+  // SIMULATOR (10 types)
+  ['rblx-sim', 'strength', 'Sim Sức Mạnh',  '💪', 'Click để nâng tạ, mua gym, tăng sức mạnh', '#7f1d1d', '#ef4444'],
+  ['rblx-sim', 'ninja',    'Sim Ninja',     '🥷', 'Click để luyện tập ninja, mua vũ khí', '#1e1b4b', '#6366f1'],
+  ['rblx-sim', 'mining',   'Sim Đào Mỏ',    '⛏️', 'Click để đập đá, mua cuốc xịn hơn', '#451a03', '#f59e0b'],
+  ['rblx-sim', 'fishing',  'Sim Câu Cá',    '🎣', 'Thả cần, câu cá hiếm, nâng cấp cần', '#0c4a6e', '#0ea5e9'],
+  ['rblx-sim', 'farming',  'Sim Nông Trại', '🌾', 'Trồng, thu hoạch, mở rộng nông trại', '#14532d', '#84cc16'],
+  ['rblx-sim', 'speed',    'Sim Tốc Độ',    '🏃', 'Chạy nhanh, mua giày siêu tốc', '#581c87', '#a78bfa'],
+  ['rblx-sim', 'pizza',    'Sim Pizza',     '🍕', 'Làm pizza, nâng cấp lò, bán đắt', '#7c2d12', '#f97316'],
+  ['rblx-sim', 'pet',      'Sim Thú Cưng',  '🐶', 'Thu thập pet, chúng giúp kiếm tiền', '#831843', '#ec4899'],
+  ['rblx-sim', 'gem',      'Sim Đá Quý',    '💎', 'Đào kim cương, ngọc lục bảo quý hiếm', '#0f766e', '#14b8a6'],
+  ['rblx-sim', 'rocket',   'Sim Tên Lửa',   '🚀', 'Xây tên lửa, kiếm nhiên liệu', '#1e40af', '#60a5fa'],
+
+  // PARKOUR (10 maps)
+  ['rblx-parkour', 'city',         'Parkour Thành Phố',  '🏙️', 'Nhảy trên mái nhà cao tầng', '#1e293b', '#64748b'],
+  ['rblx-parkour', 'desert',       'Parkour Phế Tích',   '🏜️', 'Chạy qua phế tích sa mạc', '#92400e', '#fbbf24'],
+  ['rblx-parkour', 'forest',       'Parkour Rừng',       '🌲', 'Nhảy trên tán rừng rậm', '#14532d', '#22c55e'],
+  ['rblx-parkour', 'construction', 'Parkour Công Trình', '🏗️', 'Chạy qua công trường xây dựng', '#78350f', '#fde047'],
+  ['rblx-parkour', 'train',        'Parkour Đường Ray',  '🚂', 'Chạy trên đường ray xe lửa', '#44403c', '#a8a29e'],
+  ['rblx-parkour', 'temple',       'Parkour Đền Cổ',     '🏛️', 'Chạy qua đền cổ đại huyền bí', '#3f3f46', '#d4d4d8'],
+  ['rblx-parkour', 'volcano',      'Parkour Núi Lửa',    '🌋', 'Nhảy né dung nham', '#7f1d1d', '#f87171'],
+  ['rblx-parkour', 'ice',          'Parkour Băng Tuyết', '❄️', 'Chạy trên vách băng trơn', '#1e3a5f', '#7dd3fc'],
+  ['rblx-parkour', 'bridge',       'Parkour Cây Cầu',    '🌉', 'Vượt chuỗi cầu nguy hiểm', '#334155', '#94a3b8'],
+  ['rblx-parkour', 'neon',         'Parkour Neon',       '⚡', 'Cao tốc neon rực rỡ', '#1e1b4b', '#a78bfa'],
+
+  // SURVIVAL (10 scenarios)
+  ['rblx-survival', 'island',   'Sinh Tồn Đảo Hoang',  '🏝️', 'Sống sót 30 ngày trên đảo vắng', '#064e3b', '#34d399'],
+  ['rblx-survival', 'arctic',   'Sinh Tồn Bắc Cực',    '❄️', 'Sống sót trong giá lạnh -40°C', '#0c4a6e', '#7dd3fc'],
+  ['rblx-survival', 'volcano',  'Sinh Tồn Núi Lửa',    '🌋', 'Sống sót trên đảo núi lửa', '#7f1d1d', '#f87171'],
+  ['rblx-survival', 'sahara',   'Sinh Tồn Sa Mạc',     '🏜️', 'Sống sót trong sa mạc Sahara', '#78350f', '#fbbf24'],
+  ['rblx-survival', 'forest',   'Sinh Tồn Rừng Đen',   '🌲', 'Sống sót trong rừng đen bí ẩn', '#14532d', '#65a30d'],
+  ['rblx-survival', 'mountain', 'Sinh Tồn Đỉnh Núi',   '🏔️', 'Sống sót trên đỉnh núi cao', '#1e293b', '#94a3b8'],
+  ['rblx-survival', 'city',     'Sinh Tồn Thành Phố',  '🏚️', 'Sống sót trong thành phố bỏ hoang', '#3f3f46', '#a1a1aa'],
+  ['rblx-survival', 'sea',      'Sinh Tồn Lạc Biển',   '🌊', 'Sống sót trên bè giữa biển khơi', '#0f172a', '#38bdf8'],
+  ['rblx-survival', 'alien',    'Sinh Tồn Hành Tinh Lạ','🌌', 'Sống sót trên hành tinh ngoài vũ trụ', '#1e1b4b', '#a78bfa'],
+  ['rblx-survival', 'castle',   'Sinh Tồn Lâu Đài Ma', '🏰', 'Sống sót trong lâu đài đầy ma quái', '#4c1d95', '#c084fc'],
+
+  // RACING (10 tracks)
+  ['rblx-racing', 'classic',  'Đua Cổ Điển',   '🏁', 'Đua trên đường đua truyền thống', '#1f2937', '#fbbf24'],
+  ['rblx-racing', 'city',     'Đua Đêm',       '🌃', 'Đua trong thành phố ban đêm, neon sáng', '#1e1b4b', '#a78bfa'],
+  ['rblx-racing', 'desert',   'Đua Rally',     '🏜️', 'Đua rally trên cát bụi', '#78350f', '#f59e0b'],
+  ['rblx-racing', 'ice',      'Đua Băng',      '❄️', 'Đua trên băng trơn trượt', '#0c4a6e', '#7dd3fc'],
+  ['rblx-racing', 'jungle',   'Đua Rừng',      '🌴', 'Đua trong rừng rậm, né động vật', '#14532d', '#65a30d'],
+  ['rblx-racing', 'space',    'Đua Vũ Trụ',    '🚀', 'Đua trên xa lộ không gian', '#1e1b4b', '#818cf8'],
+  ['rblx-racing', 'lava',     'Đua Dung Nham', '🌋', 'Đua né lửa trên đường dung nham', '#7f1d1d', '#f87171'],
+  ['rblx-racing', 'mountain', 'Đua Đèo',       '🏔️', 'Đua đường đèo cong queo', '#374151', '#9ca3af'],
+  ['rblx-racing', 'beach',    'Đua Bãi Biển',  '🏖️', 'Đua bờ biển, né vũng nước', '#0369a1', '#7dd3fc'],
+  ['rblx-racing', 'portal',   'Đua Cổng Dịch', '🌀', 'Đua qua cổng không gian ngẫu nhiên', '#4c1d95', '#c084fc'],
+
+  // PUZZLE (10 types)
+  ['rblx-puzzle', 'memory',  'Puzzle Trí Nhớ',    '🎴', 'Lật thẻ tìm cặp giống nhau', '#4c1d95', '#c084fc'],
+  ['rblx-puzzle', 'slide',   'Puzzle Trượt Số',   '🔢', 'Sắp xếp số 1-15 bằng cách trượt', '#1e40af', '#60a5fa'],
+  ['rblx-puzzle', 'match3',  'Puzzle Match-3',    '🍭', 'Đổi chỗ kẹo để xếp 3 hàng', '#9d174d', '#f472b6'],
+  ['rblx-puzzle', 'snake',   'Puzzle Vẽ Đường',   '🐍', 'Vẽ đường đi qua mọi ô', '#14532d', '#4ade80'],
+  ['rblx-puzzle', 'fill',    'Puzzle Tô Màu',     '🎨', 'Flood fill toàn bảng cùng màu', '#7c2d12', '#fb923c'],
+  ['rblx-puzzle', 'connect', 'Puzzle Nối Điểm',   '🔗', 'Nối các chấm cùng màu', '#0f766e', '#2dd4bf'],
+  ['rblx-puzzle', 'sudoku',  'Puzzle Sudoku 4x4', '🔲', 'Sudoku mini 4x4', '#1f2937', '#9ca3af'],
+  ['rblx-puzzle', 'math',    'Puzzle Toán Học',   '🧮', 'Điền số còn thiếu trong phương trình', '#0c4a6e', '#38bdf8'],
+  ['rblx-puzzle', 'pattern', 'Puzzle Simon',      '🎭', 'Nhớ và lặp lại chuỗi màu', '#581c87', '#a78bfa'],
+  ['rblx-puzzle', 'jigsaw',  'Puzzle Ghép Hình',  '🧩', 'Ghép 9 miếng puzzle thành tranh', '#164e63', '#22d3ee'],
+
+  // SHOOTER (10 themes)
+  ['rblx-shooter', 'target',  'Bắn Bia',         '🎯', 'Bắn bia tập với điểm số', '#7f1d1d', '#f87171'],
+  ['rblx-shooter', 'duck',    'Bắn Vịt',         '🦆', 'Bắn vịt bay kinh điển', '#14532d', '#4ade80'],
+  ['rblx-shooter', 'zombie',  'Bắn Zombie',      '🧟', 'Bắn zombie đang tiến tới', '#44403c', '#f87171'],
+  ['rblx-shooter', 'apple',   'Bắn Táo',         '🍎', 'Bắn táo kiểu William Tell', '#7f1d1d', '#f87171'],
+  ['rblx-shooter', 'balloon', 'Bắn Bóng Bay',    '🎈', 'Bắn bóng bay đủ màu', '#be185d', '#ec4899'],
+  ['rblx-shooter', 'alien',   'Bắn Alien',       '👾', 'Bắn người ngoài hành tinh', '#1e1b4b', '#a78bfa'],
+  ['rblx-shooter', 'bat',     'Bắn Dơi',         '🦇', 'Bắn dơi bay trong hang', '#18181b', '#a1a1aa'],
+  ['rblx-shooter', 'snake',   'Bắn Rắn',         '🐍', 'Bắn rắn trong rừng', '#14532d', '#84cc16'],
+  ['rblx-shooter', 'cowboy',  'Đấu Súng Cowboy', '🤠', 'Đấu súng kiểu miền Tây', '#78350f', '#fbbf24'],
+  ['rblx-shooter', 'dragon',  'Diệt Rồng',       '🐉', 'Bắn hạ boss rồng khổng lồ', '#7f1d1d', '#f59e0b'],
+
+  // PETS (10 activities)
+  ['rblx-pets', 'hatch',   'Ấp Trứng',        '🥚', 'Mở trứng ngẫu nhiên nhận pet mới', '#831843', '#f472b6'],
+  ['rblx-pets', 'feed',    'Cho Pet Ăn',      '🍖', 'Cho pet ăn, giữ stats cao', '#7c2d12', '#fb923c'],
+  ['rblx-pets', 'race',    'Đua Pet',         '🏃', 'Chọn pet và cược đua', '#14532d', '#4ade80'],
+  ['rblx-pets', 'battle',  'Pet Đấu Võ',      '⚔️', 'Pet vs Pet turn-based', '#7f1d1d', '#f87171'],
+  ['rblx-pets', 'train',   'Huấn Luyện Pet',  '🎾', 'Click minigame để lên cấp', '#1e40af', '#60a5fa'],
+  ['rblx-pets', 'evolve',  'Tiến Hóa Pet',    '🌟', 'Tiến hóa pet qua các giai đoạn', '#4c1d95', '#c084fc'],
+  ['rblx-pets', 'dress',   'Trang Điểm Pet',  '🎀', 'Thay trang phục cho pet', '#9d174d', '#ec4899'],
+  ['rblx-pets', 'contest', 'Thi Sắc Đẹp Pet', '🏆', 'Thi sắc đẹp, chấm điểm', '#78350f', '#fbbf24'],
+  ['rblx-pets', 'groom',   'Tắm Pet',         '🛁', 'Tắm và chải lông cho pet', '#0c4a6e', '#38bdf8'],
+  ['rblx-pets', 'parade',  'Diễu Hành Pet',   '🌈', 'Thu thập đủ pet cho cầu vồng', '#581c87', '#a78bfa'],
+
+  // ADVENTURE (10 stories)
+  ['rblx-adventure', 'princess',  'Giải Cứu Công Chúa', '🏰', 'Phiêu lưu trung cổ cứu công chúa', '#831843', '#ec4899'],
+  ['rblx-adventure', 'pirate',    'Kho Báu Hải Tặc',    '🏴‍☠️', 'Vượt biển tìm kho báu', '#78350f', '#fbbf24'],
+  ['rblx-adventure', 'alien',     'Trạm Không Gian',    '👽', 'Bí ẩn trạm không gian ngoài hành tinh', '#1e1b4b', '#a78bfa'],
+  ['rblx-adventure', 'wizard',    'Học Viện Phù Thủy',  '🧙', 'Học phép thuật tại học viện', '#4c1d95', '#c084fc'],
+  ['rblx-adventure', 'detective', 'Thám Tử Bí Ẩn',      '🕵️', 'Giải mã vụ án bí ẩn', '#1f2937', '#9ca3af'],
+  ['rblx-adventure', 'desert',    'Thám Hiểm Sa Mạc',   '🏜️', 'Tìm thành phố cổ thất lạc', '#78350f', '#f59e0b'],
+  ['rblx-adventure', 'dragon',    'Thợ Săn Rồng',       '🐉', 'Đánh bại rồng hung dữ', '#7f1d1d', '#f87171'],
+  ['rblx-adventure', 'vampire',   'Lâu Đài Ma Cà Rồng', '🧛', 'Trốn thoát khỏi lâu đài undead', '#18181b', '#a1a1aa'],
+  ['rblx-adventure', 'robot',     'Cuộc Nổi Dậy Robot', '🤖', 'Sống sót qua AI nổi loạn', '#0f172a', '#38bdf8'],
+  ['rblx-adventure', 'atlantis',  'Lặn Atlantis',       '🌊', 'Khám phá thành phố dưới nước', '#0c4a6e', '#22d3ee'],
 ];
+
+// Expand into full GAMES entries
+RBLX_GAMES.forEach(([hub, hash, name, icon, desc, bgDark, border]) => {
+  const categoryMap = {
+    'rblx-obby': 'arcade', 'rblx-td': 'strategy', 'rblx-sim': 'clicker',
+    'rblx-parkour': 'arcade', 'rblx-survival': 'simulation', 'rblx-racing': 'arcade',
+    'rblx-puzzle': 'puzzle', 'rblx-shooter': 'arcade', 'rblx-pets': 'simulation',
+    'rblx-adventure': 'simulation'
+  };
+  const tagMap = {
+    'rblx-obby': ['Roblox', 'obby', 'nhảy nhót'],
+    'rblx-td': ['Roblox', 'phòng thủ', 'chiến thuật'],
+    'rblx-sim': ['Roblox', 'simulator', 'click'],
+    'rblx-parkour': ['Roblox', 'parkour', 'chạy nhảy'],
+    'rblx-survival': ['Roblox', 'sinh tồn', 'chiến lược'],
+    'rblx-racing': ['Roblox', 'đua xe', 'tốc độ'],
+    'rblx-puzzle': ['Roblox', 'puzzle', 'tư duy'],
+    'rblx-shooter': ['Roblox', 'bắn súng', 'phản xạ'],
+    'rblx-pets': ['Roblox', 'pet', 'thu thập'],
+    'rblx-adventure': ['Roblox', 'phiêu lưu', 'kể chuyện']
+  };
+  GAMES.push({
+    id: `${hub}-${hash}`,
+    name: name,
+    icon: icon,
+    desc: desc,
+    category: categoryMap[hub],
+    tags: tagMap[hub],
+    bg: `linear-gradient(135deg, #0a0a1e, ${bgDark})`,
+    border: border,
+    file: `${hub}.html#${hash}`
+  });
+});
 
 // Get games by category
 function getGamesByCategory(categoryId) {

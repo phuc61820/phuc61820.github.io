@@ -403,6 +403,14 @@
       const [data, setData] = useState(() => loadData());
       const [current, setCurrent] = useState(null);
 
+      // URL hash routing — load sim directly if hash matches
+      useEffect(() => {
+        const hash = window.location.hash.slice(1).toLowerCase();
+        if (!hash) return;
+        const sim = SIMS.find(s => String(s.id).toLowerCase() === hash);
+        if (sim) setCurrent(sim.id);
+      }, []);
+
       useEffect(() => {
         saveData(data);
       }, [data]);
@@ -411,10 +419,15 @@
         setData(d => ({ ...d, [simId]: newState }));
       }
 
+      function goBack() {
+        if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+        setCurrent(null);
+      }
+
       if (current) {
         const sim = SIMS.find(s => s.id === current);
         const state = data[current] || defaultState();
-        return <SimView sim={sim} state={state} onChange={ns => update(current, ns)} onBack={() => setCurrent(null)} />;
+        return <SimView sim={sim} state={state} onChange={ns => update(current, ns)} onBack={goBack} />;
       }
       return <Hub data={data} onOpen={setCurrent} />;
     }

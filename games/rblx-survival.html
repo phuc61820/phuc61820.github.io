@@ -399,8 +399,20 @@
       const [progress, setProgress] = useState(loadProgress());
       const [scenario, setScenario] = useState(null);
 
+      // URL hash routing — load scenario directly if hash matches
+      useEffect(() => {
+        const hash = window.location.hash.slice(1).toLowerCase();
+        if (!hash) return;
+        const sc = SCENARIOS.find(s => String(s.id).toLowerCase() === hash);
+        if (sc) setScenario(sc);
+      }, []);
+
       function pick(s) { setScenario(s); }
-      function exit() { setScenario(null); setProgress(loadProgress()); }
+      function exit() {
+        if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+        setScenario(null);
+        setProgress(loadProgress());
+      }
       function back() { window.location.href = '../index.html'; }
 
       if (scenario) return <Game scenario={scenario} onExit={exit} />;

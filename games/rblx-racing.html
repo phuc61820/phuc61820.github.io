@@ -277,8 +277,21 @@
       const [track, setTrack] = useState(null);
       const [progress, setProgress] = useState(loadProgress());
 
+      // URL hash routing — load track directly if hash matches
+      useEffect(() => {
+        const hash = window.location.hash.slice(1).toLowerCase();
+        if (!hash) return;
+        const t = TRACKS.find(tr => String(tr.id).toLowerCase() === hash);
+        if (t) setTrack(t);
+      }, []);
+
+      const back = () => {
+        if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+        setTrack(null);
+      };
+
       if (!track) return <Hub onPick={setTrack} progress={progress} />;
-      return <Game track={track} onBack={()=>setTrack(null)} progress={progress} setProgress={setProgress} />;
+      return <Game track={track} onBack={back} progress={progress} setProgress={setProgress} />;
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);

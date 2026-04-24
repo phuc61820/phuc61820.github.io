@@ -545,9 +545,22 @@
       const [selected, setSelected] = useState(null);
       const [progress, setProgress] = useState(loadProgress());
 
+      // URL hash routing — load story directly if hash matches
+      useEffect(() => {
+        const hash = window.location.hash.slice(1).toLowerCase();
+        if (!hash) return;
+        const s = STORIES.find(x => String(x.id).toLowerCase() === hash);
+        if (s) setSelected(s.id);
+      }, []);
+
+      const back = () => {
+        if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+        setSelected(null);
+      };
+
       if (selected) {
         const story = STORIES.find(s => s.id === selected);
-        return <Story story={story} onBack={() => setSelected(null)} progress={progress} setProgress={setProgress} />;
+        return <Story story={story} onBack={back} progress={progress} setProgress={setProgress} />;
       }
       return <Hub onPick={setSelected} progress={progress} />;
     }

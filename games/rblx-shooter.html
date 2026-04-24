@@ -258,7 +258,21 @@
     function App() {
       const [progress, setProgress] = useState(loadProgress());
       const [current, setCurrent] = useState(null);
-      if (current) return <Game theme={current} onBack={()=>setCurrent(null)} progress={progress} setProgress={setProgress} />;
+
+      // URL hash routing — load theme directly if hash matches
+      useEffect(() => {
+        const hash = window.location.hash.slice(1).toLowerCase();
+        if (!hash) return;
+        const t = THEMES.find(x => String(x.id).toLowerCase() === hash);
+        if (t) setCurrent(t);
+      }, []);
+
+      const back = () => {
+        if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+        setCurrent(null);
+      };
+
+      if (current) return <Game theme={current} onBack={back} progress={progress} setProgress={setProgress} />;
       return <Hub onPick={setCurrent} progress={progress} />;
     }
 

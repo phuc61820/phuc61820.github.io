@@ -836,7 +836,19 @@
     // ============ APP ============
     const App = () => {
       const [current, setCurrent] = useState(null);
-      const back = () => setCurrent(null);
+
+      // URL hash routing — load puzzle directly if hash matches
+      useEffect(() => {
+        const hash = window.location.hash.slice(1).toLowerCase();
+        if (!hash) return;
+        const p = PUZZLES.find(x => String(x.id).toLowerCase() === hash);
+        if (p) setCurrent(p.id);
+      }, []);
+
+      const back = () => {
+        if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+        setCurrent(null);
+      };
       if (!current) return <Hub onPick={setCurrent} />;
       switch (current) {
         case 'memory': return <MemoryMatch onBack={back} />;

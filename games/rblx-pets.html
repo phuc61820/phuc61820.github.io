@@ -821,10 +821,25 @@
     }
 
     // ========== APP ==========
+    const ACTIVITY_IDS = ['hatch','feed','race','battle','train','evolve','dress','contest','groom','parade'];
+
     function App() {
       const coll = useCollection();
       const [screen, setScreen] = useState('hub');
-      const back = () => setScreen('hub');
+
+      // URL hash routing — load activity directly if hash matches
+      useEffect(() => {
+        let hash = window.location.hash.slice(1).toLowerCase();
+        if (!hash) return;
+        // Accept 'dressup' as alias for 'dress'
+        if (hash === 'dressup') hash = 'dress';
+        if (ACTIVITY_IDS.includes(hash)) setScreen(hash);
+      }, []);
+
+      const back = () => {
+        if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+        setScreen('hub');
+      };
       if (screen === 'hub') return <Hub onPick={setScreen} coll={coll}/>;
       const G = {
         hatch: EggHatch, feed: Feed, race: Race, battle: Battle, train: Train,

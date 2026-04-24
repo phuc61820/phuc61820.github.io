@@ -264,12 +264,32 @@
       );
     }
 
+    const HASH_MAP = ['city','desert','forest','construction','train','temple','volcano','ice','bridge','neon'];
+
     function App() {
       const [selected, setSelected] = useState(null);
       const [progress, setProgress] = useState(loadProgress());
+
+      // URL hash routing — load map directly if hash matches
+      useEffect(() => {
+        const hash = window.location.hash.slice(1).toLowerCase();
+        if (!hash) return;
+        let idx = HASH_MAP.indexOf(hash);
+        if (idx < 0) {
+          const n = parseInt(hash, 10);
+          if (!isNaN(n) && n >= 0 && n < MAPS.length) idx = n;
+        }
+        if (idx >= 0) setSelected(idx);
+      }, []);
+
+      const exit = () => {
+        if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+        setSelected(null);
+      };
+
       return selected === null
         ? <Hub onSelect={setSelected} progress={progress} />
-        : <Game mapId={selected} onExit={()=>setSelected(null)} progress={progress} setProgress={setProgress} />;
+        : <Game mapId={selected} onExit={exit} progress={progress} setProgress={setProgress} />;
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);

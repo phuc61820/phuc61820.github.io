@@ -733,6 +733,20 @@
       const [currentLevel, setCurrentLevel] = useState(0);
       const [progress, setProgress] = useState(loadProgress());
 
+      // URL hash routing — load level directly if hash matches
+      useEffect(() => {
+        const resolveHash = () => {
+          const hash = window.location.hash.slice(1).toLowerCase();
+          if (!hash) return;
+          const idx = LEVELS.findIndex(l => String(l.id) === hash || l.name.toLowerCase() === hash);
+          if (idx >= 0) {
+            setCurrentLevel(idx);
+            setScreen('game');
+          }
+        };
+        resolveHash();
+      }, []);
+
       useEffect(() => {
         window.__obbyGoto = (i) => {
           setCurrentLevel(i);
@@ -755,7 +769,10 @@
       return <Game
         levelIdx={currentLevel}
         onWin={onWin}
-        onExit={() => setScreen('menu')}
+        onExit={() => {
+          if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+          setScreen('menu');
+        }}
       />;
     }
 
