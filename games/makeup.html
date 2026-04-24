@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💄 Trang Điểm Công Chúa — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #ff9a9e, #fad0c4);
+      min-height: 100vh;
+      color: #4a1a3a;
+    }
+    #root { min-height: 100vh; }
+    button { transition: all 0.2s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ============= DATA =============
+    const PRINCESSES = [
+      { id: 'nangmai',   name: 'Công Chúa Nắng Mai',     emoji: '🌅', theme: 'Bình Minh',    color: '#fbbf24', skin: '#ffdbac' },
+      { id: 'bienxanh',  name: 'Công Chúa Biển Xanh',    emoji: '🌊', theme: 'Đại Dương',    color: '#06b6d4', skin: '#f7c99c' },
+      { id: 'runghoa',   name: 'Công Chúa Rừng Hoa',     emoji: '🌺', theme: 'Rừng Xanh',    color: '#10b981', skin: '#f0c8a0' },
+      { id: 'tuyet',     name: 'Công Chúa Tuyết',        emoji: '❄️', theme: 'Băng Giá',     color: '#93c5fd', skin: '#ffe4d6' },
+      { id: 'demtrang',  name: 'Công Chúa Đêm Trăng',    emoji: '🌙', theme: 'Ánh Trăng',    color: '#a78bfa', skin: '#ecc9aa' },
+      { id: 'rongvang',  name: 'Công Chúa Rồng Vàng',    emoji: '🐉', theme: 'Phương Đông',  color: '#f59e0b', skin: '#ffc998' },
+      { id: 'anhdao',    name: 'Công Chúa Hoa Anh Đào',  emoji: '🌸', theme: 'Sakura',       color: '#f9a8d4', skin: '#ffd6bc' },
+      { id: 'phuonghoang', name: 'Công Chúa Phượng Hoàng', emoji: '🔥', theme: 'Lửa Vàng',   color: '#ef4444', skin: '#e8b487' },
+    ];
+
+    const LIPSTICKS = [
+      { id: 'red',    name: 'Đỏ Quyến Rũ', color: '#dc2626' },
+      { id: 'pink',   name: 'Hồng Ngọt',   color: '#ec4899' },
+      { id: 'coral',  name: 'San Hô',      color: '#fb7185' },
+      { id: 'nude',   name: 'Nude',        color: '#d4a08c' },
+      { id: 'berry',  name: 'Berry',       color: '#be185d' },
+      { id: 'purple', name: 'Tím Mộng',    color: '#9333ea' },
+      { id: 'orange', name: 'Cam Tươi',    color: '#f97316' },
+      { id: 'wine',   name: 'Rượu Vang',   color: '#7f1d1d' },
+    ];
+
+    const EYESHADOWS = [
+      { id: 'brown',  name: 'Nâu Đất',    color: '#78350f' },
+      { id: 'blue',   name: 'Xanh Biển',  color: '#1d4ed8' },
+      { id: 'green',  name: 'Xanh Lá',    color: '#15803d' },
+      { id: 'purple', name: 'Tím',        color: '#7c3aed' },
+      { id: 'gold',   name: 'Vàng',       color: '#ca8a04' },
+      { id: 'pink',   name: 'Hồng',       color: '#db2777' },
+      { id: 'silver', name: 'Bạc',        color: '#94a3b8' },
+      { id: 'black',  name: 'Đen Huyền',  color: '#0f172a' },
+    ];
+
+    const BLUSHES = [
+      { id: 'none',   name: 'Không',     color: 'transparent', intensity: 0 },
+      { id: 'soft',   name: 'Dịu',       color: '#fca5a5', intensity: 0.3 },
+      { id: 'peach',  name: 'Đào',       color: '#fb923c', intensity: 0.4 },
+      { id: 'rose',   name: 'Hoa Hồng',  color: '#f472b6', intensity: 0.5 },
+      { id: 'berry',  name: 'Mận',       color: '#e11d48', intensity: 0.6 },
+      { id: 'coral',  name: 'San Hô',    color: '#f87171', intensity: 0.5 },
+    ];
+
+    const HAIRSTYLES = [
+      { id: 'long',     name: 'Tóc Dài',     emoji: '💁‍♀️' },
+      { id: 'short',    name: 'Tóc Ngắn',    emoji: '💇‍♀️' },
+      { id: 'braid',    name: 'Tết Bím',     emoji: '👩‍🦰' },
+      { id: 'curly',    name: 'Xoăn',        emoji: '👩‍🦱' },
+      { id: 'bun',      name: 'Búi Cao',     emoji: '👸' },
+      { id: 'ponytail', name: 'Đuôi Ngựa',   emoji: '🎀' },
+    ];
+
+    const HAIR_COLORS = [
+      { id: 'black',  name: 'Đen',    color: '#1f2937' },
+      { id: 'brown',  name: 'Nâu',    color: '#78350f' },
+      { id: 'blonde', name: 'Vàng',   color: '#fbbf24' },
+      { id: 'red',    name: 'Đỏ',     color: '#b91c1c' },
+      { id: 'silver', name: 'Bạc',    color: '#cbd5e1' },
+    ];
+
+    const ACCESSORIES = [
+      { id: 'none',     name: 'Không',      emoji: '' },
+      { id: 'crown',    name: 'Vương Miện', emoji: '👑' },
+      { id: 'tiara',    name: 'Mũ Công Chúa', emoji: '💎' },
+      { id: 'flower',   name: 'Hoa',        emoji: '🌸' },
+      { id: 'headband', name: 'Băng Đô',    emoji: '🎀' },
+      { id: 'earrings', name: 'Khuyên Tai', emoji: '💍' },
+      { id: 'necklace', name: 'Dây Chuyền', emoji: '📿' },
+      { id: 'glasses',  name: 'Kính',       emoji: '👓' },
+      { id: 'hat',      name: 'Mũ',         emoji: '🎩' },
+    ];
+
+    const DRESSES = [
+      { id: 'pink',    name: 'Hồng Ballet',  color: '#ec4899', emoji: '👗' },
+      { id: 'red',     name: 'Đỏ Hoàng Gia', color: '#dc2626', emoji: '👗' },
+      { id: 'blue',    name: 'Xanh Lộng Lẫy', color: '#2563eb', emoji: '👗' },
+      { id: 'purple',  name: 'Tím Huyền Bí', color: '#9333ea', emoji: '👗' },
+      { id: 'gold',    name: 'Vàng Kim',     color: '#f59e0b', emoji: '👗' },
+      { id: 'white',   name: 'Trắng Thuần',  color: '#f8fafc', emoji: '👰' },
+      { id: 'green',   name: 'Xanh Rừng',    color: '#15803d', emoji: '👗' },
+      { id: 'rainbow', name: 'Cầu Vồng',     color: 'linear-gradient(90deg,#ec4899,#f59e0b,#10b981,#3b82f6,#9333ea)', emoji: '🌈' },
+    ];
+
+    const TABS = [
+      { id: 'lipstick',  label: '💋 Son môi',    icon: '💋' },
+      { id: 'eyeshadow', label: '👁️ Mắt',       icon: '👁️' },
+      { id: 'blush',     label: '🌸 Má hồng',    icon: '🌸' },
+      { id: 'hair',      label: '💇 Tóc',        icon: '💇' },
+      { id: 'accessory', label: '👑 Phụ kiện',   icon: '👑' },
+      { id: 'dress',     label: '👗 Váy',        icon: '👗' },
+    ];
+
+    const DEFAULT_LOOK = {
+      lipstick: 'pink',
+      eyeshadow: 'pink',
+      blush: 'soft',
+      hairstyle: 'long',
+      haircolor: 'black',
+      accessory: 'crown',
+      dress: 'pink',
+    };
+
+    // ============= HELPERS =============
+    const loadLooks = () => {
+      try { return JSON.parse(localStorage.getItem('makeupLooks') || '{}'); }
+      catch { return {}; }
+    };
+    const saveLook = (princessId, look) => {
+      const all = loadLooks();
+      all[princessId] = look;
+      localStorage.setItem('makeupLooks', JSON.stringify(all));
+    };
+
+    const find = (arr, id) => arr.find(x => x.id === id) || arr[0];
+
+    // ============= PRINCESS FACE =============
+    function PrincessFace({ princess, look, large = false }) {
+      const lipstick = find(LIPSTICKS, look.lipstick);
+      const eyeshadow = find(EYESHADOWS, look.eyeshadow);
+      const blush = find(BLUSHES, look.blush);
+      const hairstyle = find(HAIRSTYLES, look.hairstyle);
+      const haircolor = find(HAIR_COLORS, look.haircolor);
+      const accessory = find(ACCESSORIES, look.accessory);
+      const dress = find(DRESSES, look.dress);
+      const size = large ? 340 : 220;
+      const skin = princess.skin;
+
+      // Hair path varies by style
+      const hairPaths = {
+        long:     <path d={`M 60 110 Q 40 100 40 200 Q 40 300 80 330 L 80 200 Q 100 140 170 130 Q 240 140 260 200 L 260 330 Q 300 300 300 200 Q 300 100 280 110 Q 260 60 170 55 Q 80 60 60 110 Z`} fill={haircolor.color} />,
+        short:    <path d={`M 70 120 Q 70 80 170 60 Q 270 80 270 120 Q 275 150 260 170 Q 250 130 220 125 L 120 125 Q 90 130 80 170 Q 65 150 70 120 Z`} fill={haircolor.color} />,
+        braid:    <>
+                    <path d={`M 70 120 Q 70 80 170 60 Q 270 80 270 120 Q 280 160 250 180 L 240 150 L 100 150 Q 90 160 80 180 Q 60 160 70 120 Z`} fill={haircolor.color} />
+                    <path d={`M 150 260 Q 160 290 150 320 Q 170 330 190 320 Q 180 290 190 260 Q 170 250 150 260 Z`} fill={haircolor.color} />
+                  </>,
+        curly:    <>
+                    <circle cx="80" cy="130" r="30" fill={haircolor.color} />
+                    <circle cx="110" cy="100" r="32" fill={haircolor.color} />
+                    <circle cx="160" cy="85" r="34" fill={haircolor.color} />
+                    <circle cx="210" cy="90" r="32" fill={haircolor.color} />
+                    <circle cx="260" cy="110" r="30" fill={haircolor.color} />
+                    <circle cx="275" cy="160" r="28" fill={haircolor.color} />
+                    <circle cx="65" cy="175" r="28" fill={haircolor.color} />
+                  </>,
+        bun:      <>
+                    <ellipse cx="170" cy="55" rx="50" ry="40" fill={haircolor.color} />
+                    <path d={`M 80 120 Q 80 90 170 80 Q 260 90 260 120 Q 270 160 245 175 L 95 175 Q 70 160 80 120 Z`} fill={haircolor.color} />
+                  </>,
+        ponytail: <>
+                    <path d={`M 80 120 Q 80 85 170 65 Q 260 85 260 120 Q 270 155 250 170 L 90 170 Q 70 155 80 120 Z`} fill={haircolor.color} />
+                    <path d={`M 260 150 Q 310 180 320 260 Q 325 320 290 330 Q 300 260 270 190 Z`} fill={haircolor.color} />
+                  </>,
+      };
+
+      // Accessory position overlay
+      const accOverlay = () => {
+        if (!accessory.emoji) return null;
+        const pos = {
+          crown:    { top: '2%', left: '50%', fontSize: large?64:44, transform: 'translateX(-50%)' },
+          tiara:    { top: '5%', left: '50%', fontSize: large?56:36, transform: 'translateX(-50%)' },
+          flower:   { top: '12%', left: '22%', fontSize: large?48:32 },
+          headband: { top: '18%', left: '50%', fontSize: large?48:34, transform: 'translateX(-50%)' },
+          earrings: { top: '52%', left: '10%', fontSize: large?28:20 },
+          necklace: { top: '75%', left: '50%', fontSize: large?40:28, transform: 'translateX(-50%)' },
+          glasses:  { top: '40%', left: '50%', fontSize: large?52:34, transform: 'translateX(-50%)' },
+          hat:      { top: '-5%', left: '50%', fontSize: large?70:48, transform: 'translateX(-50%)' },
+        }[accessory.id] || {};
+        return <div style={{ position: 'absolute', ...pos, pointerEvents: 'none', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>{accessory.emoji}</div>;
+      };
+
+      return (
+        <div style={{ position: 'relative', width: size, height: size * 1.4, margin: '0 auto' }}>
+          <svg viewBox="0 0 340 480" width={size} height={size * 1.4}>
+            {/* Dress */}
+            {dress.id === 'rainbow' ? (
+              <>
+                <defs>
+                  <linearGradient id="rainbow" x1="0" x2="1">
+                    <stop offset="0%" stopColor="#ec4899" />
+                    <stop offset="25%" stopColor="#f59e0b" />
+                    <stop offset="50%" stopColor="#10b981" />
+                    <stop offset="75%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#9333ea" />
+                  </linearGradient>
+                </defs>
+                <path d="M 100 340 Q 170 320 240 340 L 290 470 L 50 470 Z" fill="url(#rainbow)" stroke="#fff" strokeWidth="2"/>
+              </>
+            ) : (
+              <path d="M 100 340 Q 170 320 240 340 L 290 470 L 50 470 Z" fill={dress.color} stroke="#fff" strokeWidth="2"/>
+            )}
+            {/* Neck */}
+            <rect x="150" y="300" width="40" height="50" fill={skin} />
+            {/* Hair back */}
+            {hairPaths[hairstyle.id]}
+            {/* Face */}
+            <ellipse cx="170" cy="200" rx="80" ry="95" fill={skin} />
+            {/* Cheeks */}
+            {blush.intensity > 0 && <>
+              <circle cx="115" cy="220" r="18" fill={blush.color} opacity={blush.intensity} />
+              <circle cx="225" cy="220" r="18" fill={blush.color} opacity={blush.intensity} />
+            </>}
+            {/* Eyebrows */}
+            <path d="M 125 170 Q 140 165 155 170" stroke={haircolor.color} strokeWidth="3" fill="none" strokeLinecap="round"/>
+            <path d="M 185 170 Q 200 165 215 170" stroke={haircolor.color} strokeWidth="3" fill="none" strokeLinecap="round"/>
+            {/* Eyeshadow */}
+            <ellipse cx="140" cy="188" rx="16" ry="6" fill={eyeshadow.color} opacity="0.5" />
+            <ellipse cx="200" cy="188" rx="16" ry="6" fill={eyeshadow.color} opacity="0.5" />
+            {/* Eyes */}
+            <ellipse cx="140" cy="195" rx="10" ry="12" fill="#fff" />
+            <ellipse cx="200" cy="195" rx="10" ry="12" fill="#fff" />
+            <circle cx="140" cy="197" r="7" fill={eyeshadow.color} />
+            <circle cx="200" cy="197" r="7" fill={eyeshadow.color} />
+            <circle cx="140" cy="196" r="3" fill="#0f172a" />
+            <circle cx="200" cy="196" r="3" fill="#0f172a" />
+            <circle cx="142" cy="193" r="1.5" fill="#fff" />
+            <circle cx="202" cy="193" r="1.5" fill="#fff" />
+            {/* Eyelashes */}
+            <path d="M 130 185 L 128 180 M 140 183 L 140 178 M 150 185 L 152 180" stroke="#0f172a" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+            <path d="M 190 185 L 188 180 M 200 183 L 200 178 M 210 185 L 212 180" stroke="#0f172a" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+            {/* Nose */}
+            <path d="M 170 210 Q 165 230 170 240 Q 175 240 175 235" stroke="#c08060" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+            {/* Lips */}
+            <path d={`M 150 265 Q 160 258 170 262 Q 180 258 190 265 Q 185 275 170 275 Q 155 275 150 265 Z`} fill={lipstick.color} stroke={lipstick.color} strokeWidth="1"/>
+            <path d={`M 155 267 Q 170 264 185 267`} stroke="#fff" strokeWidth="0.8" fill="none" opacity="0.5"/>
+          </svg>
+          {accOverlay()}
+        </div>
+      );
+    }
+
+    // ============= PRINCESS SELECT SCREEN =============
+    function PrincessSelect({ onPick }) {
+      return (
+        <div style={{ padding: '24px 16px', maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <a href="../index.html" style={{
+              display: 'inline-block',
+              padding: '8px 18px',
+              background: 'rgba(255,255,255,0.7)',
+              color: '#be185d',
+              textDecoration: 'none',
+              borderRadius: 20,
+              fontWeight: 700,
+              fontSize: 14,
+              marginBottom: 16,
+            }}>← Về Game Hub</a>
+            <h1 style={{
+              fontSize: 'clamp(28px, 5vw, 44px)',
+              color: '#fff',
+              textShadow: '2px 3px 8px rgba(190,24,93,0.5)',
+              marginBottom: 8,
+            }}>💄 Trang Điểm Công Chúa ✨</h1>
+            <p style={{ fontSize: 18, color: '#fff', opacity: 0.95, textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}>
+              💖 Chọn nàng công chúa yêu thích của bạn 💖
+            </p>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: 16,
+          }}>
+            {PRINCESSES.map(p => (
+              <button key={p.id} onClick={() => onPick(p)} style={{
+                background: `linear-gradient(160deg, #fff 0%, ${p.color}33 100%)`,
+                border: `3px solid ${p.color}`,
+                borderRadius: 20,
+                padding: 20,
+                cursor: 'pointer',
+                boxShadow: `0 6px 20px ${p.color}55`,
+                fontFamily: 'inherit',
+                color: '#4a1a3a',
+              }}>
+                <div style={{ fontSize: 64, marginBottom: 8 }}>{p.emoji}</div>
+                <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>{p.name}</div>
+                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>✨ {p.theme} ✨</div>
+                <div style={{
+                  background: p.color,
+                  color: '#fff',
+                  padding: '8px 12px',
+                  borderRadius: 20,
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}>Trang Điểm 💖</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ============= MAKEUP STUDIO =============
+    function MakeupStudio({ princess, onBack }) {
+      const saved = loadLooks()[princess.id];
+      const [look, setLook] = useState(saved || DEFAULT_LOOK);
+      const [tab, setTab] = useState('lipstick');
+      const [notice, setNotice] = useState('');
+      const [celebrate, setCelebrate] = useState(false);
+
+      useEffect(() => { saveLook(princess.id, look); }, [look, princess.id]);
+
+      const setField = (field, value) => setLook(L => ({ ...L, [field]: value }));
+      const reset = () => setLook(DEFAULT_LOOK);
+
+      const flash = (msg) => {
+        setNotice(msg);
+        setTimeout(() => setNotice(''), 2000);
+      };
+
+      const Swatch = ({ items, field, showName = true }) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 10 }}>
+          {items.map(it => {
+            const active = look[field] === it.id;
+            return (
+              <button key={it.id} onClick={() => setField(field, it.id)} style={{
+                background: it.color === 'transparent' ? '#f3f4f6' : it.color,
+                color: ['white', 'nude', 'none', 'silver', 'gold', 'blonde'].includes(it.id) ? '#333' : '#fff',
+                border: active ? '3px solid #be185d' : '2px solid rgba(255,255,255,0.7)',
+                borderRadius: 14,
+                padding: '12px 6px',
+                cursor: 'pointer',
+                boxShadow: active ? '0 0 0 3px #fbcfe8, 0 4px 10px rgba(190,24,93,0.3)' : '0 3px 8px rgba(0,0,0,0.1)',
+                fontFamily: 'inherit',
+                fontWeight: 700,
+                fontSize: 12,
+                textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+              }}>
+                {showName && <div style={{ minHeight: 28 }}>{it.name}</div>}
+                {active && <div style={{ marginTop: 4 }}>✓</div>}
+              </button>
+            );
+          })}
+        </div>
+      );
+
+      const AccessoryGrid = () => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 10 }}>
+          {ACCESSORIES.map(a => {
+            const active = look.accessory === a.id;
+            return (
+              <button key={a.id} onClick={() => setField('accessory', a.id)} style={{
+                background: active ? 'linear-gradient(135deg, #fbcfe8, #f9a8d4)' : 'rgba(255,255,255,0.8)',
+                border: active ? '3px solid #be185d' : '2px solid #fbcfe8',
+                borderRadius: 14,
+                padding: 10,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontWeight: 700,
+                fontSize: 11,
+                color: '#4a1a3a',
+              }}>
+                <div style={{ fontSize: 32, minHeight: 36 }}>{a.emoji || '🚫'}</div>
+                <div>{a.name}</div>
+              </button>
+            );
+          })}
+        </div>
+      );
+
+      const HairPanel = () => (
+        <div>
+          <div style={{ fontWeight: 800, color: '#be185d', marginBottom: 8, fontSize: 14 }}>💇 Kiểu tóc</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 10, marginBottom: 16 }}>
+            {HAIRSTYLES.map(h => {
+              const active = look.hairstyle === h.id;
+              return (
+                <button key={h.id} onClick={() => setField('hairstyle', h.id)} style={{
+                  background: active ? 'linear-gradient(135deg, #fbcfe8, #f9a8d4)' : 'rgba(255,255,255,0.8)',
+                  border: active ? '3px solid #be185d' : '2px solid #fbcfe8',
+                  borderRadius: 14,
+                  padding: 10,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  fontWeight: 700,
+                  fontSize: 11,
+                  color: '#4a1a3a',
+                }}>
+                  <div style={{ fontSize: 30, minHeight: 34 }}>{h.emoji}</div>
+                  <div>{h.name}</div>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontWeight: 800, color: '#be185d', marginBottom: 8, fontSize: 14 }}>🎨 Màu tóc</div>
+          <Swatch items={HAIR_COLORS} field="haircolor" />
+        </div>
+      );
+
+      return (
+        <div style={{ padding: 16, maxWidth: 1200, margin: '0 auto' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+            <button onClick={onBack} style={{
+              padding: '8px 16px',
+              background: 'rgba(255,255,255,0.8)',
+              color: '#be185d',
+              border: 'none',
+              borderRadius: 20,
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}>← Chọn công chúa khác</button>
+            <div style={{ color: '#fff', fontWeight: 800, fontSize: 18, textShadow: '1px 2px 4px rgba(190,24,93,0.4)' }}>
+              {princess.emoji} {princess.name}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(320px, 1.2fr)', gap: 20, alignItems: 'start' }}>
+            {/* Preview */}
+            <div style={{
+              background: `linear-gradient(160deg, #fff, ${princess.color}33)`,
+              border: `3px solid ${princess.color}`,
+              borderRadius: 24,
+              padding: 20,
+              boxShadow: `0 8px 30px ${princess.color}66`,
+              position: 'sticky',
+              top: 16,
+            }}>
+              <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14, color: '#be185d', fontWeight: 800 }}>
+                ✨ {princess.theme} ✨
+              </div>
+              <PrincessFace princess={princess} look={look} large={true} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 14 }}>
+                <button onClick={() => setCelebrate(true)} style={{
+                  padding: 12,
+                  background: 'linear-gradient(135deg, #ec4899, #be185d)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 14,
+                  fontWeight: 800,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  boxShadow: '0 4px 12px rgba(190,24,93,0.4)',
+                }}>💖 Hoàn thành!</button>
+                <button onClick={() => flash('📸 Đã lưu ảnh vào bộ sưu tập!')} style={{
+                  padding: 12,
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 14,
+                  fontWeight: 800,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}>📸 Chụp Ảnh</button>
+                <button onClick={reset} style={{
+                  padding: 12,
+                  background: 'rgba(255,255,255,0.9)',
+                  color: '#be185d',
+                  border: '2px solid #fbcfe8',
+                  borderRadius: 14,
+                  fontWeight: 800,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  gridColumn: 'span 2',
+                }}>🔄 Làm Lại</button>
+              </div>
+            </div>
+
+            {/* Tool panel */}
+            <div style={{
+              background: 'rgba(255,255,255,0.9)',
+              borderRadius: 24,
+              padding: 16,
+              boxShadow: '0 8px 30px rgba(190,24,93,0.25)',
+              border: '3px solid #fbcfe8',
+            }}>
+              {/* Tabs */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+                {TABS.map(t => (
+                  <button key={t.id} onClick={() => setTab(t.id)} style={{
+                    padding: '8px 10px',
+                    background: tab === t.id ? 'linear-gradient(135deg, #ec4899, #be185d)' : 'rgba(251,207,232,0.5)',
+                    color: tab === t.id ? '#fff' : '#be185d',
+                    border: 'none',
+                    borderRadius: 14,
+                    fontWeight: 800,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    flex: '1 1 auto',
+                    minWidth: 0,
+                  }}>{t.label}</button>
+                ))}
+              </div>
+
+              {/* Tab content */}
+              <div>
+                {tab === 'lipstick' && <>
+                  <div style={{ fontWeight: 800, color: '#be185d', marginBottom: 10 }}>💋 Chọn màu son</div>
+                  <Swatch items={LIPSTICKS} field="lipstick" />
+                </>}
+                {tab === 'eyeshadow' && <>
+                  <div style={{ fontWeight: 800, color: '#be185d', marginBottom: 10 }}>👁️ Phấn mắt</div>
+                  <Swatch items={EYESHADOWS} field="eyeshadow" />
+                </>}
+                {tab === 'blush' && <>
+                  <div style={{ fontWeight: 800, color: '#be185d', marginBottom: 10 }}>🌸 Má hồng</div>
+                  <Swatch items={BLUSHES} field="blush" />
+                </>}
+                {tab === 'hair' && <HairPanel />}
+                {tab === 'accessory' && <>
+                  <div style={{ fontWeight: 800, color: '#be185d', marginBottom: 10 }}>👑 Phụ kiện</div>
+                  <AccessoryGrid />
+                </>}
+                {tab === 'dress' && <>
+                  <div style={{ fontWeight: 800, color: '#be185d', marginBottom: 10 }}>👗 Chọn váy</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10 }}>
+                    {DRESSES.map(d => {
+                      const active = look.dress === d.id;
+                      return (
+                        <button key={d.id} onClick={() => setField('dress', d.id)} style={{
+                          background: d.color,
+                          border: active ? '3px solid #be185d' : '2px solid rgba(255,255,255,0.7)',
+                          borderRadius: 14,
+                          padding: 12,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          fontWeight: 700,
+                          fontSize: 12,
+                          color: d.id === 'white' || d.id === 'gold' ? '#4a1a3a' : '#fff',
+                          textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                          boxShadow: active ? '0 0 0 3px #fbcfe8' : '0 3px 8px rgba(0,0,0,0.1)',
+                        }}>
+                          <div style={{ fontSize: 28, minHeight: 32 }}>{d.emoji}</div>
+                          <div>{d.name}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>}
+              </div>
+            </div>
+          </div>
+
+          {/* Notice toast */}
+          {notice && (
+            <div style={{
+              position: 'fixed',
+              bottom: 30,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'linear-gradient(135deg, #ec4899, #be185d)',
+              color: '#fff',
+              padding: '14px 24px',
+              borderRadius: 24,
+              fontWeight: 800,
+              boxShadow: '0 6px 24px rgba(190,24,93,0.4)',
+              zIndex: 100,
+            }}>{notice}</div>
+          )}
+
+          {/* Celebrate modal */}
+          {celebrate && (
+            <div onClick={() => setCelebrate(false)} style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 200,
+              padding: 20,
+            }}>
+              <div onClick={e => e.stopPropagation()} style={{
+                background: 'linear-gradient(160deg, #fff, #fbcfe8)',
+                borderRadius: 24,
+                padding: 28,
+                maxWidth: 380,
+                width: '100%',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+                border: '4px solid #f9a8d4',
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 48, marginBottom: 6 }}>✨💖✨</div>
+                <h2 style={{ color: '#be185d', marginBottom: 6 }}>Tuyệt Đẹp!</h2>
+                <p style={{ fontSize: 14, color: '#4a1a3a', marginBottom: 14 }}>
+                  {princess.name} lộng lẫy như một bà hoàng! 👸
+                </p>
+                <PrincessFace princess={princess} look={look} large={false} />
+                <button onClick={() => setCelebrate(false)} style={{
+                  marginTop: 14,
+                  padding: '12px 30px',
+                  background: 'linear-gradient(135deg, #ec4899, #be185d)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 20,
+                  fontWeight: 800,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}>💖 Cảm Ơn!</button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ============= APP =============
+    function App() {
+      const [picked, setPicked] = useState(null);
+      if (!picked) return <PrincessSelect onPick={setPicked} />;
+      return <MakeupStudio princess={picked} onBack={() => setPicked(null)} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

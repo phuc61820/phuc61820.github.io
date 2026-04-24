@@ -342,6 +342,19 @@ const GAMES = [
   border: '#fbbf24',
   file: 'harrypotter.html',
   featured: true
+}
+,
+{
+  id: 'makeup',
+  name: 'Trang Điểm Công Chúa',
+  icon: '💄',
+  desc: 'Chọn công chúa yêu thích và trang điểm cho cô ấy! Son môi, tóc, váy, phụ kiện!',
+  category: 'simulation',
+  tags: ['sáng tạo', 'nữ tính', 'thời trang'],
+  bg: 'linear-gradient(135deg, #ec4899, #f9a8d4)',
+  border: '#fbcfe8',
+  file: 'makeup.html',
+  featured: true
 }];
 
 // ============================================================
