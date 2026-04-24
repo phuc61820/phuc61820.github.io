@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏃 Parkour Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a2e1a; min-height: 100vh; color: white; overflow: hidden; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    const MAPS = [
+      { id: 0, name: 'City Rooftops', emoji: '🏙️', bg: 'linear-gradient(180deg,#4a6fa5 0%,#8baac4 60%,#2c3e50 100%)', ground: '#34495e', player: '🏃', coinFreq: 0.3, obsFreq: 0.02, speed: 5, mult: 1.0, goal: 1000 },
+      { id: 1, name: 'Desert Ruins', emoji: '🏜️', bg: 'linear-gradient(180deg,#f6b352 0%,#e89b4f 50%,#a0522d 100%)', ground: '#8b4513', player: '🏃‍♂️', coinFreq: 0.28, obsFreq: 0.025, speed: 5.5, mult: 1.2, goal: 1000 },
+      { id: 2, name: 'Forest Canopy', emoji: '🌲', bg: 'linear-gradient(180deg,#2d5016 0%,#4a7c2e 50%,#1a3b0a 100%)', ground: '#3d2817', player: '🏃‍♀️', coinFreq: 0.32, obsFreq: 0.028, speed: 5.5, mult: 1.3, goal: 1000 },
+      { id: 3, name: 'Construction Site', emoji: '🏗️', bg: 'linear-gradient(180deg,#5c5c5c 0%,#8a8a8a 50%,#3a3a3a 100%)', ground: '#d4a017', player: '👷', coinFreq: 0.25, obsFreq: 0.032, speed: 6, mult: 1.4, goal: 1000 },
+      { id: 4, name: 'Train Tracks', emoji: '🚂', bg: 'linear-gradient(180deg,#2b3a4a 0%,#4a6275 50%,#1a2531 100%)', ground: '#2f2416', player: '🏃', coinFreq: 0.3, obsFreq: 0.035, speed: 6.5, mult: 1.5, goal: 1000 },
+      { id: 5, name: 'Ancient Temple', emoji: '🏛️', bg: 'linear-gradient(180deg,#d4c69a 0%,#a89968 50%,#6b5d3f 100%)', ground: '#5c4a2f', player: '🧑', coinFreq: 0.3, obsFreq: 0.04, speed: 7, mult: 1.6, goal: 1000 },
+      { id: 6, name: 'Volcano Leap', emoji: '🌋', bg: 'linear-gradient(180deg,#3a0a0a 0%,#9c2020 40%,#ff6b1a 80%,#2a0505 100%)', ground: '#4a1a0a', player: '🔥', coinFreq: 0.28, obsFreq: 0.045, speed: 7.5, mult: 1.8, goal: 1000 },
+      { id: 7, name: 'Ice Cliffs', emoji: '❄️', bg: 'linear-gradient(180deg,#a8dcf0 0%,#5caed1 50%,#1e4a68 100%)', ground: '#d0e8f0', player: '🧊', coinFreq: 0.3, obsFreq: 0.05, speed: 8, mult: 2.0, goal: 1000 },
+      { id: 8, name: 'Bridge Challenge', emoji: '🌉', bg: 'linear-gradient(180deg,#4a2d5a 0%,#7a4a8a 50%,#2a1a3a 100%)', ground: '#5a3a6a', player: '🦸', coinFreq: 0.25, obsFreq: 0.055, speed: 8.5, mult: 2.2, goal: 1000 },
+      { id: 9, name: 'Neon Highway', emoji: '⚡', bg: 'linear-gradient(180deg,#0a0a2a 0%,#2a0a4a 40%,#ff00ff 70%,#00ffff 100%)', ground: '#1a0a3a', player: '🤖', coinFreq: 0.3, obsFreq: 0.06, speed: 9, mult: 2.5, goal: 1000 }
+    ];
+
+    const OBSTACLES = ['🧱','🪨','📦','🔥','⚠️','🚧'];
+
+    const loadProgress = () => {
+      try { return JSON.parse(localStorage.getItem('rblxParkourProgress') || '{}'); }
+      catch(e) { return {}; }
+    };
+    const saveProgress = (p) => { try { localStorage.setItem('rblxParkourProgress', JSON.stringify(p)); } catch(e) {} };
+
+    function Hub({ onSelect, progress }) {
+      return (
+        <div style={{padding:'20px',minHeight:'100vh',background:'linear-gradient(180deg,#0f2d0f 0%,#1a4a1a 100%)',overflowY:'auto',maxHeight:'100vh'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,maxWidth:1200,margin:'0 auto 20px'}}>
+            <a href="../index.html" style={{background:'#2a5a2a',color:'white',padding:'10px 18px',borderRadius:8,textDecoration:'none',fontWeight:'bold'}}>← Về Trang Chủ</a>
+            <h1 style={{fontSize:28,textAlign:'center',flex:1}}>🏃 PARKOUR HUB</h1>
+            <div style={{width:120}}></div>
+          </div>
+          <p style={{textAlign:'center',marginBottom:20,opacity:0.85}}>Chọn 1 trong 10 bản đồ parkour — Nhảy qua chướng ngại vật, thu thập xu, đi thật xa!</p>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:15,maxWidth:1200,margin:'0 auto'}}>
+            {MAPS.map(m => {
+              const hs = progress[m.id] || { hiScore:0, maxDist:0, totalCoins:0, cleared:false };
+              return (
+                <button key={m.id} onClick={()=>onSelect(m.id)} style={{background:m.bg,border:'3px solid '+(hs.cleared?'#ffd700':'#fff'),borderRadius:14,padding:15,color:'white',cursor:'pointer',textAlign:'left',textShadow:'1px 1px 3px rgba(0,0,0,0.7)'}}>
+                  <div style={{fontSize:40,textAlign:'center',marginBottom:6}}>{m.emoji}</div>
+                  <div style={{fontSize:17,fontWeight:'bold',textAlign:'center',marginBottom:6}}>{m.name}</div>
+                  <div style={{fontSize:12,opacity:0.95}}>Độ khó: {'⭐'.repeat(Math.ceil(m.mult))}</div>
+                  <div style={{fontSize:12,opacity:0.95}}>Hệ số điểm: x{m.mult.toFixed(1)}</div>
+                  <div style={{marginTop:8,padding:8,background:'rgba(0,0,0,0.35)',borderRadius:6,fontSize:12}}>
+                    <div>🏆 Điểm cao: {hs.hiScore}</div>
+                    <div>📏 Xa nhất: {hs.maxDist}m</div>
+                    <div>💰 Tổng xu: {hs.totalCoins}</div>
+                    {hs.cleared && <div style={{color:'#ffd700',fontWeight:'bold'}}>✓ Đã chinh phục!</div>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{textAlign:'center',marginTop:25,opacity:0.7,fontSize:13}}>Nhấn phím SPACE hoặc chạm màn hình để nhảy!</div>
+        </div>
+      );
+    }
+
+    function Game({ mapId, onExit, progress, setProgress }) {
+      const map = MAPS[mapId];
+      const [tick, setTick] = useState(0);
+      const [running, setRunning] = useState(true);
+      const [dead, setDead] = useState(false);
+      const [won, setWon] = useState(false);
+      const stateRef = useRef({
+        playerY: 0, velY: 0, jumping: false, doubleUsed: false,
+        distance: 0, coins: 0, score: 0,
+        obstacles: [], pickups: [], clouds: [],
+        speed: map.speed, nextSpawn: 60, frame: 0
+      });
+      const W = 900, H = 420, GROUND = 340, PLAYER_X = 110;
+      const GRAV = 0.8, JUMP_V = 14;
+
+      const jump = useCallback(() => {
+        const s = stateRef.current;
+        if (!running || dead || won) return;
+        if (!s.jumping) { s.velY = -JUMP_V; s.jumping = true; s.doubleUsed = false; }
+        else if (!s.doubleUsed) { s.velY = -JUMP_V*0.85; s.doubleUsed = true; }
+      }, [running, dead, won]);
+
+      useEffect(() => {
+        const onKey = (e) => { if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); jump(); } };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [jump]);
+
+      useEffect(() => {
+        if (!running || dead || won) return;
+        const iv = setInterval(() => {
+          const s = stateRef.current;
+          s.frame++;
+          // physics
+          s.velY += GRAV;
+          s.playerY += s.velY;
+          if (s.playerY >= 0) { s.playerY = 0; s.velY = 0; s.jumping = false; s.doubleUsed = false; }
+
+          // move world
+          const sp = s.speed + Math.min(s.distance*0.002, 4);
+          s.distance += sp*0.1;
+          s.score = Math.floor(s.distance * map.mult) + s.coins*5;
+
+          // spawn
+          s.nextSpawn--;
+          if (s.nextSpawn <= 0) {
+            const r = Math.random();
+            if (r < map.obsFreq*18) {
+              // obstacle
+              const h = 28 + Math.random()*22;
+              s.obstacles.push({ x: W+20, y: GROUND-h, w: 26+Math.random()*14, h, type: OBSTACLES[Math.floor(Math.random()*OBSTACLES.length)] });
+            } else if (r < map.obsFreq*18 + map.coinFreq) {
+              // coin row
+              const yOff = 40 + Math.random()*140;
+              for (let i=0;i<3;i++) s.pickups.push({ x: W+20+i*28, y: GROUND-yOff, r: 12 });
+            }
+            s.nextSpawn = 28 + Math.floor(Math.random()*40);
+          }
+          // clouds
+          if (s.frame % 60 === 0) s.clouds.push({ x: W+30, y: 30+Math.random()*120, sp: 0.5+Math.random()*1.2, e: ['☁️','⛅','🌤️'][Math.floor(Math.random()*3)] });
+
+          // update positions
+          s.obstacles.forEach(o => o.x -= sp);
+          s.pickups.forEach(p => p.x -= sp);
+          s.clouds.forEach(c => c.x -= c.sp);
+          s.obstacles = s.obstacles.filter(o => o.x + o.w > -20);
+          s.pickups = s.pickups.filter(p => p.x > -20);
+          s.clouds = s.clouds.filter(c => c.x > -60);
+
+          // collision
+          const px = PLAYER_X, py = GROUND - 40 + s.playerY, pw = 32, ph = 40;
+          for (const o of s.obstacles) {
+            if (px < o.x + o.w && px+pw > o.x && py < o.y + o.h && py+ph > o.y) {
+              setDead(true); setRunning(false); return;
+            }
+          }
+          s.pickups = s.pickups.filter(p => {
+            const dx = (px+pw/2) - p.x, dy = (py+ph/2) - p.y;
+            if (dx*dx + dy*dy < (p.r+16)*(p.r+16)) { s.coins++; return false; }
+            return true;
+          });
+
+          // win
+          if (s.distance >= map.goal) { setWon(true); setRunning(false); return; }
+
+          setTick(t => t+1);
+        }, 33);
+        return () => clearInterval(iv);
+      }, [running, dead, won, map]);
+
+      useEffect(() => {
+        if (dead || won) {
+          const s = stateRef.current;
+          const cur = progress[mapId] || { hiScore:0, maxDist:0, totalCoins:0, cleared:false };
+          const upd = {
+            hiScore: Math.max(cur.hiScore, s.score),
+            maxDist: Math.max(cur.maxDist, Math.floor(s.distance)),
+            totalCoins: cur.totalCoins + s.coins,
+            cleared: cur.cleared || won
+          };
+          const next = { ...progress, [mapId]: upd };
+          setProgress(next); saveProgress(next);
+        }
+      }, [dead, won]);
+
+      const restart = () => {
+        stateRef.current = {
+          playerY: 0, velY: 0, jumping: false, doubleUsed: false,
+          distance: 0, coins: 0, score: 0,
+          obstacles: [], pickups: [], clouds: [],
+          speed: map.speed, nextSpawn: 60, frame: 0
+        };
+        setDead(false); setWon(false); setRunning(true);
+      };
+
+      const s = stateRef.current;
+      const hs = progress[mapId] || { hiScore:0 };
+
+      return (
+        <div style={{minHeight:'100vh',background:map.bg,position:'relative',overflow:'hidden'}} onClick={jump} onTouchStart={(e)=>{e.preventDefault();jump();}}>
+          <div style={{position:'absolute',top:10,left:10,right:10,display:'flex',justifyContent:'space-between',alignItems:'center',zIndex:10}}>
+            <button onClick={(e)=>{e.stopPropagation();onExit();}} style={{background:'rgba(0,0,0,0.6)',color:'white',border:'none',padding:'8px 14px',borderRadius:8,cursor:'pointer',fontWeight:'bold'}}>← Menu</button>
+            <div style={{background:'rgba(0,0,0,0.6)',padding:'8px 16px',borderRadius:8,fontWeight:'bold',textShadow:'1px 1px 2px black'}}>
+              {map.emoji} {map.name} — x{map.mult.toFixed(1)}
+            </div>
+            <div style={{background:'rgba(0,0,0,0.6)',padding:'8px 14px',borderRadius:8,fontWeight:'bold'}}>🏆 {hs.hiScore}</div>
+          </div>
+
+          <div style={{position:'absolute',top:56,left:10,background:'rgba(0,0,0,0.55)',padding:'6px 12px',borderRadius:8,fontWeight:'bold',zIndex:10}}>
+            📏 {Math.floor(s.distance)}m / {map.goal}m
+          </div>
+          <div style={{position:'absolute',top:56,right:10,background:'rgba(0,0,0,0.55)',padding:'6px 12px',borderRadius:8,fontWeight:'bold',zIndex:10}}>
+            💰 {s.coins} · ⭐ {s.score}
+          </div>
+
+          {/* Game canvas area */}
+          <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:W,height:H,maxWidth:'98vw',overflow:'hidden',borderRadius:14,boxShadow:'0 10px 40px rgba(0,0,0,0.5)',border:'3px solid rgba(255,255,255,0.25)'}}>
+            {/* clouds */}
+            {s.clouds.map((c,i)=>(
+              <div key={'c'+i} style={{position:'absolute',left:c.x,top:c.y,fontSize:32,opacity:0.8}}>{c.e}</div>
+            ))}
+            {/* ground */}
+            <div style={{position:'absolute',left:0,right:0,top:GROUND,height:H-GROUND,background:map.ground,borderTop:'4px solid rgba(255,255,255,0.25)'}}>
+              {[...Array(20)].map((_,i)=>(
+                <div key={i} style={{position:'absolute',left:((i*60 - (s.distance*10)%60)),top:8,width:40,height:4,background:'rgba(255,255,255,0.15)',borderRadius:2}}></div>
+              ))}
+            </div>
+            {/* obstacles */}
+            {s.obstacles.map((o,i)=>(
+              <div key={'o'+i} style={{position:'absolute',left:o.x,top:o.y,width:o.w,height:o.h,display:'flex',alignItems:'center',justifyContent:'center',fontSize:Math.min(o.w,o.h)}}>
+                {o.type}
+              </div>
+            ))}
+            {/* pickups */}
+            {s.pickups.map((p,i)=>(
+              <div key={'p'+i} style={{position:'absolute',left:p.x-p.r,top:p.y-p.r,fontSize:24,filter:'drop-shadow(0 0 6px gold)'}}>💰</div>
+            ))}
+            {/* player */}
+            <div style={{position:'absolute',left:PLAYER_X,top:GROUND-40+s.playerY,fontSize:42,transform:'scaleX(1)',transition:'none'}}>
+              {map.player}
+            </div>
+
+            {(dead || won) && (
+              <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:18}}>
+                <div style={{fontSize:56}}>{won?'🏆':'💥'}</div>
+                <div style={{fontSize:28,fontWeight:'bold'}}>{won?'CHIẾN THẮNG!':'THUA RỒI!'}</div>
+                <div style={{fontSize:16,textAlign:'center'}}>
+                  📏 Quãng đường: {Math.floor(s.distance)}m<br/>
+                  💰 Xu: {s.coins}<br/>
+                  ⭐ Điểm: {s.score}
+                  {s.score > hs.hiScore && <div style={{color:'#ffd700',marginTop:6}}>🎉 ĐIỂM KỶ LỤC MỚI!</div>}
+                </div>
+                <div style={{display:'flex',gap:10}}>
+                  <button onClick={(e)=>{e.stopPropagation();restart();}} style={{background:'#2e8b2e',color:'white',border:'none',padding:'10px 20px',borderRadius:8,cursor:'pointer',fontWeight:'bold',fontSize:16}}>🔁 Chơi lại</button>
+                  <button onClick={(e)=>{e.stopPropagation();onExit();}} style={{background:'#5a5a7a',color:'white',border:'none',padding:'10px 20px',borderRadius:8,cursor:'pointer',fontWeight:'bold',fontSize:16}}>🏠 Menu</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{position:'absolute',bottom:10,left:0,right:0,textAlign:'center',fontSize:13,opacity:0.8,textShadow:'1px 1px 2px black'}}>
+            Nhấn SPACE hoặc chạm màn hình để nhảy (nhấn 2 lần để nhảy đôi!)
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [selected, setSelected] = useState(null);
+      const [progress, setProgress] = useState(loadProgress());
+      return selected === null
+        ? <Hub onSelect={setSelected} progress={progress} />
+        : <Game mapId={selected} onExit={()=>setSelected(null)} progress={progress} setProgress={setProgress} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

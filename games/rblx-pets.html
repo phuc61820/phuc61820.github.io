@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐾 Pet Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #2e0a2e; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+    .card { background: rgba(255,255,255,0.08); border-radius: 16px; padding: 16px; border: 2px solid rgba(255,255,255,0.15); cursor: pointer; text-align: center; }
+    .card:hover { background: rgba(255,255,255,0.15); border-color: #ffb7ff; transform: translateY(-4px); }
+    .btn { padding: 10px 18px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; color: white; font-size: 14px; }
+    .btn-primary { background: linear-gradient(135deg, #ff6ec4, #7873f5); }
+    .btn-second { background: linear-gradient(135deg, #43e97b, #38f9d7); color: #0a3d2b; }
+    .btn-warn { background: linear-gradient(135deg, #fa709a, #fee140); color: #3a1a10; }
+    .btn-back { background: rgba(255,255,255,0.15); }
+    .pet-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 20px; font-size: 13px; margin: 3px; }
+    .rarity-common { background: rgba(180,180,180,0.2); border: 1px solid #aaa; }
+    .rarity-rare { background: rgba(70,140,255,0.25); border: 1px solid #4d8fff; }
+    .rarity-epic { background: rgba(180,70,255,0.25); border: 1px solid #c266ff; }
+    .rarity-legendary { background: rgba(255,190,50,0.25); border: 1px solid #ffc83d; }
+    .rarity-mythic { background: rgba(255,70,130,0.3); border: 1px solid #ff66a3; box-shadow: 0 0 10px #ff66a3; }
+    @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px) rotate(-5deg);} 75% { transform: translateX(6px) rotate(5deg);} }
+    @keyframes pop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+    @keyframes bounce { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-12px);} }
+    @keyframes race { from { left: 0; } to { left: calc(100% - 60px); } }
+    @keyframes rainbow { 0% { filter: hue-rotate(0deg);} 100% { filter: hue-rotate(360deg);} }
+    .shake { animation: shake 0.3s infinite; }
+    .pop { animation: pop 0.5s; }
+    .bounce { animation: bounce 1s infinite; }
+    .rainbow-anim { animation: rainbow 3s linear infinite; }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ========== PET DATABASE ==========
+    const PET_DB = [
+      { id: 'cat', emoji: '🐱', name: 'Mèo', rarity: 'common', power: 10 },
+      { id: 'dog', emoji: '🐶', name: 'Chó', rarity: 'common', power: 12 },
+      { id: 'rabbit', emoji: '🐰', name: 'Thỏ', rarity: 'common', power: 8 },
+      { id: 'hamster', emoji: '🐹', name: 'Chuột Lang', rarity: 'common', power: 6 },
+      { id: 'chick', emoji: '🐥', name: 'Gà Con', rarity: 'common', power: 5 },
+      { id: 'pig', emoji: '🐷', name: 'Heo', rarity: 'rare', power: 18 },
+      { id: 'cow', emoji: '🐮', name: 'Bò', rarity: 'rare', power: 22 },
+      { id: 'monkey', emoji: '🐵', name: 'Khỉ', rarity: 'rare', power: 20 },
+      { id: 'fox', emoji: '🦊', name: 'Cáo', rarity: 'rare', power: 25 },
+      { id: 'panda', emoji: '🐼', name: 'Gấu Trúc', rarity: 'rare', power: 24 },
+      { id: 'lion', emoji: '🦁', name: 'Sư Tử', rarity: 'epic', power: 45 },
+      { id: 'tiger', emoji: '🐯', name: 'Hổ', rarity: 'epic', power: 50 },
+      { id: 'elephant', emoji: '🐘', name: 'Voi', rarity: 'epic', power: 48 },
+      { id: 'wolf', emoji: '🐺', name: 'Sói', rarity: 'epic', power: 42 },
+      { id: 'unicorn', emoji: '🦄', name: 'Kỳ Lân', rarity: 'legendary', power: 85 },
+      { id: 'dragon', emoji: '🐉', name: 'Rồng', rarity: 'legendary', power: 100 },
+      { id: 'dino', emoji: '🦖', name: 'Khủng Long', rarity: 'legendary', power: 90 },
+      { id: 'phoenix', emoji: '🦅', name: 'Phượng Hoàng', rarity: 'legendary', power: 95 },
+      { id: 'rainbow', emoji: '🌈', name: 'Thú Cầu Vồng', rarity: 'mythic', power: 200 },
+      { id: 'star', emoji: '⭐', name: 'Thú Ngôi Sao', rarity: 'mythic', power: 250 }
+    ];
+
+    const RARITY_CHANCE = { common: 0.55, rare: 0.28, epic: 0.12, legendary: 0.045, mythic: 0.005 };
+    const RARITY_COLOR = { common: '#ccc', rare: '#4d8fff', epic: '#c266ff', legendary: '#ffc83d', mythic: '#ff66a3' };
+    const RARITY_LABEL = { common: 'Thường', rare: 'Hiếm', epic: 'Sử Thi', legendary: 'Huyền Thoại', mythic: 'Thần Thoại' };
+
+    // ========== COLLECTION STATE ==========
+    function loadCollection() {
+      try {
+        const raw = localStorage.getItem('rblxPetsCollection');
+        if (!raw) return { pets: [], coins: 100 };
+        return JSON.parse(raw);
+      } catch { return { pets: [], coins: 100 }; }
+    }
+    function saveCollection(data) {
+      try { localStorage.setItem('rblxPetsCollection', JSON.stringify(data)); } catch {}
+    }
+
+    function useCollection() {
+      const [data, setData] = useState(loadCollection);
+      useEffect(() => saveCollection(data), [data]);
+      const addPet = (petId) => {
+        setData(d => {
+          const existing = d.pets.find(p => p.id === petId);
+          if (existing) {
+            return { ...d, pets: d.pets.map(p => p.id === petId ? { ...p, count: p.count + 1 } : p) };
+          }
+          return { ...d, pets: [...d.pets, { id: petId, count: 1, level: 1, stage: 0, accessory: null }] };
+        });
+      };
+      const updatePet = (petId, updater) => {
+        setData(d => ({ ...d, pets: d.pets.map(p => p.id === petId ? updater(p) : p) }));
+      };
+      const addCoins = (n) => setData(d => ({ ...d, coins: Math.max(0, d.coins + n) }));
+      return { data, setData, addPet, updatePet, addCoins };
+    }
+
+    function randPet() {
+      const r = Math.random();
+      let rarity = 'common', acc = 0;
+      for (const k of Object.keys(RARITY_CHANCE)) {
+        acc += RARITY_CHANCE[k];
+        if (r < acc) { rarity = k; break; }
+      }
+      const pool = PET_DB.filter(p => p.rarity === rarity);
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function PetIcon({ pet, size = 36, anim = '' }) {
+      const info = PET_DB.find(p => p.id === pet.id);
+      if (!info) return null;
+      return (
+        <span style={{ fontSize: size, display: 'inline-block' }} className={anim}>
+          {info.emoji}
+        </span>
+      );
+    }
+
+    // ========== HUB ==========
+    function Hub({ onPick, coll }) {
+      const games = [
+        { id: 'hatch', icon: '🐣', name: 'Nở Trứng', desc: 'Mua trứng & gacha thú cưng' },
+        { id: 'feed', icon: '🍖', name: 'Cho Ăn', desc: 'Giữ thú cưng no bụng' },
+        { id: 'race', icon: '🏃', name: 'Đua Thú', desc: 'Cược tiền, chọn thú đua' },
+        { id: 'battle', icon: '⚔️', name: 'Đấu Thú', desc: 'Chiến đấu theo lượt' },
+        { id: 'train', icon: '🎾', name: 'Huấn Luyện', desc: 'Bấm nhanh để lên cấp' },
+        { id: 'evolve', icon: '🌟', name: 'Tiến Hóa', desc: 'Nâng cấp qua các giai đoạn' },
+        { id: 'dress', icon: '🎀', name: 'Mặc Đồ', desc: 'Trang phục & phụ kiện' },
+        { id: 'contest', icon: '🏆', name: 'Thi Sắc Đẹp', desc: 'Ghi điểm thẩm mỹ' },
+        { id: 'groom', icon: '🛁', name: 'Tắm Gội', desc: 'Kỳ cọ & chải lông' },
+        { id: 'parade', icon: '🌈', name: 'Diễu Hành Cầu Vồng', desc: 'Sưu tập đủ bộ' }
+      ];
+      return (
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: 20 }}>
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <h1 style={{ fontSize: 40, marginBottom: 6 }}>🐾 Pet Hub</h1>
+            <p style={{ opacity: 0.85 }}>10 mini-game nuôi thú cưng — bộ sưu tập chung</p>
+          </div>
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: 14, borderRadius: 14, marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <span style={{ fontSize: 22, fontWeight: 700 }}>💰 {coll.data.coins}</span>
+                <span style={{ marginLeft: 12, fontSize: 14, opacity: 0.8 }}>
+                  Đã sưu tầm: {coll.data.pets.length}/{PET_DB.length}
+                </span>
+              </div>
+              <a href="../index.html" style={{ textDecoration: 'none' }}>
+                <button className="btn btn-back">← Quay Lại</button>
+              </a>
+            </div>
+            <div style={{ marginTop: 10, maxHeight: 80, overflowY: 'auto' }}>
+              {coll.data.pets.length === 0 && <span style={{ opacity: 0.6 }}>Chưa có thú cưng. Vào "Nở Trứng" để bắt đầu!</span>}
+              {coll.data.pets.map(p => {
+                const info = PET_DB.find(x => x.id === p.id);
+                if (!info) return null;
+                return (
+                  <span key={p.id} className={'pet-badge rarity-' + info.rarity}>
+                    {info.emoji} {info.name} ×{p.count} {p.level > 1 && `Lv${p.level}`}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
+            {games.map(g => (
+              <div key={g.id} className="card" onClick={() => onPick(g.id)}>
+                <div style={{ fontSize: 48 }}>{g.icon}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, margin: '6px 0' }}>{g.name}</div>
+                <div style={{ fontSize: 13, opacity: 0.75 }}>{g.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ========== 1. EGG HATCHING ==========
+    function EggHatch({ coll, back }) {
+      const [msg, setMsg] = useState('Mua trứng để ấp thú cưng!');
+      const [hatching, setHatching] = useState(null);
+      const [revealed, setRevealed] = useState(null);
+      const buy = (price, qty = 1) => {
+        if (coll.data.coins < price) { setMsg('❌ Không đủ xu!'); return; }
+        coll.addCoins(-price);
+        setHatching(true);
+        setRevealed(null);
+        setTimeout(() => {
+          const results = [];
+          for (let i = 0; i < qty; i++) {
+            const pet = randPet();
+            coll.addPet(pet.id);
+            results.push(pet);
+          }
+          setRevealed(results);
+          setHatching(false);
+          setMsg(qty === 1 ? `🎉 Nhận ${results[0].emoji} ${results[0].name}!` : `🎉 Đã mở ${qty} trứng!`);
+        }, 1500);
+      };
+      return (
+        <GameWrap title="🐣 Nở Trứng" back={back}>
+          <p style={{ textAlign: 'center', margin: '10px 0', minHeight: 24 }}>{msg}</p>
+          <div style={{ textAlign: 'center', margin: '20px 0', minHeight: 140 }}>
+            {hatching && <div style={{ fontSize: 90 }} className="shake">🥚</div>}
+            {revealed && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+                {revealed.map((r, i) => (
+                  <div key={i} className={'card pop rarity-' + r.rarity} style={{ width: 120 }}>
+                    <div style={{ fontSize: 48 }}>{r.emoji}</div>
+                    <div style={{ fontWeight: 700 }}>{r.name}</div>
+                    <div style={{ fontSize: 12, color: RARITY_COLOR[r.rarity] }}>{RARITY_LABEL[r.rarity]}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!hatching && !revealed && <div style={{ fontSize: 90, opacity: 0.4 }}>🥚</div>}
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" disabled={hatching} onClick={() => buy(25, 1)}>🥚 Trứng Thường (25💰)</button>
+            <button className="btn btn-second" disabled={hatching} onClick={() => buy(100, 5)}>🎁 Gói x5 (100💰)</button>
+            <button className="btn btn-warn" disabled={hatching} onClick={() => buy(200, 10)}>🎊 Gói x10 (200💰)</button>
+          </div>
+          <p style={{ textAlign: 'center', marginTop: 14, fontSize: 12, opacity: 0.65 }}>
+            Tỉ lệ: Thường 55% · Hiếm 28% · Sử Thi 12% · Huyền Thoại 4.5% · Thần Thoại 0.5%
+          </p>
+        </GameWrap>
+      );
+    }
+
+    // ========== 2. PET FEEDING ==========
+    function Feed({ coll, back }) {
+      const [hunger, setHunger] = useState(() => {
+        const o = {};
+        coll.data.pets.forEach(p => { o[p.id] = 50; });
+        return o;
+      });
+      const [msg, setMsg] = useState('Cho thú cưng ăn để nhận thưởng!');
+      useEffect(() => {
+        const t = setInterval(() => {
+          setHunger(h => {
+            const nh = { ...h };
+            Object.keys(nh).forEach(k => nh[k] = Math.max(0, nh[k] - 3));
+            return nh;
+          });
+        }, 2000);
+        return () => clearInterval(t);
+      }, []);
+      const feed = (id) => {
+        if (coll.data.coins < 5) { setMsg('❌ Cần 5 xu'); return; }
+        coll.addCoins(-5);
+        setHunger(h => ({ ...h, [id]: Math.min(100, (h[id] || 0) + 25) }));
+        if ((hunger[id] || 0) > 75) {
+          coll.addCoins(10);
+          setMsg('🎉 Thú no và vui vẻ! +10💰');
+        } else {
+          setMsg('🍖 Đã cho ăn!');
+        }
+      };
+      if (coll.data.pets.length === 0) return <GameWrap title="🍖 Cho Ăn" back={back}><EmptyState/></GameWrap>;
+      return (
+        <GameWrap title="🍖 Cho Ăn" back={back}>
+          <p style={{ textAlign: 'center', margin: '10px 0' }}>{msg}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px,1fr))', gap: 12 }}>
+            {coll.data.pets.map(p => {
+              const info = PET_DB.find(x => x.id === p.id);
+              const h = hunger[p.id] || 0;
+              return (
+                <div key={p.id} className={'card rarity-' + info.rarity}>
+                  <div style={{ fontSize: 48 }} className={h < 30 ? 'shake' : ''}>{info.emoji}</div>
+                  <div style={{ fontWeight: 700 }}>{info.name}</div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', height: 10, borderRadius: 5, margin: '8px 0', overflow: 'hidden' }}>
+                    <div style={{ width: h + '%', height: '100%', background: h > 50 ? '#43e97b' : h > 20 ? '#fee140' : '#fa709a', transition: 'all 0.3s' }}/>
+                  </div>
+                  <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => feed(p.id)}>🍖 Cho ăn (5💰)</button>
+                </div>
+              );
+            })}
+          </div>
+        </GameWrap>
+      );
+    }
+
+    // ========== 3. PET RACING ==========
+    function Race({ coll, back }) {
+      const [bet, setBet] = useState(10);
+      const [picked, setPicked] = useState(null);
+      const [racing, setRacing] = useState(false);
+      const [positions, setPositions] = useState([0,0,0,0]);
+      const [winner, setWinner] = useState(null);
+      const [msg, setMsg] = useState('Đặt cược và chọn thú của bạn!');
+      const racers = coll.data.pets.slice(0, 4);
+      const start = () => {
+        if (picked === null) { setMsg('Chọn 1 thú trước!'); return; }
+        if (coll.data.coins < bet) { setMsg('Không đủ xu!'); return; }
+        coll.addCoins(-bet);
+        setRacing(true);
+        setWinner(null);
+        setPositions([0,0,0,0]);
+        const speeds = racers.map((p, i) => {
+          const info = PET_DB.find(x => x.id === p.id);
+          return 0.5 + Math.random() * 1.5 + (info.power / 100);
+        });
+        let pos = [0,0,0,0];
+        const tick = setInterval(() => {
+          pos = pos.map((p, i) => Math.min(100, p + speeds[i] * (0.5 + Math.random())));
+          setPositions([...pos]);
+          const winIdx = pos.findIndex(p => p >= 100);
+          if (winIdx !== -1) {
+            clearInterval(tick);
+            setWinner(winIdx);
+            setRacing(false);
+            if (winIdx === picked) {
+              const won = bet * 3;
+              coll.addCoins(won);
+              setMsg(`🏆 Thắng! +${won}💰`);
+            } else {
+              setMsg(`😿 Thua. Thú ${racers[winIdx] && PET_DB.find(x => x.id === racers[winIdx].id).name} về nhất.`);
+            }
+          }
+        }, 100);
+      };
+      if (racers.length < 2) return <GameWrap title="🏃 Đua Thú" back={back}><EmptyState msg="Cần ít nhất 2 thú cưng để đua!"/></GameWrap>;
+      return (
+        <GameWrap title="🏃 Đua Thú" back={back}>
+          <p style={{ textAlign: 'center', margin: '10px 0' }}>{msg}</p>
+          <div style={{ margin: '15px 0' }}>
+            {racers.map((p, i) => {
+              const info = PET_DB.find(x => x.id === p.id);
+              return (
+                <div key={i} onClick={() => !racing && setPicked(i)} style={{
+                  background: picked === i ? 'rgba(255,183,255,0.3)' : 'rgba(255,255,255,0.05)',
+                  borderRadius: 10, margin: '6px 0', padding: '8px 12px',
+                  border: picked === i ? '2px solid #ffb7ff' : '2px solid transparent',
+                  cursor: racing ? 'default' : 'pointer', position: 'relative', height: 50
+                }}>
+                  <div style={{ position: 'absolute', left: positions[i] + '%', top: 5, fontSize: 32, transition: 'left 0.1s' }}>
+                    {info.emoji}
+                  </div>
+                  <div style={{ position: 'absolute', right: 10, top: 15, fontSize: 12, opacity: 0.7 }}>
+                    {info.name} (⚡{info.power})
+                  </div>
+                  {winner === i && <div style={{ position: 'absolute', right: 60, top: 10, fontSize: 24 }}>🏆</div>}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+            <label>Cược: </label>
+            <input type="number" value={bet} onChange={e => setBet(Math.max(1, +e.target.value))} style={{ width: 80, padding: 6, borderRadius: 6, border: 'none' }}/>
+            <button className="btn btn-primary" disabled={racing} onClick={start}>🏁 Bắt Đầu Đua</button>
+          </div>
+        </GameWrap>
+      );
+    }
+
+    // ========== 4. PET BATTLE ==========
+    function Battle({ coll, back }) {
+      const [myPet, setMyPet] = useState(null);
+      const [foe, setFoe] = useState(null);
+      const [myHp, setMyHp] = useState(0);
+      const [foeHp, setFoeHp] = useState(0);
+      const [log, setLog] = useState([]);
+      const [turn, setTurn] = useState('me');
+      const [over, setOver] = useState(false);
+      const startBattle = (pet) => {
+        const info = PET_DB.find(x => x.id === pet.id);
+        const foePet = randPet();
+        setMyPet({ ...pet, info });
+        setFoe({ ...foePet, hp: 100 });
+        setMyHp(100);
+        setFoeHp(100);
+        setLog(['Trận đấu bắt đầu!']);
+        setTurn('me');
+        setOver(false);
+      };
+      const attack = (type) => {
+        if (over) return;
+        const mult = type === 'heavy' ? 1.8 : type === 'light' ? 0.6 : 1;
+        const miss = type === 'heavy' && Math.random() < 0.3;
+        const myInfo = PET_DB.find(x => x.id === myPet.id);
+        if (miss) {
+          setLog(l => [...l, `❌ ${myInfo.name} đánh trượt!`]);
+        } else {
+          const dmg = Math.round((myInfo.power + Math.random() * 10) * mult * 0.4);
+          setFoeHp(h => {
+            const nh = Math.max(0, h - dmg);
+            setLog(l => [...l, `⚔️ ${myInfo.name} gây ${dmg} sát thương`]);
+            if (nh === 0) {
+              setLog(l => [...l, `🏆 Thắng! +30💰`]);
+              coll.addCoins(30);
+              setOver(true);
+            }
+            return nh;
+          });
+        }
+        if (!miss && foeHp > 0) {
+          setTimeout(() => {
+            const fDmg = Math.round((foe.power + Math.random() * 10) * 0.4);
+            setMyHp(h => {
+              const nh = Math.max(0, h - fDmg);
+              setLog(l => [...l, `💥 ${foe.name} gây ${fDmg} sát thương`]);
+              if (nh === 0) {
+                setLog(l => [...l, '😿 Thua...']);
+                setOver(true);
+              }
+              return nh;
+            });
+          }, 500);
+        }
+      };
+      if (coll.data.pets.length === 0) return <GameWrap title="⚔️ Đấu Thú" back={back}><EmptyState/></GameWrap>;
+      if (!myPet) {
+        return (
+          <GameWrap title="⚔️ Đấu Thú" back={back}>
+            <p style={{ textAlign: 'center', margin: '10px 0' }}>Chọn thú chiến đấu:</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 10 }}>
+              {coll.data.pets.map(p => {
+                const info = PET_DB.find(x => x.id === p.id);
+                return (
+                  <div key={p.id} className={'card rarity-' + info.rarity} onClick={() => startBattle(p)}>
+                    <div style={{ fontSize: 40 }}>{info.emoji}</div>
+                    <div style={{ fontWeight: 700 }}>{info.name}</div>
+                    <div style={{ fontSize: 12 }}>⚡{info.power}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </GameWrap>
+        );
+      }
+      return (
+        <GameWrap title="⚔️ Đấu Thú" back={back}>
+          <div style={{ display: 'flex', justifyContent: 'space-around', margin: '15px 0', textAlign: 'center' }}>
+            <div>
+              <div style={{ fontSize: 60 }} className={myHp > 0 ? 'bounce' : ''}>{myPet.info.emoji}</div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', height: 14, borderRadius: 7, width: 120, overflow: 'hidden' }}>
+                <div style={{ width: myHp + '%', height: '100%', background: '#43e97b', transition: 'all 0.3s' }}/>
+              </div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Bạn {myHp}/100</div>
+            </div>
+            <div style={{ fontSize: 30, alignSelf: 'center' }}>⚔️</div>
+            <div>
+              <div style={{ fontSize: 60 }} className={foeHp > 0 ? 'bounce' : ''}>{foe.emoji}</div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', height: 14, borderRadius: 7, width: 120, overflow: 'hidden' }}>
+                <div style={{ width: foeHp + '%', height: '100%', background: '#fa709a', transition: 'all 0.3s' }}/>
+              </div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Địch {foeHp}/100</div>
+            </div>
+          </div>
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: 10, borderRadius: 8, height: 100, overflowY: 'auto', fontSize: 13 }}>
+            {log.slice(-6).map((l, i) => <div key={i}>{l}</div>)}
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+            <button className="btn btn-second" disabled={over} onClick={() => attack('light')}>👊 Nhẹ</button>
+            <button className="btn btn-primary" disabled={over} onClick={() => attack('normal')}>⚔️ Thường</button>
+            <button className="btn btn-warn" disabled={over} onClick={() => attack('heavy')}>💥 Mạnh (70% trúng)</button>
+            {over && <button className="btn btn-back" onClick={() => setMyPet(null)}>🔄 Chọn lại</button>}
+          </div>
+        </GameWrap>
+      );
+    }
+
+    // ========== 5. PET TRAINING ==========
+    function Train({ coll, back }) {
+      const [picked, setPicked] = useState(null);
+      const [target, setTarget] = useState(null);
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(10);
+      const [playing, setPlaying] = useState(false);
+      useEffect(() => {
+        if (!playing) return;
+        if (time <= 0) { setPlaying(false); return; }
+        const t = setTimeout(() => setTime(x => x - 1), 1000);
+        return () => clearTimeout(t);
+      }, [playing, time]);
+      useEffect(() => {
+        if (!playing) return;
+        const t = setInterval(() => {
+          setTarget({ x: 10 + Math.random() * 75, y: 10 + Math.random() * 65, id: Date.now() });
+        }, 800);
+        return () => clearInterval(t);
+      }, [playing]);
+      useEffect(() => {
+        if (playing || score === 0) return;
+        if (picked) {
+          coll.updatePet(picked, p => ({ ...p, level: p.level + Math.floor(score / 5) }));
+          coll.addCoins(score * 2);
+        }
+      }, [playing]);
+      const start = (id) => {
+        setPicked(id);
+        setScore(0);
+        setTime(10);
+        setPlaying(true);
+      };
+      const hit = () => {
+        setScore(s => s + 1);
+        setTarget(null);
+      };
+      if (coll.data.pets.length === 0) return <GameWrap title="🎾 Huấn Luyện" back={back}><EmptyState/></GameWrap>;
+      if (!playing && picked === null) {
+        return (
+          <GameWrap title="🎾 Huấn Luyện" back={back}>
+            <p style={{ textAlign: 'center' }}>Chọn thú để huấn luyện (10s bấm quả bóng):</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 10, marginTop: 10 }}>
+              {coll.data.pets.map(p => {
+                const info = PET_DB.find(x => x.id === p.id);
+                return (
+                  <div key={p.id} className={'card rarity-' + info.rarity} onClick={() => start(p.id)}>
+                    <div style={{ fontSize: 40 }}>{info.emoji}</div>
+                    <div style={{ fontWeight: 700 }}>{info.name}</div>
+                    <div style={{ fontSize: 12 }}>Lv {p.level}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </GameWrap>
+        );
+      }
+      return (
+        <GameWrap title="🎾 Huấn Luyện" back={back}>
+          <div style={{ textAlign: 'center', marginBottom: 8 }}>
+            <span style={{ margin: '0 12px' }}>⏱️ {time}s</span>
+            <span style={{ margin: '0 12px' }}>🎯 {score}</span>
+          </div>
+          <div style={{ position: 'relative', background: 'rgba(0,0,0,0.3)', height: 340, borderRadius: 10, overflow: 'hidden' }}>
+            {playing && target && (
+              <div onClick={hit} style={{ position: 'absolute', left: target.x + '%', top: target.y + '%', fontSize: 44, cursor: 'pointer' }} className="pop">
+                🎾
+              </div>
+            )}
+            {!playing && (
+              <div style={{ textAlign: 'center', paddingTop: 120 }}>
+                <div style={{ fontSize: 30, marginBottom: 10 }}>Kết thúc! Điểm: {score}</div>
+                <div>Lên {Math.floor(score / 5)} cấp · +{score * 2}💰</div>
+                <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={() => { setPicked(null); setScore(0); }}>Chọn lại</button>
+              </div>
+            )}
+          </div>
+        </GameWrap>
+      );
+    }
+
+    // ========== 6. PET EVOLUTION ==========
+    function Evolve({ coll, back }) {
+      const STAGES = ['👶 Sơ sinh', '🧒 Nhỏ', '🧑 Lớn', '💪 Trưởng thành', '👑 Đỉnh cao'];
+      const [msg, setMsg] = useState('Chọn thú để tiến hóa');
+      const evolve = (p) => {
+        const cost = 50 * (p.stage + 1);
+        if (p.stage >= 4) { setMsg('Đã đạt cấp tối đa!'); return; }
+        if (p.count < 2) { setMsg('Cần ít nhất 2 bản sao!'); return; }
+        if (coll.data.coins < cost) { setMsg(`Cần ${cost}💰`); return; }
+        coll.addCoins(-cost);
+        coll.updatePet(p.id, pp => ({ ...pp, stage: pp.stage + 1, count: pp.count - 1 }));
+        setMsg(`✨ Tiến hóa thành công lên ${STAGES[p.stage + 1]}!`);
+      };
+      if (coll.data.pets.length === 0) return <GameWrap title="🌟 Tiến Hóa" back={back}><EmptyState/></GameWrap>;
+      return (
+        <GameWrap title="🌟 Tiến Hóa" back={back}>
+          <p style={{ textAlign: 'center', margin: '10px 0' }}>{msg}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 12 }}>
+            {coll.data.pets.map(p => {
+              const info = PET_DB.find(x => x.id === p.id);
+              const cost = 50 * (p.stage + 1);
+              return (
+                <div key={p.id} className={'card rarity-' + info.rarity}>
+                  <div style={{ fontSize: 48 + p.stage * 8 }}>{info.emoji}</div>
+                  <div style={{ fontWeight: 700 }}>{info.name}</div>
+                  <div style={{ fontSize: 13, margin: '4px 0' }}>{STAGES[p.stage]}</div>
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>Bản sao: ×{p.count}</div>
+                  <button className="btn btn-primary" style={{ fontSize: 12, marginTop: 8 }} onClick={() => evolve(p)}>
+                    {p.stage >= 4 ? '👑 Max' : `Tiến hóa (${cost}💰)`}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </GameWrap>
+      );
+    }
+
+    // ========== 7. PET DRESS-UP ==========
+    function Dress({ coll, back }) {
+      const ACCESSORIES = ['🎀','👑','🎩','🕶️','🎓','🧢','🦺','👔','⭐','💍'];
+      const [picked, setPicked] = useState(null);
+      const pet = picked ? coll.data.pets.find(p => p.id === picked) : null;
+      const info = pet ? PET_DB.find(x => x.id === pet.id) : null;
+      const setAcc = (a) => {
+        if (coll.data.coins < 10) return;
+        coll.addCoins(-10);
+        coll.updatePet(picked, p => ({ ...p, accessory: a }));
+      };
+      if (coll.data.pets.length === 0) return <GameWrap title="🎀 Mặc Đồ" back={back}><EmptyState/></GameWrap>;
+      return (
+        <GameWrap title="🎀 Mặc Đồ" back={back}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '10px 0', justifyContent: 'center' }}>
+            {coll.data.pets.map(p => {
+              const inf = PET_DB.find(x => x.id === p.id);
+              return (
+                <button key={p.id} className={picked === p.id ? 'btn btn-primary' : 'btn btn-back'} onClick={() => setPicked(p.id)}>
+                  {inf.emoji} {inf.name}
+                </button>
+              );
+            })}
+          </div>
+          {pet && (
+            <div style={{ textAlign: 'center', margin: '15px 0' }}>
+              <div style={{ position: 'relative', fontSize: 100, display: 'inline-block' }}>
+                {info.emoji}
+                {pet.accessory && <span style={{ position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)', fontSize: 50 }}>{pet.accessory}</span>}
+              </div>
+              <div style={{ fontWeight: 700, marginTop: 10 }}>{info.name}</div>
+              <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                {ACCESSORIES.map(a => (
+                  <button key={a} onClick={() => setAcc(a)} style={{
+                    background: pet.accessory === a ? 'rgba(255,183,255,0.4)' : 'rgba(255,255,255,0.1)',
+                    border: 'none', fontSize: 28, padding: 10, borderRadius: 10, cursor: 'pointer'
+                  }}>{a}</button>
+                ))}
+                <button className="btn btn-back" onClick={() => coll.updatePet(picked, p => ({ ...p, accessory: null }))}>❌ Bỏ</button>
+              </div>
+              <p style={{ fontSize: 12, marginTop: 10, opacity: 0.6 }}>Mỗi phụ kiện tốn 10💰</p>
+            </div>
+          )}
+        </GameWrap>
+      );
+    }
+
+    // ========== 8. PET CONTEST ==========
+    function Contest({ coll, back }) {
+      const [picked, setPicked] = useState(null);
+      const [result, setResult] = useState(null);
+      const compete = (p) => {
+        const info = PET_DB.find(x => x.id === p.id);
+        const base = info.power + p.level * 3 + p.stage * 10 + (p.accessory ? 15 : 0);
+        const random = Math.random() * 30;
+        const score = Math.round(base + random);
+        const foeScore = Math.round(30 + Math.random() * 150);
+        const won = score > foeScore;
+        if (won) coll.addCoins(50);
+        setResult({ score, foeScore, won, name: info.name });
+        setPicked(p.id);
+      };
+      if (coll.data.pets.length === 0) return <GameWrap title="🏆 Thi Sắc Đẹp" back={back}><EmptyState/></GameWrap>;
+      return (
+        <GameWrap title="🏆 Thi Sắc Đẹp" back={back}>
+          <p style={{ textAlign: 'center', margin: '10px 0' }}>Chọn thú để dự thi (sức mạnh + cấp + tiến hóa + phụ kiện):</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 10 }}>
+            {coll.data.pets.map(p => {
+              const info = PET_DB.find(x => x.id === p.id);
+              return (
+                <div key={p.id} className={'card rarity-' + info.rarity} onClick={() => compete(p)}>
+                  <div style={{ fontSize: 40, position: 'relative' }}>
+                    {info.emoji}
+                    {p.accessory && <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontSize: 22 }}>{p.accessory}</span>}
+                  </div>
+                  <div style={{ fontWeight: 700 }}>{info.name}</div>
+                  <div style={{ fontSize: 11 }}>Lv{p.level} St{p.stage}</div>
+                </div>
+              );
+            })}
+          </div>
+          {result && (
+            <div className="card pop" style={{ marginTop: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>{result.won ? '🏆 Chiến Thắng!' : '😿 Thua Cuộc'}</div>
+              <div style={{ margin: '8px 0' }}>{result.name}: {result.score} điểm · Đối thủ: {result.foeScore}</div>
+              {result.won && <div>+50💰</div>}
+            </div>
+          )}
+        </GameWrap>
+      );
+    }
+
+    // ========== 9. PET GROOMING ==========
+    function Groom({ coll, back }) {
+      const [picked, setPicked] = useState(null);
+      const [dirt, setDirt] = useState(100);
+      const [done, setDone] = useState(false);
+      const scrub = () => {
+        setDirt(d => {
+          const nd = Math.max(0, d - 8);
+          if (nd === 0 && !done) {
+            coll.addCoins(20);
+            setDone(true);
+          }
+          return nd;
+        });
+      };
+      const pickPet = (id) => { setPicked(id); setDirt(100); setDone(false); };
+      if (coll.data.pets.length === 0) return <GameWrap title="🛁 Tắm Gội" back={back}><EmptyState/></GameWrap>;
+      if (!picked) {
+        return (
+          <GameWrap title="🛁 Tắm Gội" back={back}>
+            <p style={{ textAlign: 'center' }}>Chọn thú cần tắm:</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 10, marginTop: 10 }}>
+              {coll.data.pets.map(p => {
+                const info = PET_DB.find(x => x.id === p.id);
+                return (
+                  <div key={p.id} className={'card rarity-' + info.rarity} onClick={() => pickPet(p.id)}>
+                    <div style={{ fontSize: 40 }}>{info.emoji}</div>
+                    <div style={{ fontWeight: 700 }}>{info.name}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </GameWrap>
+        );
+      }
+      const info = PET_DB.find(x => x.id === picked);
+      return (
+        <GameWrap title="🛁 Tắm Gội" back={back}>
+          <div style={{ textAlign: 'center', margin: '20px 0' }}>
+            <div style={{ position: 'relative', fontSize: 120, display: 'inline-block' }}>
+              {info.emoji}
+              {dirt > 0 && <div style={{ position: 'absolute', inset: 0, background: `rgba(100,60,30,${dirt/200})`, borderRadius: '50%', pointerEvents: 'none' }}/>}
+              {dirt > 50 && <span style={{ position: 'absolute', top: 0, left: -10, fontSize: 30 }}>💩</span>}
+              {dirt > 30 && <span style={{ position: 'absolute', top: 20, right: -10, fontSize: 30 }}>🕷️</span>}
+            </div>
+            <div style={{ marginTop: 10, width: 240, margin: '10px auto' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', height: 14, borderRadius: 7, overflow: 'hidden' }}>
+                <div style={{ width: (100 - dirt) + '%', height: '100%', background: '#43e97b', transition: 'all 0.2s' }}/>
+              </div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Độ sạch: {100 - dirt}%</div>
+            </div>
+            <div style={{ marginTop: 14, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button className="btn btn-primary" disabled={done} onClick={scrub}>🧼 Kỳ cọ</button>
+              <button className="btn btn-second" disabled={done} onClick={scrub}>🚿 Xả nước</button>
+              <button className="btn btn-warn" disabled={done} onClick={scrub}>🪥 Chải lông</button>
+            </div>
+            {done && (
+              <div className="pop" style={{ marginTop: 16, fontSize: 18 }}>
+                ✨ Sạch sẽ thơm tho! +20💰
+                <div><button className="btn btn-back" style={{ marginTop: 10 }} onClick={() => setPicked(null)}>Chọn thú khác</button></div>
+              </div>
+            )}
+          </div>
+        </GameWrap>
+      );
+    }
+
+    // ========== 10. RAINBOW PARADE ==========
+    function Parade({ coll, back }) {
+      const owned = coll.data.pets.length;
+      const total = PET_DB.length;
+      const pct = Math.round((owned / total) * 100);
+      const byRarity = {};
+      PET_DB.forEach(p => {
+        byRarity[p.rarity] = byRarity[p.rarity] || { total: 0, owned: 0 };
+        byRarity[p.rarity].total++;
+        if (coll.data.pets.find(x => x.id === p.id)) byRarity[p.rarity].owned++;
+      });
+      return (
+        <GameWrap title="🌈 Diễu Hành Cầu Vồng" back={back}>
+          <div style={{ textAlign: 'center', margin: '10px 0' }}>
+            <div style={{ fontSize: 22, fontWeight: 700 }} className="rainbow-anim">
+              Sưu tập: {owned}/{total} ({pct}%)
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.3)', height: 20, borderRadius: 10, margin: '12px auto', width: '80%', overflow: 'hidden' }}>
+              <div style={{ width: pct + '%', height: '100%', background: 'linear-gradient(90deg,#ff0000,#ff8800,#ffee00,#00cc44,#00aaff,#6633cc,#cc33cc)', transition: 'width 0.5s' }}/>
+            </div>
+            {pct === 100 && (
+              <div className="pop" style={{ fontSize: 26, margin: '20px 0' }} className="rainbow-anim">
+                🌈 HOÀN THÀNH! Bạn là Pet Master! 🌈
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(110px,1fr))', gap: 10, marginTop: 14 }}>
+            {PET_DB.map(p => {
+              const owned = coll.data.pets.find(x => x.id === p.id);
+              return (
+                <div key={p.id} className={'card rarity-' + p.rarity} style={{ opacity: owned ? 1 : 0.35, padding: 10 }}>
+                  <div style={{ fontSize: 36, filter: owned ? 'none' : 'grayscale(1)' }}>{p.emoji}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>{p.name}</div>
+                  <div style={{ fontSize: 10, color: RARITY_COLOR[p.rarity] }}>{RARITY_LABEL[p.rarity]}</div>
+                  {owned && <div style={{ fontSize: 10 }}>×{owned.count}</div>}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 18, background: 'rgba(0,0,0,0.3)', padding: 12, borderRadius: 10 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>Tiến độ theo độ hiếm:</div>
+            {Object.keys(byRarity).map(r => (
+              <div key={r} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}>
+                <span style={{ color: RARITY_COLOR[r] }}>{RARITY_LABEL[r]}</span>
+                <span>{byRarity[r].owned}/{byRarity[r].total}</span>
+              </div>
+            ))}
+          </div>
+        </GameWrap>
+      );
+    }
+
+    // ========== SHARED WRAPPERS ==========
+    function GameWrap({ title, back, children }) {
+      return (
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h2 style={{ fontSize: 26 }}>{title}</h2>
+            <button className="btn btn-back" onClick={back}>← Hub</button>
+          </div>
+          {children}
+        </div>
+      );
+    }
+
+    function EmptyState({ msg = 'Bạn chưa có thú cưng! Vào "Nở Trứng" để bắt đầu.' }) {
+      return (
+        <div style={{ textAlign: 'center', padding: 40, opacity: 0.75 }}>
+          <div style={{ fontSize: 60, marginBottom: 10 }}>🥚</div>
+          <div>{msg}</div>
+        </div>
+      );
+    }
+
+    // ========== APP ==========
+    function App() {
+      const coll = useCollection();
+      const [screen, setScreen] = useState('hub');
+      const back = () => setScreen('hub');
+      if (screen === 'hub') return <Hub onPick={setScreen} coll={coll}/>;
+      const G = {
+        hatch: EggHatch, feed: Feed, race: Race, battle: Battle, train: Train,
+        evolve: Evolve, dress: Dress, contest: Contest, groom: Groom, parade: Parade
+      }[screen];
+      return G ? <G coll={coll} back={back}/> : <Hub onPick={setScreen} coll={coll}/>;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

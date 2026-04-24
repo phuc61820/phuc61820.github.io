@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧩 Puzzle Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a0a2e; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const PUZZLES = [
+      { id: 'memory', icon: '🎴', name: 'Memory Match', desc: 'Lật thẻ, tìm các cặp giống nhau', color: '#ec4899' },
+      { id: 'slide', icon: '🔢', name: 'Number Sliding', desc: '15-puzzle, trượt ô theo thứ tự', color: '#3b82f6' },
+      { id: 'match3', icon: '🍭', name: 'Match-3', desc: 'Đổi kẹo liền kề, nối 3+ ô giống', color: '#f59e0b' },
+      { id: 'snake', icon: '🐍', name: 'Snake-Line', desc: 'Vẽ đường qua tất cả ô', color: '#10b981' },
+      { id: 'fill', icon: '🎨', name: 'Color Fill', desc: 'Tô màu ngập để trùng target', color: '#8b5cf6' },
+      { id: 'connect', icon: '🔗', name: 'Connect Dots', desc: 'Nối các chấm cùng màu', color: '#ef4444' },
+      { id: 'sudoku', icon: '🎯', name: 'Sudoku Mini', desc: 'Sudoku 4x4 đơn giản', color: '#06b6d4' },
+      { id: 'math', icon: '🧮', name: 'Math Puzzle', desc: 'Điền số còn thiếu trong phương trình', color: '#f97316' },
+      { id: 'pattern', icon: '🎭', name: 'Pattern Repeat', desc: 'Simon-says, nhớ và lặp lại', color: '#a855f7' },
+      { id: 'jigsaw', icon: '🧩', name: 'Jigsaw', desc: 'Ghép các mảnh ghép thành hình', color: '#14b8a6' }
+    ];
+
+    const loadProgress = () => {
+      try { return JSON.parse(localStorage.getItem('rblxPuzzleProgress') || '{}'); } catch { return {}; }
+    };
+    const saveProgress = (p) => localStorage.setItem('rblxPuzzleProgress', JSON.stringify(p));
+
+    const recordWin = (id, time, moves) => {
+      const p = loadProgress();
+      const cur = p[id] || {};
+      const best = {
+        bestTime: cur.bestTime ? Math.min(cur.bestTime, time) : time,
+        bestMoves: cur.bestMoves ? Math.min(cur.bestMoves, moves) : moves,
+        plays: (cur.plays || 0) + 1
+      };
+      p[id] = best;
+      saveProgress(p);
+      return best;
+    };
+
+    const formatTime = (s) => {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return `${m}:${sec.toString().padStart(2, '0')}`;
+    };
+
+    // ============ SHARED UI ============
+    const BackBtn = ({ onClick, label = '← Hub' }) => (
+      <button onClick={onClick} style={{ padding: '8px 16px', background: '#1f2937', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>{label}</button>
+    );
+
+    const WinScreen = ({ time, moves, best, onBack, onRestart }) => (
+      <div style={{ textAlign: 'center', padding: '40px 20px', background: 'rgba(0,0,0,0.5)', borderRadius: '20px', maxWidth: '400px', margin: '40px auto' }}>
+        <div style={{ fontSize: '64px', marginBottom: '12px' }}>🎉</div>
+        <h2 style={{ fontSize: '28px', marginBottom: '16px' }}>Hoàn thành!</h2>
+        <div style={{ fontSize: '18px', marginBottom: '8px' }}>⏱ Thời gian: <b>{formatTime(time)}</b></div>
+        <div style={{ fontSize: '18px', marginBottom: '20px' }}>🎯 Lượt: <b>{moves}</b></div>
+        {best && (<div style={{ marginBottom: '20px', color: '#fbbf24', fontSize: '14px' }}>
+          Tốt nhất: {formatTime(best.bestTime)} · {best.bestMoves} lượt · {best.plays} lần chơi
+        </div>)}
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button onClick={onRestart} style={{ padding: '12px 24px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>🔄 Chơi lại</button>
+          <button onClick={onBack} style={{ padding: '12px 24px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>🏠 Hub</button>
+        </div>
+      </div>
+    );
+
+    const useTimer = (running) => {
+      const [t, setT] = useState(0);
+      useEffect(() => {
+        if (!running) return;
+        const i = setInterval(() => setT(v => v + 1), 1000);
+        return () => clearInterval(i);
+      }, [running]);
+      return [t, setT];
+    };
+
+    // ============ 1. MEMORY MATCH ============
+    const MemoryMatch = ({ onBack }) => {
+      const emojis = ['🐶','🐱','🦊','🐼','🦁','🐸','🐵','🐰'];
+      const makeDeck = () => [...emojis, ...emojis].map((e, i) => ({ id: i, emoji: e, flipped: false, matched: false })).sort(() => Math.random() - 0.5);
+      const [cards, setCards] = useState(makeDeck);
+      const [flipped, setFlipped] = useState([]);
+      const [moves, setMoves] = useState(0);
+      const [won, setWon] = useState(false);
+      const [time, setTime] = useTimer(!won);
+      const [best, setBest] = useState(null);
+
+      const click = (i) => {
+        if (won || cards[i].flipped || cards[i].matched || flipped.length >= 2) return;
+        const nc = [...cards]; nc[i].flipped = true; setCards(nc);
+        const nf = [...flipped, i]; setFlipped(nf);
+        if (nf.length === 2) {
+          setMoves(m => m + 1);
+          if (nc[nf[0]].emoji === nc[nf[1]].emoji) {
+            setTimeout(() => {
+              const nn = [...nc]; nn[nf[0]].matched = true; nn[nf[1]].matched = true;
+              setCards(nn); setFlipped([]);
+              if (nn.every(c => c.matched)) { setWon(true); setBest(recordWin('memory', time, moves + 1)); }
+            }, 400);
+          } else {
+            setTimeout(() => {
+              const nn = [...nc]; nn[nf[0]].flipped = false; nn[nf[1]].flipped = false;
+              setCards(nn); setFlipped([]);
+            }, 700);
+          }
+        }
+      };
+
+      const restart = () => { setCards(makeDeck()); setFlipped([]); setMoves(0); setWon(false); setTime(0); setBest(null); };
+
+      if (won) return <WinScreen time={time} moves={moves} best={best} onBack={onBack} onRestart={restart} />;
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '500px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+            <BackBtn onClick={onBack} />
+            <div>⏱ {formatTime(time)} · 🎯 {moves}</div>
+          </div>
+          <h2 style={{ textAlign: 'center', marginBottom: '16px' }}>🎴 Memory Match</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+            {cards.map((c, i) => (
+              <button key={c.id} onClick={() => click(i)} style={{
+                aspectRatio: '1', fontSize: '32px', border: 'none', borderRadius: '12px', cursor: 'pointer',
+                background: c.matched ? '#10b98144' : c.flipped ? '#fbbf24' : '#6366f1',
+                color: '#000'
+              }}>{c.flipped || c.matched ? c.emoji : '?'}</button>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 2. NUMBER SLIDING (15-puzzle 4x4) ============
+    const NumberSlide = ({ onBack }) => {
+      const N = 4;
+      const makeBoard = () => {
+        const arr = Array.from({length: N*N - 1}, (_, i) => i + 1);
+        arr.push(0);
+        for (let i = 0; i < 200; i++) {
+          const zi = arr.indexOf(0);
+          const moves = [];
+          if (zi % N > 0) moves.push(zi - 1);
+          if (zi % N < N - 1) moves.push(zi + 1);
+          if (zi >= N) moves.push(zi - N);
+          if (zi < N*N - N) moves.push(zi + N);
+          const m = moves[Math.floor(Math.random() * moves.length)];
+          [arr[zi], arr[m]] = [arr[m], arr[zi]];
+        }
+        return arr;
+      };
+      const [board, setBoard] = useState(makeBoard);
+      const [moves, setMoves] = useState(0);
+      const [won, setWon] = useState(false);
+      const [time, setTime] = useTimer(!won);
+      const [best, setBest] = useState(null);
+
+      const move = (i) => {
+        if (won) return;
+        const zi = board.indexOf(0);
+        const valid = (Math.abs(i - zi) === 1 && Math.floor(i/N) === Math.floor(zi/N)) || Math.abs(i - zi) === N;
+        if (!valid) return;
+        const nb = [...board]; [nb[i], nb[zi]] = [nb[zi], nb[i]];
+        setBoard(nb); setMoves(m => m + 1);
+        if (nb.every((v, idx) => v === (idx + 1) % (N*N))) { setWon(true); setBest(recordWin('slide', time, moves + 1)); }
+      };
+
+      const restart = () => { setBoard(makeBoard()); setMoves(0); setWon(false); setTime(0); setBest(null); };
+
+      if (won) return <WinScreen time={time} moves={moves} best={best} onBack={onBack} onRestart={restart} />;
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '440px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+            <BackBtn onClick={onBack} />
+            <div>⏱ {formatTime(time)} · 🎯 {moves}</div>
+          </div>
+          <h2 style={{ textAlign: 'center', marginBottom: '16px' }}>🔢 Number Sliding</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${N}, 1fr)`, gap: '6px' }}>
+            {board.map((v, i) => (
+              <button key={i} onClick={() => move(i)} disabled={v === 0} style={{
+                aspectRatio: '1', fontSize: '28px', fontWeight: 'bold', border: 'none', borderRadius: '10px',
+                background: v === 0 ? 'transparent' : '#3b82f6', color: '#fff', cursor: v === 0 ? 'default' : 'pointer'
+              }}>{v || ''}</button>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 3. MATCH-3 ============
+    const Match3 = ({ onBack }) => {
+      const N = 7;
+      const COLORS = ['🍓','🍋','🫐','🍏','🍇','🍊'];
+      const TARGET = 300;
+      const makeGrid = () => Array.from({length: N}, () => Array.from({length: N}, () => COLORS[Math.floor(Math.random()*COLORS.length)]));
+      const [grid, setGrid] = useState(makeGrid);
+      const [sel, setSel] = useState(null);
+      const [score, setScore] = useState(0);
+      const [moves, setMoves] = useState(0);
+      const [won, setWon] = useState(false);
+      const [time, setTime] = useTimer(!won);
+      const [best, setBest] = useState(null);
+
+      const findMatches = (g) => {
+        const m = Array.from({length: N}, () => Array(N).fill(false));
+        for (let r = 0; r < N; r++) for (let c = 0; c < N - 2; c++)
+          if (g[r][c] && g[r][c] === g[r][c+1] && g[r][c] === g[r][c+2]) { m[r][c]=m[r][c+1]=m[r][c+2]=true; }
+        for (let c = 0; c < N; c++) for (let r = 0; r < N - 2; r++)
+          if (g[r][c] && g[r][c] === g[r+1][c] && g[r][c] === g[r+2][c]) { m[r][c]=m[r+1][c]=m[r+2][c]=true; }
+        return m;
+      };
+
+      const processMatches = (g) => {
+        let ng = g.map(r => [...r]);
+        let total = 0;
+        let iter = 0;
+        while (iter++ < 20) {
+          const m = findMatches(ng);
+          let found = 0;
+          for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (m[r][c]) { ng[r][c] = null; found++; }
+          if (!found) break;
+          total += found * 10;
+          for (let c = 0; c < N; c++) {
+            const col = [];
+            for (let r = N - 1; r >= 0; r--) if (ng[r][c]) col.push(ng[r][c]);
+            for (let r = N - 1; r >= 0; r--) ng[r][c] = col[N-1-r] || COLORS[Math.floor(Math.random()*COLORS.length)];
+          }
+        }
+        return { grid: ng, scored: total };
+      };
+
+      const click = (r, c) => {
+        if (won) return;
+        if (!sel) { setSel([r, c]); return; }
+        const [sr, sc] = sel;
+        if (sr === r && sc === c) { setSel(null); return; }
+        if (Math.abs(sr - r) + Math.abs(sc - c) !== 1) { setSel([r, c]); return; }
+        const ng = grid.map(row => [...row]);
+        [ng[sr][sc], ng[r][c]] = [ng[r][c], ng[sr][sc]];
+        const result = processMatches(ng);
+        if (result.scored > 0) {
+          setGrid(result.grid);
+          const ns = score + result.scored;
+          setScore(ns);
+          setMoves(m => m + 1);
+          if (ns >= TARGET) { setWon(true); setBest(recordWin('match3', time, moves + 1)); }
+        }
+        setSel(null);
+      };
+
+      const restart = () => { setGrid(makeGrid()); setSel(null); setScore(0); setMoves(0); setWon(false); setTime(0); setBest(null); };
+
+      if (won) return <WinScreen time={time} moves={moves} best={best} onBack={onBack} onRestart={restart} />;
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '500px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+            <BackBtn onClick={onBack} />
+            <div>⏱ {formatTime(time)} · 🎯 {moves}</div>
+          </div>
+          <h2 style={{ textAlign: 'center', marginBottom: '8px' }}>🍭 Match-3</h2>
+          <div style={{ textAlign: 'center', marginBottom: '12px' }}>Điểm: {score} / {TARGET}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${N}, 1fr)`, gap: '4px' }}>
+            {grid.flatMap((row, r) => row.map((v, c) => (
+              <button key={`${r}-${c}`} onClick={() => click(r, c)} style={{
+                aspectRatio: '1', fontSize: '22px', border: sel && sel[0]===r && sel[1]===c ? '3px solid #fbbf24' : 'none',
+                borderRadius: '8px', background: '#1f2937', cursor: 'pointer'
+              }}>{v}</button>
+            )))}
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 4. SNAKE-LINE (draw path through all cells) ============
+    const SnakeLine = ({ onBack }) => {
+      const N = 5;
+      const [path, setPath] = useState([[0, 0]]);
+      const [moves, setMoves] = useState(0);
+      const [won, setWon] = useState(false);
+      const [time, setTime] = useTimer(!won);
+      const [best, setBest] = useState(null);
+
+      const click = (r, c) => {
+        if (won) return;
+        const last = path[path.length - 1];
+        // Undo if clicked on previous cell
+        if (path.length > 1 && path[path.length - 2][0] === r && path[path.length - 2][1] === c) {
+          setPath(path.slice(0, -1)); return;
+        }
+        if (path.some(([pr, pc]) => pr === r && pc === c)) return;
+        if (Math.abs(last[0] - r) + Math.abs(last[1] - c) !== 1) return;
+        const np = [...path, [r, c]];
+        setPath(np); setMoves(m => m + 1);
+        if (np.length === N * N) { setWon(true); setBest(recordWin('snake', time, moves + 1)); }
+      };
+
+      const restart = () => { setPath([[0, 0]]); setMoves(0); setWon(false); setTime(0); setBest(null); };
+
+      if (won) return <WinScreen time={time} moves={moves} best={best} onBack={onBack} onRestart={restart} />;
+
+      const idx = (r, c) => path.findIndex(([pr, pc]) => pr === r && pc === c);
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '500px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+            <BackBtn onClick={onBack} />
+            <div>⏱ {formatTime(time)} · 🎯 {path.length}/{N*N}</div>
+          </div>
+          <h2 style={{ textAlign: 'center', marginBottom: '8px' }}>🐍 Snake-Line</h2>
+          <div style={{ textAlign: 'center', marginBottom: '12px', fontSize: '12px' }}>Vẽ đường đi qua tất cả ô (liền kề)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${N}, 1fr)`, gap: '4px' }}>
+            {Array.from({length: N}).map((_, r) => Array.from({length: N}).map((_, c) => {
+              const i = idx(r, c);
+              return (
+                <button key={`${r}-${c}`} onClick={() => click(r, c)} style={{
+                  aspectRatio: '1', fontSize: '16px', fontWeight: 'bold', border: 'none', borderRadius: '8px',
+                  background: i === 0 ? '#10b981' : i > 0 ? `hsl(${120 + i*10}, 70%, 50%)` : '#374151', cursor: 'pointer', color: '#fff'
+                }}>{i >= 0 ? i + 1 : ''}</button>
+              );
+            }))}
+          </div>
+          <div style={{ textAlign: 'center', marginTop: '12px' }}>
+            <button onClick={restart} style={{ padding: '8px 16px', background: '#ef4444', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer' }}>↺ Bắt đầu lại</button>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 5. COLOR FILL (flood-fill to one color) ============
+    const ColorFill = ({ onBack }) => {
+      const N = 8;
+      const COLORS = ['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899'];
+      const makeGrid = () => Array.from({length: N}, () => Array.from({length: N}, () => COLORS[Math.floor(Math.random()*COLORS.length)]));
+      const [grid, setGrid] = useState(makeGrid);
+      const [moves, setMoves] = useState(0);
+      const MAX_MOVES = 22;
+      const [won, setWon] = useState(false);
+      const [lost, setLost] = useState(false);
+      const [time, setTime] = useTimer(!won && !lost);
+      const [best, setBest] = useState(null);
+
+      const flood = (g, color) => {
+        const ng = g.map(r => [...r]);
+        const start = ng[0][0];
+        if (start === color) return ng;
+        const stack = [[0, 0]];
+        const visited = new Set();
+        while (stack.length) {
+          const [r, c] = stack.pop();
+          const k = `${r},${c}`;
+          if (visited.has(k)) continue;
+          if (r < 0 || c < 0 || r >= N || c >= N) continue;
+          if (ng[r][c] !== start) continue;
+          visited.add(k);
+          ng[r][c] = color;
+          stack.push([r+1,c],[r-1,c],[r,c+1],[r,c-1]);
+        }
+        return ng;
+      };
+
+      const pick = (color) => {
+        if (won || lost) return;
+        if (grid[0][0] === color) return;
+        const ng = flood(grid, color);
+        setGrid(ng);
+        const nm = moves + 1;
+        setMoves(nm);
+        const done = ng.every(r => r.every(v => v === color));
+        if (done) { setWon(true); setBest(recordWin('fill', time, nm)); }
+        else if (nm >= MAX_MOVES) setLost(true);
+      };
+
+      const restart = () => { setGrid(makeGrid()); setMoves(0); setWon(false); setLost(false); setTime(0); setBest(null); };
+
+      if (won) return <WinScreen time={time} moves={moves} best={best} onBack={onBack} onRestart={restart} />;
+      if (lost) return (
+        <div style={{ textAlign: 'center', padding: '40px', maxWidth: '400px', margin: '40px auto', background: 'rgba(0,0,0,0.5)', borderRadius: '20px' }}>
+          <div style={{ fontSize: '48px' }}>😔</div>
+          <h2>Hết lượt!</h2>
+          <div style={{ marginTop: '16px', display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button onClick={restart} style={{ padding: '10px 20px', background: '#10b981', border: 'none', borderRadius: '10px', color: '#fff', cursor: 'pointer' }}>🔄 Chơi lại</button>
+            <button onClick={onBack} style={{ padding: '10px 20px', background: '#6366f1', border: 'none', borderRadius: '10px', color: '#fff', cursor: 'pointer' }}>🏠 Hub</button>
+          </div>
+        </div>
+      );
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '500px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+            <BackBtn onClick={onBack} />
+            <div>⏱ {formatTime(time)} · 🎯 {moves}/{MAX_MOVES}</div>
+          </div>
+          <h2 style={{ textAlign: 'center', marginBottom: '8px' }}>🎨 Color Fill</h2>
+          <div style={{ textAlign: 'center', marginBottom: '12px', fontSize: '12px' }}>Tô toàn bảng cùng 1 màu (bắt đầu từ góc trái trên)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${N}, 1fr)`, gap: '2px', marginBottom: '16px' }}>
+            {grid.flatMap((row, r) => row.map((v, c) => (
+              <div key={`${r}-${c}`} style={{ aspectRatio: '1', background: v, borderRadius: '4px' }} />
+            )))}
+          </div>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+            {COLORS.map(c => (
+              <button key={c} onClick={() => pick(c)} style={{ width: '44px', height: '44px', background: c, border: grid[0][0]===c ? '3px solid #fff' : 'none', borderRadius: '50%', cursor: 'pointer' }} />
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 6. CONNECT DOTS ============
+    const ConnectDots = ({ onBack }) => {
+      const N = 5;
+      // Fixed puzzle: pairs of colored dots; player draws paths that don't cross
+      const PUZZLES_D = [
+        { dots: { 'R': [[0,0],[4,4]], 'G': [[0,4],[4,0]], 'B': [[2,0],[2,4]] } },
+        { dots: { 'R': [[0,0],[3,3]], 'G': [[0,3],[4,0]], 'B': [[1,1],[4,4]], 'Y': [[0,2],[4,2]] } }
+      ];
+      const [puzzleIdx] = useState(() => Math.floor(Math.random() * PUZZLES_D.length));
+      const PUZ = PUZZLES_D[puzzleIdx];
+      const [paths, setPaths] = useState({});
+      const [drawing, setDrawing] = useState(null); // { color, path }
+      const [moves, setMoves] = useState(0);
+      const [won, setWon] = useState(false);
+      const [time, setTime] = useTimer(!won);
+      const [best, setBest] = useState(null);
+      const COLOR_MAP = { R: '#ef4444', G: '#10b981', B: '#3b82f6', Y: '#fbbf24' };
+
+      const cellInfo = (r, c) => {
+        for (const [col, pts] of Object.entries(PUZ.dots)) {
+          if (pts.some(p => p[0] === r && p[1] === c)) return { type: 'dot', color: col };
+        }
+        for (const [col, path] of Object.entries(paths)) {
+          if (path.some(p => p[0] === r && p[1] === c)) return { type: 'path', color: col };
+        }
+        if (drawing && drawing.path.some(p => p[0] === r && p[1] === c)) return { type: 'path', color: drawing.color };
+        return null;
+      };
+
+      const click = (r, c) => {
+        if (won) return;
+        const info = cellInfo(r, c);
+        if (!drawing) {
+          if (info && info.type === 'dot') {
+            const newPaths = { ...paths };
+            delete newPaths[info.color];
+            setPaths(newPaths);
+            setDrawing({ color: info.color, path: [[r, c]] });
+          }
+          return;
+        }
+        // currently drawing
+        const last = drawing.path[drawing.path.length - 1];
+        if (Math.abs(last[0] - r) + Math.abs(last[1] - c) !== 1) { setDrawing(null); return; }
+        // check if cell occupied by other color
+        const other = cellInfo(r, c);
+        if (other && other.color !== drawing.color) { setDrawing(null); return; }
+        // check end dot
+        const endDots = PUZ.dots[drawing.color];
+        const isEnd = endDots.some(p => p[0] === r && p[1] === c) && !(drawing.path[0][0] === r && drawing.path[0][1] === c);
+        const np = [...drawing.path, [r, c]];
+        if (isEnd) {
+          const newPaths = { ...paths, [drawing.color]: np };
+          setPaths(newPaths);
+          setDrawing(null);
+          setMoves(m => m + 1);
+          // check win: all colors connected AND all cells filled
+          const allColors = Object.keys(PUZ.dots).every(col => newPaths[col]);
+          const filled = new Set();
+          Object.values(newPaths).forEach(path => path.forEach(([pr, pc]) => filled.add(`${pr},${pc}`)));
+          if (allColors && filled.size === N * N) {
+            setWon(true); setBest(recordWin('connect', time, moves + 1));
+          }
+        } else {
+          setDrawing({ ...drawing, path: np });
+        }
+      };
+
+      const restart = () => { setPaths({}); setDrawing(null); setMoves(0); setWon(false); setTime(0); setBest(null); };
+
+      if (won) return <WinScreen time={time} moves={moves} best={best} onBack={onBack} onRestart={restart} />;
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '500px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+            <BackBtn onClick={onBack} />
+            <div>⏱ {formatTime(time)} · 🎯 {moves}</div>
+          </div>
+          <h2 style={{ textAlign: 'center', marginBottom: '8px' }}>🔗 Connect Dots</h2>
+          <div style={{ textAlign: 'center', marginBottom: '12px', fontSize: '12px' }}>Nối chấm cùng màu, lấp đầy lưới, không chéo</div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${N}, 1fr)`, gap: '3px' }}>
+            {Array.from({length: N}).map((_, r) => Array.from({length: N}).map((_, c) => {
+              const info = cellInfo(r, c);
+              const color = info ? COLOR_MAP[info.color] : '#1f2937';
+              return (
+                <button key={`${r}-${c}`} onClick={() => click(r, c)} style={{
+                  aspectRatio: '1', border: 'none', borderRadius: info && info.type === 'dot' ? '50%' : '6px',
+                  background: info ? color : '#374151', cursor: 'pointer'
+                }} />
+              );
+            }))}
+          </div>
+          <div style={{ textAlign: 'center', marginTop: '12px' }}>
+            <button onClick={restart} style={{ padding: '6px 14px', background: '#ef4444', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer' }}>↺ Xóa</button>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 7. SUDOKU MINI (4x4) ============
+    const SudokuMini = ({ onBack }) => {
+      // Generate 4x4 sudoku (numbers 1-4, 2x2 boxes)
+      const FULL_PUZZLES = [
+        [[1,2,3,4],[3,4,1,2],[2,1,4,3],[4,3,2,1]],
+        [[2,1,4,3],[4,3,2,1],[1,2,3,4],[3,4,1,2]],
+        [[3,4,1,2],[1,2,3,4],[4,3,2,1],[2,1,4,3]]
+      ];
+      const makePuzzle = () => {
+        const sol = FULL_PUZZLES[Math.floor(Math.random() * FULL_PUZZLES.length)];
+        const board = sol.map(r => [...r]);
+        const given = board.map(r => r.map(() => true));
+        let removed = 0;
+        while (removed < 8) {
+          const r = Math.floor(Math.random()*4), c = Math.floor(Math.random()*4);
+          if (given[r][c]) { given[r][c] = false; board[r][c] = 0; removed++; }
+        }
+        return { board, given, sol };
+      };
+      const [{ board: initBoard, given, sol }, setSetup] = useState(makePuzzle);
+      const [board, setBoard] = useState(initBoard);
+      const [sel, setSel] = useState(null);
+      const [moves, setMoves] = useState(0);
+      const [won, setWon] = useState(false);
+      const [time, setTime] = useTimer(!won);
+      const [best, setBest] = useState(null);
+
+      const place = (n) => {
+        if (won || !sel) return;
+        const [r, c] = sel;
+        if (given[r][c]) return;
+        const nb = board.map(row => [...row]); nb[r][c] = n; setBoard(nb); setMoves(m => m + 1);
+        if (nb.every((row, i) => row.every((v, j) => v === sol[i][j]))) { setWon(true); setBest(recordWin('sudoku', time, moves + 1)); }
+      };
+
+      const restart = () => { const p = makePuzzle(); setSetup(p); setBoard(p.board); setSel(null); setMoves(0); setWon(false); setTime(0); setBest(null); };
+
+      if (won) return <WinScreen time={time} moves={moves} best={best} onBack={onBack} onRestart={restart} />;
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '400px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+            <BackBtn onClick={onBack} />
+            <div>⏱ {formatTime(time)} · 🎯 {moves}</div>
+          </div>
+          <h2 style={{ textAlign: 'center', marginBottom: '12px' }}>🎯 Sudoku Mini 4x4</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2px', marginBottom: '16px', background: '#fff', padding: '3px' }}>
+            {board.flatMap((row, r) => row.map((v, c) => {
+              const isSel = sel && sel[0]===r && sel[1]===c;
+              const isGiven = given[r][c];
+              const borderR = c === 1 ? '3px solid #000' : '';
+              const borderB = r === 1 ? '3px solid #000' : '';
+              return (
+                <button key={`${r}-${c}`} onClick={() => setSel([r, c])} style={{
+                  aspectRatio: '1', fontSize: '24px', fontWeight: 'bold', border: 'none',
+                  marginRight: borderR ? '2px' : 0, marginBottom: borderB ? '2px' : 0,
+                  background: isSel ? '#fbbf24' : isGiven ? '#d1d5db' : '#fff', color: isGiven ? '#000' : '#3b82f6',
+                  cursor: isGiven ? 'default' : 'pointer'
+                }}>{v || ''}</button>
+              );
+            }))}
+          </div>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+            {[1,2,3,4].map(n => (
+              <button key={n} onClick={() => place(n)} style={{ width: '50px', height: '50px', fontSize: '22px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>{n}</button>
+            ))}
+            <button onClick={() => place(0)} style={{ padding: '0 12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>✖</button>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 8. MATH PUZZLE ============
+    const MathPuzzle = ({ onBack }) => {
+      const makeProblem = () => {
+        const ops = ['+', '-', '×'];
+        const problems = [];
+        for (let i = 0; i < 5; i++) {
+          const a = Math.floor(Math.random() * 9) + 1;
+          const b = Math.floor(Math.random() * 9) + 1;
+          const op = ops[Math.floor(Math.random() * ops.length)];
+          let result;
+          if (op === '+') result = a + b;
+          else if (op === '-') result = a - b;
+          else result = a * b;
+          const hide = Math.floor(Math.random() * 3); // 0=a, 1=b, 2=result
+          problems.push({ a, b, op, result, hide, answer: hide === 0 ? a : hide === 1 ? b : result });
+        }
+        return problems;
+      };
+      const [problems, setProblems] = useState(makeProblem);
+      const [inputs, setInputs] = useState(() => Array(5).fill(''));
+      const [idx, setIdx] = useState(0);
+      const [moves, setMoves] = useState(0);
+      const [won, setWon] = useState(false);
+      const [time, setTime] = useTimer(!won);
+      const [best, setBest] = useState(null);
+
+      const submit = () => {
+        if (won) return;
+        const val = parseInt(inputs[idx]);
+        if (isNaN(val)) return;
+        setMoves(m => m + 1);
+        if (val === problems[idx].answer) {
+          if (idx === problems.length - 1) { setWon(true); setBest(recordWin('math', time, moves + 1)); }
+          else setIdx(idx + 1);
+        } else {
+          const ni = [...inputs]; ni[idx] = ''; setInputs(ni);
+        }
+      };
+
+      const restart = () => { setProblems(makeProblem()); setInputs(Array(5).fill('')); setIdx(0); setMoves(0); setWon(false); setTime(0); setBest(null); };
+
+      if (won) return <WinScreen time={time} moves={moves} best={best} onBack={onBack} onRestart={restart} />;
+
+      const p = problems[idx];
+      const show = (n, pos) => p.hide === pos ? (
+        <input type="number" value={inputs[idx]} onChange={e => { const ni = [...inputs]; ni[idx] = e.target.value; setInputs(ni); }}
+          onKeyDown={e => e.key === 'Enter' && submit()}
+          style={{ width: '60px', fontSize: '28px', textAlign: 'center', border: '2px solid #fbbf24', borderRadius: '8px', padding: '4px' }} autoFocus />
+      ) : <span>{n}</span>;
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '500px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+            <BackBtn onClick={onBack} />
+            <div>⏱ {formatTime(time)} · 🎯 {moves}</div>
+          </div>
+          <h2 style={{ textAlign: 'center', marginBottom: '12px' }}>🧮 Math Puzzle</h2>
+          <div style={{ textAlign: 'center', marginBottom: '12px', fontSize: '14px' }}>Câu {idx + 1}/{problems.length}</div>
+          <div style={{ textAlign: 'center', fontSize: '42px', margin: '40px 0', display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center' }}>
+            {show(p.a, 0)} <span>{p.op}</span> {show(p.b, 1)} <span>=</span> {show(p.result, 2)}
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <button onClick={submit} style={{ padding: '12px 32px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>✓ Kiểm tra</button>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 9. PATTERN REPEAT (Simon says) ============
+    const PatternRepeat = ({ onBack }) => {
+      const COLORS = [
+        { bg: '#ef4444', active: '#fca5a5' },
+        { bg: '#10b981', active: '#6ee7b7' },
+        { bg: '#3b82f6', active: '#93c5fd' },
+        { bg: '#fbbf24', active: '#fde68a' }
+      ];
+      const TARGET = 6;
+      const [seq, setSeq] = useState([]);
+      const [playerIdx, setPlayerIdx] = useState(0);
+      const [phase, setPhase] = useState('showing'); // showing, playing, done
+      const [showing, setShowing] = useState(-1);
+      const [moves, setMoves] = useState(0);
+      const [won, setWon] = useState(false);
+      const [time, setTime] = useTimer(!won);
+      const [best, setBest] = useState(null);
+
+      useEffect(() => {
+        if (seq.length === 0) { setSeq([Math.floor(Math.random() * 4)]); }
+      }, []);
+
+      useEffect(() => {
+        if (phase !== 'showing' || seq.length === 0) return;
+        let i = 0;
+        const step = () => {
+          if (i >= seq.length) { setShowing(-1); setPhase('playing'); setPlayerIdx(0); return; }
+          setShowing(seq[i]); i++;
+          setTimeout(() => { setShowing(-1); setTimeout(step, 200); }, 500);
+        };
+        setTimeout(step, 600);
+      }, [phase, seq]);
+
+      const click = (i) => {
+        if (phase !== 'playing' || won) return;
+        setMoves(m => m + 1);
+        if (seq[playerIdx] === i) {
+          if (playerIdx === seq.length - 1) {
+            if (seq.length >= TARGET) { setWon(true); setBest(recordWin('pattern', time, moves + 1)); return; }
+            setSeq([...seq, Math.floor(Math.random() * 4)]);
+            setPhase('showing');
+          } else {
+            setPlayerIdx(playerIdx + 1);
+          }
+        } else {
+          // wrong -> restart sequence
+          setSeq([Math.floor(Math.random() * 4)]);
+          setPlayerIdx(0);
+          setPhase('showing');
+        }
+      };
+
+      const restart = () => { setSeq([Math.floor(Math.random() * 4)]); setPlayerIdx(0); setPhase('showing'); setShowing(-1); setMoves(0); setWon(false); setTime(0); setBest(null); };
+
+      if (won) return <WinScreen time={time} moves={moves} best={best} onBack={onBack} onRestart={restart} />;
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '400px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+            <BackBtn onClick={onBack} />
+            <div>⏱ {formatTime(time)} · 🎯 {moves}</div>
+          </div>
+          <h2 style={{ textAlign: 'center', marginBottom: '8px' }}>🎭 Pattern Repeat</h2>
+          <div style={{ textAlign: 'center', marginBottom: '12px' }}>Độ dài: {seq.length}/{TARGET} · {phase === 'showing' ? 'Xem...' : 'Lặp lại!'}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+            {COLORS.map((c, i) => (
+              <button key={i} onClick={() => click(i)} disabled={phase !== 'playing'} style={{
+                aspectRatio: '1', background: showing === i ? c.active : c.bg, border: 'none', borderRadius: '12px',
+                cursor: phase === 'playing' ? 'pointer' : 'default'
+              }} />
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 10. JIGSAW ============
+    const Jigsaw = ({ onBack }) => {
+      const N = 3;
+      const IMG = ['🌅','🌄','🌇','🌃','🌆','🌉','🏞','🗻','🌋'];
+      const makeBoard = () => {
+        const arr = Array.from({length: N*N}, (_, i) => i);
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      };
+      const [pieces, setPieces] = useState(makeBoard);
+      const [sel, setSel] = useState(null);
+      const [moves, setMoves] = useState(0);
+      const [won, setWon] = useState(false);
+      const [time, setTime] = useTimer(!won);
+      const [best, setBest] = useState(null);
+
+      const click = (i) => {
+        if (won) return;
+        if (sel === null) { setSel(i); return; }
+        if (sel === i) { setSel(null); return; }
+        const np = [...pieces]; [np[i], np[sel]] = [np[sel], np[i]];
+        setPieces(np); setSel(null); setMoves(m => m + 1);
+        if (np.every((v, idx) => v === idx)) { setWon(true); setBest(recordWin('jigsaw', time, moves + 1)); }
+      };
+
+      const restart = () => { setPieces(makeBoard()); setSel(null); setMoves(0); setWon(false); setTime(0); setBest(null); };
+
+      if (won) return <WinScreen time={time} moves={moves} best={best} onBack={onBack} onRestart={restart} />;
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '420px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
+            <BackBtn onClick={onBack} />
+            <div>⏱ {formatTime(time)} · 🎯 {moves}</div>
+          </div>
+          <h2 style={{ textAlign: 'center', marginBottom: '8px' }}>🧩 Jigsaw</h2>
+          <div style={{ textAlign: 'center', marginBottom: '12px', fontSize: '12px' }}>Chọn 2 mảnh để đổi chỗ · Sắp xếp theo thứ tự</div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${N}, 1fr)`, gap: '4px' }}>
+            {pieces.map((p, i) => (
+              <button key={i} onClick={() => click(i)} style={{
+                aspectRatio: '1', fontSize: '48px', border: sel === i ? '4px solid #fbbf24' : '2px solid #374151',
+                borderRadius: '10px', background: '#1f2937', cursor: 'pointer'
+              }}>{IMG[p]}</button>
+            ))}
+          </div>
+          <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '12px', color: '#9ca3af' }}>Thứ tự đúng:</div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${N}, 1fr)`, gap: '2px', maxWidth: '160px', margin: '8px auto' }}>
+            {IMG.map((e, i) => <div key={i} style={{ aspectRatio: '1', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{e}</div>)}
+          </div>
+        </div>
+      );
+    };
+
+    // ============ HUB ============
+    const Hub = ({ onPick }) => {
+      const progress = loadProgress();
+      return (
+        <div style={{ padding: '24px', maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <a href="../index.html" style={{ padding: '8px 16px', background: '#1f2937', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>← Trang chủ</a>
+            <h1 style={{ fontSize: '32px' }}>🧩 Puzzle Hub</h1>
+            <div style={{ width: '100px' }}></div>
+          </div>
+          <p style={{ textAlign: 'center', marginBottom: '24px', opacity: 0.8 }}>10 trò chơi xếp hình, giải đố, luyện trí não</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+            {PUZZLES.map(p => {
+              const prog = progress[p.id];
+              return (
+                <button key={p.id} onClick={() => onPick(p.id)} style={{
+                  padding: '20px', background: `linear-gradient(135deg, ${p.color}aa, ${p.color}44)`,
+                  border: `2px solid ${p.color}`, borderRadius: '14px', color: '#fff', cursor: 'pointer',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ fontSize: '42px', marginBottom: '8px' }}>{p.icon}</div>
+                  <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '4px' }}>{p.name}</div>
+                  <div style={{ fontSize: '12px', opacity: 0.85, marginBottom: '8px' }}>{p.desc}</div>
+                  {prog ? (
+                    <div style={{ fontSize: '11px', color: '#fde68a' }}>
+                      Tốt nhất: {formatTime(prog.bestTime)} · {prog.bestMoves} lượt · {prog.plays} ván
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '11px', opacity: 0.6 }}>Chưa chơi</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+
+    // ============ APP ============
+    const App = () => {
+      const [current, setCurrent] = useState(null);
+      const back = () => setCurrent(null);
+      if (!current) return <Hub onPick={setCurrent} />;
+      switch (current) {
+        case 'memory': return <MemoryMatch onBack={back} />;
+        case 'slide': return <NumberSlide onBack={back} />;
+        case 'match3': return <Match3 onBack={back} />;
+        case 'snake': return <SnakeLine onBack={back} />;
+        case 'fill': return <ColorFill onBack={back} />;
+        case 'connect': return <ConnectDots onBack={back} />;
+        case 'sudoku': return <SudokuMini onBack={back} />;
+        case 'math': return <MathPuzzle onBack={back} />;
+        case 'pattern': return <PatternRepeat onBack={back} />;
+        case 'jigsaw': return <Jigsaw onBack={back} />;
+        default: return <Hub onPick={setCurrent} />;
+      }
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

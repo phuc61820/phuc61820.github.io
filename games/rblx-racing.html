@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏎️ Racing Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #2e1a0a; min-height: 100vh; color: white; overflow: hidden; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const TRACKS = [
+      { id: 'classic', name: 'Classic Circuit', emoji: '🏁', bg: 'linear-gradient(180deg,#4a5568,#2d3748)', road: '#333', line: '#fff', obstacleRate: 0.04, speed: 1, desc: 'Đường đua kinh điển' },
+      { id: 'city',    name: 'City Night',      emoji: '🌃', bg: 'linear-gradient(180deg,#1a1a3e,#0a0a1a)', road: '#1a1a2a', line: '#ff00ff', obstacleRate: 0.05, speed: 1.1, desc: 'Đèn neon rực rỡ' },
+      { id: 'desert',  name: 'Desert Rally',    emoji: '🏜️', bg: 'linear-gradient(180deg,#f6ad55,#c05621)', road: '#8b6f47', line: '#fff8dc', obstacleRate: 0.045, speed: 1, desc: 'Đường cát bụi mù' },
+      { id: 'ice',     name: 'Ice Drift',       emoji: '❄️', bg: 'linear-gradient(180deg,#bee3f8,#63b3ed)', road: '#e6f7ff', line: '#3182ce', obstacleRate: 0.04, speed: 1.2, slippery: true, desc: 'Trơn trượt trên băng' },
+      { id: 'jungle',  name: 'Jungle Path',     emoji: '🌴', bg: 'linear-gradient(180deg,#276749,#1a4731)', road: '#3d2817', line: '#ecc94b', obstacleRate: 0.06, speed: 0.95, desc: 'Dây leo và thú rừng' },
+      { id: 'space',   name: 'Space Highway',   emoji: '🚀', bg: 'linear-gradient(180deg,#1a0033,#000)', road: '#2d1b4e', line: '#00ffff', obstacleRate: 0.05, speed: 1.3, desc: 'Siêu tốc vũ trụ' },
+      { id: 'lava',    name: 'Lava Road',       emoji: '🌋', bg: 'linear-gradient(180deg,#742a2a,#2d0000)', road: '#4a1a1a', line: '#ff6b00', obstacleRate: 0.07, speed: 1.1, desc: 'Dung nham nóng bỏng' },
+      { id: 'mountain',name: 'Mountain Pass',   emoji: '🏔️', bg: 'linear-gradient(180deg,#4a5568,#718096)', road: '#2d3748', line: '#fff', obstacleRate: 0.05, speed: 1, curvy: true, desc: 'Đường núi quanh co' },
+      { id: 'beach',   name: 'Beach Run',       emoji: '🌊', bg: 'linear-gradient(180deg,#fbd38d,#4299e1)', road: '#d69e2e', line: '#fff', obstacleRate: 0.055, speed: 1, puddles: true, desc: 'Vũng nước biển' },
+      { id: 'portal',  name: 'Portal Race',     emoji: '🌀', bg: 'linear-gradient(180deg,#553c9a,#44337a)', road: '#2d1b4e', line: '#ffd700', obstacleRate: 0.05, speed: 1.15, portals: true, desc: 'Dịch chuyển ngẫu nhiên' }
+    ];
+
+    const OBSTACLES = ['🚗','🚙','🚚','🚛','🏎️'];
+    const JUNGLE_OBS = ['🐅','🐒','🦁','🌿'];
+    const SPACE_OBS = ['🛸','☄️','🪐'];
+    const LAVA_OBS = ['🔥','🌋','💥'];
+
+    const loadProgress = () => {
+      try { return JSON.parse(localStorage.getItem('rblxRacingProgress')) || {}; }
+      catch { return {}; }
+    };
+    const saveProgress = (p) => localStorage.setItem('rblxRacingProgress', JSON.stringify(p));
+
+    function Hub({ onPick, progress }) {
+      return (
+        <div style={{padding:'20px', minHeight:'100vh', background:'linear-gradient(135deg,#2e1a0a 0%,#5a2a0a 100%)', overflowY:'auto', maxHeight:'100vh'}}>
+          <div style={{textAlign:'center', marginBottom:20}}>
+            <h1 style={{fontSize:36, textShadow:'2px 2px 4px rgba(0,0,0,0.5)'}}>🏎️ Racing Hub</h1>
+            <p style={{opacity:0.8, marginTop:6}}>10 đường đua cực đỉnh — Chọn track để bắt đầu!</p>
+            <a href="../index.html" style={{display:'inline-block', marginTop:10, background:'#e53e3e', color:'white', padding:'8px 18px', borderRadius:8, textDecoration:'none', fontWeight:'bold'}}>← Về trang chủ</a>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:14, maxWidth:1100, margin:'0 auto'}}>
+            {TRACKS.map(t => {
+              const best = progress[t.id] || {};
+              return (
+                <button key={t.id} onClick={()=>onPick(t)} style={{
+                  background: t.bg, border:'2px solid rgba(255,255,255,0.2)', borderRadius:12,
+                  padding:16, color:'white', cursor:'pointer', textAlign:'center', minHeight:150
+                }}>
+                  <div style={{fontSize:44}}>{t.emoji}</div>
+                  <div style={{fontWeight:'bold', fontSize:15, marginTop:4}}>{t.name}</div>
+                  <div style={{fontSize:11, opacity:0.85, marginTop:4}}>{t.desc}</div>
+                  <div style={{fontSize:11, marginTop:8, background:'rgba(0,0,0,0.35)', padding:'4px 6px', borderRadius:6}}>
+                    🏆 {best.distance ? `${best.distance}m` : '—'} | 💰 {best.coins || 0}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function Game({ track, onBack, progress, setProgress }) {
+      const [lane, setLane] = useState(1);
+      const [items, setItems] = useState([]);
+      const [distance, setDistance] = useState(0);
+      const [coins, setCoins] = useState(0);
+      const [speed, setSpeed] = useState(track.speed);
+      const [boost, setBoost] = useState(0);
+      const [gameOver, setGameOver] = useState(false);
+      const [paused, setPaused] = useState(false);
+      const [roadOffset, setRoadOffset] = useState(0);
+      const laneRef = useRef(lane);
+      const itemsRef = useRef(items);
+      const tickRef = useRef(0);
+
+      useEffect(()=>{ laneRef.current = lane; }, [lane]);
+      useEffect(()=>{ itemsRef.current = items; }, [items]);
+
+      const move = (dir) => {
+        if (gameOver || paused) return;
+        if (track.slippery) {
+          // ice: delayed reaction by 1 tick; still allow
+          setLane(l => Math.max(0, Math.min(2, l + dir)));
+        } else {
+          setLane(l => Math.max(0, Math.min(2, l + dir)));
+        }
+      };
+
+      useEffect(() => {
+        const onKey = (e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'a') move(-1);
+          else if (e.key === 'ArrowRight' || e.key === 'd') move(1);
+          else if (e.key === ' ') setPaused(p => !p);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [gameOver, paused, track]);
+
+      useEffect(() => {
+        if (gameOver || paused) return;
+        const iv = setInterval(() => {
+          tickRef.current++;
+          const t = tickRef.current;
+
+          setRoadOffset(o => (o + 20 * speed) % 60);
+          setDistance(d => d + Math.round(speed * 2));
+          if (boost > 0) setBoost(b => b - 1);
+
+          const difficulty = 1 + Math.min(3, tickRef.current / 400);
+          const rate = track.obstacleRate * difficulty;
+
+          // move items down
+          setItems(prev => {
+            let arr = prev.map(it => ({...it, y: it.y + 6 * speed * (boost>0?1.6:1)}))
+                          .filter(it => it.y < 700);
+            // spawn
+            if (Math.random() < rate) {
+              const kind = Math.random();
+              let type = 'obstacle';
+              let emoji;
+              if (kind < 0.15) { type = 'coin'; emoji = '💰'; }
+              else if (kind < 0.22) { type = 'boost'; emoji = '⚡'; }
+              else {
+                type = 'obstacle';
+                if (track.id==='jungle') emoji = JUNGLE_OBS[Math.floor(Math.random()*JUNGLE_OBS.length)];
+                else if (track.id==='space') emoji = SPACE_OBS[Math.floor(Math.random()*SPACE_OBS.length)];
+                else if (track.id==='lava') emoji = LAVA_OBS[Math.floor(Math.random()*LAVA_OBS.length)];
+                else if (track.id==='beach' && Math.random()<0.4) emoji = '💧';
+                else emoji = OBSTACLES[Math.floor(Math.random()*OBSTACLES.length)];
+              }
+              arr.push({ id: Math.random(), lane: Math.floor(Math.random()*3), y: -40, type, emoji });
+            }
+            // portal teleport
+            if (track.portals && t % 80 === 0) {
+              setLane(Math.floor(Math.random()*3));
+            }
+            return arr;
+          });
+
+          // collision check
+          const curLane = laneRef.current;
+          const bulletZone = itemsRef.current.filter(it => it.y > 540 && it.y < 640 && it.lane === curLane);
+          for (const hit of bulletZone) {
+            if (hit.type === 'obstacle') {
+              setGameOver(true);
+            } else if (hit.type === 'coin') {
+              setCoins(c => c + 10);
+              setItems(prev => prev.filter(x => x.id !== hit.id));
+            } else if (hit.type === 'boost') {
+              setBoost(30);
+              setItems(prev => prev.filter(x => x.id !== hit.id));
+            }
+          }
+        }, 50);
+        return () => clearInterval(iv);
+      }, [gameOver, paused, speed, boost, track]);
+
+      useEffect(() => {
+        if (gameOver) {
+          const best = progress[track.id] || { distance: 0, coins: 0 };
+          const newBest = {
+            distance: Math.max(best.distance || 0, distance),
+            coins: Math.max(best.coins || 0, coins)
+          };
+          const np = { ...progress, [track.id]: newBest };
+          setProgress(np);
+          saveProgress(np);
+        }
+      }, [gameOver]);
+
+      const laneX = (l) => [80, 160, 240][l];
+
+      return (
+        <div style={{position:'relative', width:'100vw', height:'100vh', background:track.bg, overflow:'hidden', userSelect:'none'}}>
+          {/* HUD */}
+          <div style={{position:'absolute', top:10, left:10, right:10, zIndex:10, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(0,0,0,0.6)', color:'white', border:'none', padding:'8px 14px', borderRadius:8, cursor:'pointer'}}>← Hub</button>
+            <div style={{background:'rgba(0,0,0,0.6)', padding:'8px 14px', borderRadius:8, fontSize:14}}>
+              <div>{track.emoji} {track.name}</div>
+              <div>🛣️ {distance}m | 💰 {coins} | {boost>0?'⚡'+boost:''}</div>
+            </div>
+            <button onClick={()=>setPaused(p=>!p)} style={{background:'rgba(0,0,0,0.6)', color:'white', border:'none', padding:'8px 14px', borderRadius:8, cursor:'pointer'}}>
+              {paused?'▶️':'⏸️'}
+            </button>
+          </div>
+
+          {/* Road */}
+          <div style={{position:'absolute', left:'50%', top:0, transform:'translateX(-50%)', width:320, height:'100vh', background:track.road, boxShadow:'0 0 40px rgba(0,0,0,0.5)', overflow:'hidden'}}>
+            {/* lane lines */}
+            {[0,1].map(i => (
+              <div key={i} style={{
+                position:'absolute',
+                left: 107 + i*106,
+                top: -60 + roadOffset,
+                width:4, height:'120%',
+                backgroundImage: `repeating-linear-gradient(180deg, ${track.line} 0 20px, transparent 20px 40px)`,
+                transform: track.curvy ? `translateX(${Math.sin(roadOffset/10 + i)*15}px)` : 'none'
+              }}/>
+            ))}
+
+            {/* items */}
+            {items.map(it => (
+              <div key={it.id} style={{
+                position:'absolute',
+                left: laneX(it.lane),
+                top: it.y,
+                fontSize: 40,
+                transition:'none'
+              }}>{it.emoji}</div>
+            ))}
+
+            {/* player car */}
+            <div style={{
+              position:'absolute',
+              left: laneX(lane),
+              bottom: 60,
+              fontSize: 48,
+              transition: track.slippery ? 'left 0.35s ease-out' : 'left 0.15s',
+              filter: boost>0 ? 'drop-shadow(0 0 10px #ff0)' : 'none'
+            }}>🏎️</div>
+          </div>
+
+          {/* Controls */}
+          <div style={{position:'absolute', bottom:20, left:0, right:0, display:'flex', justifyContent:'center', gap:20, zIndex:10}}>
+            <button onClick={()=>move(-1)} style={{width:80, height:80, fontSize:36, borderRadius:40, border:'none', background:'rgba(255,255,255,0.2)', color:'white', cursor:'pointer', backdropFilter:'blur(10px)'}}>◀️</button>
+            <button onClick={()=>move(1)}  style={{width:80, height:80, fontSize:36, borderRadius:40, border:'none', background:'rgba(255,255,255,0.2)', color:'white', cursor:'pointer', backdropFilter:'blur(10px)'}}>▶️</button>
+          </div>
+
+          {/* Pause overlay */}
+          {paused && !gameOver && (
+            <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:20}}>
+              <div style={{textAlign:'center'}}>
+                <h2 style={{fontSize:40}}>⏸️ Tạm dừng</h2>
+                <button onClick={()=>setPaused(false)} style={{marginTop:20, padding:'12px 30px', fontSize:18, background:'#48bb78', color:'white', border:'none', borderRadius:10, cursor:'pointer'}}>Tiếp tục</button>
+              </div>
+            </div>
+          )}
+
+          {/* Game over */}
+          {gameOver && (
+            <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:20}}>
+              <div style={{textAlign:'center', background:'#2d3748', padding:30, borderRadius:16, maxWidth:360}}>
+                <h2 style={{fontSize:34}}>💥 Game Over!</h2>
+                <p style={{fontSize:18, marginTop:12}}>🛣️ Khoảng cách: {distance}m</p>
+                <p style={{fontSize:18}}>💰 Xu: {coins}</p>
+                <p style={{fontSize:14, opacity:0.8, marginTop:8}}>Kỷ lục: {(progress[track.id]?.distance)||0}m</p>
+                <div style={{marginTop:20, display:'flex', gap:10, justifyContent:'center'}}>
+                  <button onClick={onBack} style={{padding:'10px 20px', background:'#e53e3e', color:'white', border:'none', borderRadius:8, cursor:'pointer'}}>Về Hub</button>
+                  <button onClick={()=>window.location.reload()} style={{padding:'10px 20px', background:'#48bb78', color:'white', border:'none', borderRadius:8, cursor:'pointer'}}>Chơi lại</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const [track, setTrack] = useState(null);
+      const [progress, setProgress] = useState(loadProgress());
+
+      if (!track) return <Hub onPick={setTrack} progress={progress} />;
+      return <Game track={track} onBack={()=>setTrack(null)} progress={progress} setProgress={setProgress} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

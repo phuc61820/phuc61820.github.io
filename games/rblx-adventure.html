@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🗺️ Adventure Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a2e1a; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ====== 10 ADVENTURE STORIES ======
+    const STORIES = [
+      {
+        id: 'princess', icon: '🏰', title: 'Giải Cứu Công Chúa',
+        desc: 'Hành trình hiệp sĩ dũng cảm vào lâu đài tối',
+        color: '#8b5cf6',
+        start: 'start',
+        scenes: {
+          start: { text: 'Công chúa bị bắt cóc bởi phù thủy hắc ám. Bạn là hiệp sĩ trẻ đứng trước 3 con đường.', choices: [
+            { label: '🌲 Đi qua rừng tối', next: 'forest' },
+            { label: '⛰️ Leo qua núi tuyết', next: 'mountain' },
+            { label: '🏞️ Băng qua đầm lầy', next: 'swamp' } ] },
+          forest: { text: 'Trong rừng tối, một con sói khổng lồ chặn đường.', choices: [
+            { label: '⚔️ Rút kiếm chiến đấu', next: 'fight_wolf' },
+            { label: '🍖 Ném thịt dụ sói', next: 'feed_wolf' } ] },
+          mountain: { text: 'Trên đỉnh núi, tuyết lở đang đến gần.', choices: [
+            { label: '🏃 Chạy xuống nhanh', next: 'escape_snow' },
+            { label: '🕳️ Trốn trong hang', next: 'cave' } ] },
+          swamp: { text: 'Đầm lầy đầy rắn độc và cá sấu.', choices: [
+            { label: '🛶 Tìm thuyền cũ', next: 'boat' },
+            { label: '💨 Chạy nhanh qua', next: 'lose1' } ] },
+          fight_wolf: { text: 'Bạn đánh bại sói và tìm thấy chiếc chìa khóa cổ.', choices: [
+            { label: '➡️ Tiếp tục đến lâu đài', next: 'castle' } ] },
+          feed_wolf: { text: 'Sói ăn thịt và dẫn bạn đến một lối đi bí mật.', choices: [
+            { label: '➡️ Đi theo sói', next: 'castle' } ] },
+          escape_snow: { text: 'Bạn thoát được nhưng mất hết đồ. Đến lâu đài tay không.', choices: [
+            { label: '🚪 Vào cửa chính', next: 'lose2' } ] },
+          cave: { text: 'Trong hang bạn tìm thấy kiếm phép cổ.', choices: [
+            { label: '⚔️ Mang kiếm đến lâu đài', next: 'castle' } ] },
+          boat: { text: 'Thuyền đưa bạn an toàn đến lâu đài.', choices: [
+            { label: '🏰 Vào lâu đài', next: 'castle' } ] },
+          castle: { text: 'Cửa lâu đài có 2 lối: chính và sau.', choices: [
+            { label: '🚪 Cửa chính (có lính)', next: 'guards' },
+            { label: '🪟 Cửa sổ bí mật', next: 'secret' } ] },
+          guards: { text: 'Bạn đánh bại lính gác sau trận chiến dài.', choices: [
+            { label: '🔼 Lên tháp', next: 'tower' } ] },
+          secret: { text: 'Bạn lẻn vào không bị phát hiện.', choices: [
+            { label: '🔼 Lên tháp', next: 'tower' } ] },
+          tower: { text: 'Phù thủy hắc ám đứng trước công chúa!', choices: [
+            { label: '⚔️ Chiến đấu', next: 'final_fight' },
+            { label: '💬 Thương lượng', next: 'lose3' } ] },
+          final_fight: { text: 'Bạn đánh bại phù thủy và giải cứu công chúa!', choices: [
+            { label: '🏆 Kết thúc', next: 'win' } ] },
+          win: { text: '🏆 CHIẾN THẮNG! Bạn là anh hùng của vương quốc!', ending: 'win' },
+          lose1: { text: '💀 Bạn bị cá sấu tấn công. Kết thúc buồn.', ending: 'lose' },
+          lose2: { text: '💀 Không có vũ khí, bạn bị lính gác hạ gục.', ending: 'lose' },
+          lose3: { text: '💀 Phù thủy đánh lừa và biến bạn thành ếch.', ending: 'lose' }
+        }
+      },
+      {
+        id: 'pirate', icon: '🏴‍☠️', title: 'Kho Báu Hải Tặc',
+        desc: 'Dong buồm tìm kho báu huyền thoại',
+        color: '#0891b2',
+        start: 'start',
+        scenes: {
+          start: { text: 'Bạn là thuyền trưởng trẻ cầm bản đồ kho báu. Chọn lộ trình.', choices: [
+            { label: '🌊 Biển Bắc đầy sóng', next: 'north' },
+            { label: '🏝️ Quần đảo Nam', next: 'south' },
+            { label: '🌀 Tam giác quỷ', next: 'triangle' } ] },
+          north: { text: 'Bão lớn! Thuyền sắp vỡ.', choices: [
+            { label: '⚓ Thả neo chờ bão qua', next: 'wait_storm' },
+            { label: '🚢 Chạy nhanh', next: 'lose1' } ] },
+          south: { text: 'Gặp thổ dân trên đảo.', choices: [
+            { label: '🤝 Kết bạn', next: 'friend' },
+            { label: '⚔️ Tấn công', next: 'lose2' } ] },
+          triangle: { text: 'Tàu ma xuất hiện!', choices: [
+            { label: '🏃 Trốn', next: 'hide' },
+            { label: '⚔️ Chiến đấu', next: 'ghost_fight' } ] },
+          wait_storm: { text: 'Bão qua, bạn thấy đảo kho báu!', choices: [
+            { label: '🏝️ Lên đảo', next: 'island' } ] },
+          friend: { text: 'Thổ dân tặng bạn bản đồ chi tiết.', choices: [
+            { label: '🏝️ Đến đảo', next: 'island' } ] },
+          hide: { text: 'Bạn trốn thoát và tìm được lối tắt.', choices: [
+            { label: '🏝️ Đến đảo', next: 'island' } ] },
+          ghost_fight: { text: 'Bạn dùng bạc đánh bại tàu ma!', choices: [
+            { label: '🏝️ Đến đảo', next: 'island' } ] },
+          island: { text: 'Trên đảo có 3 hang động.', choices: [
+            { label: '🕳️ Hang xương', next: 'bone' },
+            { label: '🕳️ Hang nước', next: 'water' },
+            { label: '🕳️ Hang lửa', next: 'fire' } ] },
+          bone: { text: 'Đầy bẫy! Bạn sống sót nhưng chẳng có gì.', choices: [
+            { label: '➡️ Thử hang khác', next: 'water' } ] },
+          water: { text: 'Tìm thấy rương khóa.', choices: [
+            { label: '🔓 Mở rương', next: 'chest' } ] },
+          fire: { text: 'Dung nham nuốt bạn!', ending: 'lose' },
+          chest: { text: 'Rương chứa đầy vàng và ngọc!', choices: [
+            { label: '🏆 Về tàu', next: 'win' } ] },
+          win: { text: '🏆 GIÀU TO! Bạn là hải tặc huyền thoại!', ending: 'win' },
+          lose1: { text: '💀 Thuyền vỡ tan trong bão.', ending: 'lose' },
+          lose2: { text: '💀 Thổ dân đông hơn, bạn thua.', ending: 'lose' }
+        }
+      },
+      {
+        id: 'alien', icon: '👽', title: 'Trạm Không Gian Bí Ẩn',
+        desc: 'Thoát khỏi người ngoài hành tinh',
+        color: '#10b981',
+        start: 'start',
+        scenes: {
+          start: { text: 'Bạn tỉnh dậy trên trạm vũ trụ. Báo động đỏ vang lên.', choices: [
+            { label: '🚪 Ra hành lang', next: 'hall' },
+            { label: '💻 Kiểm tra máy tính', next: 'computer' } ] },
+          hall: { text: 'Hành lang trống vắng, có tiếng động lạ.', choices: [
+            { label: '➡️ Đi tiếp', next: 'corridor' },
+            { label: '🔙 Quay lại', next: 'computer' } ] },
+          computer: { text: 'Máy tính báo: "Alien đã xâm nhập tầng 3".', choices: [
+            { label: '🛗 Lên tầng 5 (cứu hộ)', next: 'rescue' },
+            { label: '🔫 Xuống tầng 2 lấy súng', next: 'weapon' } ] },
+          corridor: { text: 'Một alien xuất hiện!', choices: [
+            { label: '🏃 Chạy', next: 'weapon' },
+            { label: '🪨 Ném vật ngáng', next: 'lose1' } ] },
+          rescue: { text: 'Khoang cứu hộ bị khóa. Cần mã.', choices: [
+            { label: '💻 Tìm mã', next: 'code' },
+            { label: '💥 Phá cửa', next: 'lose2' } ] },
+          weapon: { text: 'Bạn lấy được súng laser.', choices: [
+            { label: '🛗 Lên tầng 5', next: 'rescue_armed' } ] },
+          code: { text: 'Alien bắt được bạn!', ending: 'lose' },
+          rescue_armed: { text: 'Có súng, bạn bắn mở cửa cứu hộ.', choices: [
+            { label: '🚀 Phóng tàu', next: 'launch' } ] },
+          launch: { text: 'Alien chúa chặn tàu!', choices: [
+            { label: '🔫 Bắn alien chúa', next: 'boss' },
+            { label: '🚀 Phóng luôn', next: 'lose3' } ] },
+          boss: { text: 'Bạn bắn trúng điểm yếu và thoát!', choices: [
+            { label: '🏆 Về Trái Đất', next: 'win' } ] },
+          win: { text: '🏆 SỐNG SÓT! Bạn kể câu chuyện cho thế giới.', ending: 'win' },
+          lose1: { text: '💀 Alien bắt bạn.', ending: 'lose' },
+          lose2: { text: '💀 Cửa không phá được, alien đến.', ending: 'lose' },
+          lose3: { text: '💀 Tàu bị alien chúa phá hủy.', ending: 'lose' }
+        }
+      },
+      {
+        id: 'wizard', icon: '🧙', title: 'Học Viện Phù Thủy',
+        desc: 'Phù thủy mới nhập học gặp nguy hiểm',
+        color: '#a855f7',
+        start: 'start',
+        scenes: {
+          start: { text: 'Ngày đầu học viện, giáo sư biến mất bí ẩn.', choices: [
+            { label: '📚 Đến thư viện tìm manh mối', next: 'library' },
+            { label: '🏰 Hỏi hiệu trưởng', next: 'principal' } ] },
+          library: { text: 'Tìm thấy sách cổ kỳ lạ.', choices: [
+            { label: '📖 Đọc sách', next: 'book' },
+            { label: '🚪 Mang về phòng', next: 'room' } ] },
+          principal: { text: 'Hiệu trưởng có ánh mắt đáng ngờ.', choices: [
+            { label: '🕵️ Theo dõi ông', next: 'follow' },
+            { label: '👋 Rời đi', next: 'library' } ] },
+          book: { text: 'Sách nói về lời nguyền cổ.', choices: [
+            { label: '🧪 Tìm thuốc giải', next: 'potion' } ] },
+          room: { text: 'Sách biến mất khỏi phòng bạn!', ending: 'lose' },
+          follow: { text: 'Hiệu trưởng vào hầm bí mật.', choices: [
+            { label: '👀 Đi theo', next: 'basement' },
+            { label: '🏃 Báo công an', next: 'lose2' } ] },
+          potion: { text: 'Cần 3 nguyên liệu: hoa sao, nước mắt rồng, lông phượng.', choices: [
+            { label: '🌸 Đi tìm', next: 'collect' } ] },
+          basement: { text: 'Hiệu trưởng đang dùng ma thuật tối!', choices: [
+            { label: '⚔️ Tấn công', next: 'fight' },
+            { label: '🏃 Trốn', next: 'collect' } ] },
+          collect: { text: 'Bạn thu đủ nguyên liệu sau nhiều thử thách.', choices: [
+            { label: '🧪 Pha thuốc', next: 'brew' } ] },
+          fight: { text: 'Bạn còn non yếu, bị đánh bại.', ending: 'lose' },
+          brew: { text: 'Thuốc sẵn sàng! Đến đâu?', choices: [
+            { label: '🏰 Đối đầu hiệu trưởng', next: 'final' } ] },
+          final: { text: 'Bạn dùng thuốc giải lời nguyền. Hiệu trưởng hồi tỉnh!', choices: [
+            { label: '🏆 Kết thúc', next: 'win' } ] },
+          win: { text: '🏆 ANH HÙNG! Bạn cứu học viện khỏi lời nguyền.', ending: 'win' },
+          lose2: { text: '💀 Không ai tin bạn, hiệu trưởng làm hại bạn.', ending: 'lose' }
+        }
+      },
+      {
+        id: 'detective', icon: '🕵️', title: 'Thám Tử Bí Ẩn',
+        desc: 'Điều tra vụ giết người tỷ phú',
+        color: '#dc2626',
+        start: 'start',
+        scenes: {
+          start: { text: 'Tỷ phú chết trong phòng khóa. Bạn là thám tử mới.', choices: [
+            { label: '🔍 Khám hiện trường', next: 'scene' },
+            { label: '👥 Hỏi người hầu', next: 'servant' } ] },
+          scene: { text: 'Có vết máu lạ trên sàn.', choices: [
+            { label: '🧪 Lấy mẫu', next: 'sample' },
+            { label: '🪟 Xem cửa sổ', next: 'window' } ] },
+          servant: { text: 'Người hầu hoảng loạn nói con trai cãi nhau với tỷ phú.', choices: [
+            { label: '🕵️ Gặp con trai', next: 'son' },
+            { label: '📖 Xem nhật ký', next: 'diary' } ] },
+          sample: { text: 'Máu không phải của nạn nhân.', choices: [
+            { label: '📖 Đọc nhật ký', next: 'diary' } ] },
+          window: { text: 'Cửa sổ bị mở từ bên trong.', choices: [
+            { label: '🕵️ Nghi nội gián', next: 'servant' } ] },
+          son: { text: 'Con trai có bằng chứng ngoại phạm.', choices: [
+            { label: '📖 Xem nhật ký', next: 'diary' } ] },
+          diary: { text: 'Nhật ký ghi: "Thư ký lừa đảo tiền công ty".', choices: [
+            { label: '👩 Tra hỏi thư ký', next: 'secretary' },
+            { label: '💼 Xem sổ sách', next: 'books' } ] },
+          secretary: { text: 'Thư ký thú nhận nhưng nói có đồng phạm.', choices: [
+            { label: '👤 Ai vậy?', next: 'partner' } ] },
+          books: { text: 'Sổ sách cho thấy kế toán cũng liên quan!', choices: [
+            { label: '👥 Bắt cả hai', next: 'partner' } ] },
+          partner: { text: 'Thư ký và kế toán cùng âm mưu.', choices: [
+            { label: '🚔 Bắt họ', next: 'arrest' } ] },
+          arrest: { text: 'Cảnh sát đến nhưng kẻ thật chạy trốn!', choices: [
+            { label: '🏃 Truy đuổi', next: 'chase' },
+            { label: '📞 Gọi viện binh', next: 'lose1' } ] },
+          chase: { text: 'Bạn bắt được kẻ chạy trốn!', choices: [
+            { label: '🏆 Kết thúc vụ án', next: 'win' } ] },
+          win: { text: '🏆 PHÁ ÁN! Bạn là thám tử tài ba.', ending: 'win' },
+          lose1: { text: '💀 Kẻ trốn thoát mãi mãi. Thất bại.', ending: 'lose' }
+        }
+      },
+      {
+        id: 'desert', icon: '🏜️', title: 'Thám Hiểm Sa Mạc',
+        desc: 'Tìm thành phố cổ bị chôn vùi',
+        color: '#f59e0b',
+        start: 'start',
+        scenes: {
+          start: { text: 'Bạn dẫn đoàn vào sa mạc tìm thành phố Zerzura.', choices: [
+            { label: '🐫 Đi lạc đà', next: 'camel' },
+            { label: '🚙 Đi xe địa hình', next: 'jeep' } ] },
+          camel: { text: 'Lạc đà chậm nhưng bền. Bão cát đến.', choices: [
+            { label: '🏕️ Trú ẩn', next: 'shelter' },
+            { label: '🚶 Đi tiếp', next: 'lose1' } ] },
+          jeep: { text: 'Xe hỏng giữa sa mạc!', choices: [
+            { label: '🔧 Sửa xe', next: 'fix' },
+            { label: '🚶 Bỏ xe đi bộ', next: 'walk' } ] },
+          shelter: { text: 'Bão qua, bạn thấy bản đồ cổ.', choices: [
+            { label: '🗺️ Theo bản đồ', next: 'map' } ] },
+          fix: { text: 'Sửa được xe, tiếp tục.', choices: [
+            { label: '🗺️ Tìm theo GPS', next: 'map' } ] },
+          walk: { text: 'Mặt trời nung nóng. Bạn kiệt sức.', ending: 'lose' },
+          map: { text: 'Đến ốc đảo. Có thổ dân cảnh báo nguy hiểm.', choices: [
+            { label: '🤝 Nghe lời khuyên', next: 'advice' },
+            { label: '➡️ Tiếp tục', next: 'temple' } ] },
+          advice: { text: 'Thổ dân dạy bạn cách tránh bẫy.', choices: [
+            { label: '🏛️ Đến đền', next: 'temple_safe' } ] },
+          temple: { text: 'Vào đền nhưng bẫy bắn tên độc!', choices: [
+            { label: '🏃 Tránh nhanh', next: 'lose2' },
+            { label: '🛡️ Che chắn', next: 'hurt' } ] },
+          temple_safe: { text: 'Bạn biết cách vượt qua bẫy.', choices: [
+            { label: '💎 Vào sâu hơn', next: 'treasure' } ] },
+          hurt: { text: 'Bị thương nhưng vẫn đi được.', choices: [
+            { label: '💎 Tìm kho báu', next: 'treasure' } ] },
+          treasure: { text: 'Bạn thấy kho báu cổ và bản đồ thành phố!', choices: [
+            { label: '🏆 Công bố khám phá', next: 'win' } ] },
+          win: { text: '🏆 LỊCH SỬ! Bạn khám phá thành phố mất tích!', ending: 'win' },
+          lose1: { text: '💀 Bão cát nuốt chửng đoàn.', ending: 'lose' },
+          lose2: { text: '💀 Tên độc trúng bạn.', ending: 'lose' }
+        }
+      },
+      {
+        id: 'dragon', icon: '🐉', title: 'Thợ Săn Rồng',
+        desc: 'Đánh bại rồng lửa bảo vệ làng',
+        color: '#ef4444',
+        start: 'start',
+        scenes: {
+          start: { text: 'Rồng lửa đốt làng mỗi tuần. Dân làng cần anh hùng.', choices: [
+            { label: '⚔️ Rèn kiếm mới', next: 'forge' },
+            { label: '📚 Tìm sách về rồng', next: 'research' } ] },
+          forge: { text: 'Thợ rèn nói cần vảy rồng mới có kiếm mạnh.', choices: [
+            { label: '🐲 Đi săn rồng nhỏ', next: 'research' } ] },
+          research: { text: 'Sách nói rồng sợ băng giá.', choices: [
+            { label: '❄️ Tìm pháp sư băng', next: 'mage' },
+            { label: '⚔️ Mang kiếm thường', next: 'lose1' } ] },
+          mage: { text: 'Pháp sư cho bạn bùa băng.', choices: [
+            { label: '🗻 Đến hang rồng', next: 'cave' } ] },
+          cave: { text: 'Hang rồng tối đen. Có 2 lối.', choices: [
+            { label: '🔥 Lối nóng (chính)', next: 'main' },
+            { label: '❄️ Lối lạnh (tắt)', next: 'side' } ] },
+          main: { text: 'Rồng chờ sẵn! Chiến đấu ngay.', choices: [
+            { label: '❄️ Dùng bùa băng', next: 'freeze' },
+            { label: '⚔️ Đánh trực tiếp', next: 'lose2' } ] },
+          side: { text: 'Bạn đến sau lưng rồng!', choices: [
+            { label: '❄️ Tấn công bất ngờ', next: 'sneak' } ] },
+          freeze: { text: 'Rồng bị đóng băng một phần.', choices: [
+            { label: '⚔️ Đâm tim', next: 'kill' } ] },
+          sneak: { text: 'Bùa băng làm rồng choáng váng.', choices: [
+            { label: '⚔️ Đâm cổ', next: 'kill' } ] },
+          kill: { text: 'Rồng gầm lớn rồi ngã xuống!', choices: [
+            { label: '🏆 Về làng', next: 'win' } ] },
+          win: { text: '🏆 ANH HÙNG! Làng được cứu, bạn là thợ săn rồng!', ending: 'win' },
+          lose1: { text: '💀 Kiếm thường không xuyên vảy rồng.', ending: 'lose' },
+          lose2: { text: '💀 Lửa rồng thiêu bạn.', ending: 'lose' }
+        }
+      },
+      {
+        id: 'vampire', icon: '🧛', title: 'Lâu Đài Ma Cà Rồng',
+        desc: 'Thoát khỏi lâu đài tối đầy xác sống',
+        color: '#7c2d12',
+        start: 'start',
+        scenes: {
+          start: { text: 'Xe hỏng giữa đêm, bạn vào lâu đài xin trú.', choices: [
+            { label: '🚪 Gõ cửa chính', next: 'door' },
+            { label: '🪟 Nhìn qua cửa sổ', next: 'window' } ] },
+          door: { text: 'Bá tước mời bạn vào ăn tối.', choices: [
+            { label: '🍷 Ăn tối', next: 'dinner' },
+            { label: '🛏️ Xin nghỉ luôn', next: 'bedroom' } ] },
+          window: { text: 'Thấy quan tài trong phòng!', choices: [
+            { label: '🏃 Chạy ngay', next: 'escape_early' },
+            { label: '🚪 Gõ cửa giả vờ bình thường', next: 'door' } ] },
+          dinner: { text: 'Rượu có vị lạ. Bạn chóng mặt.', choices: [
+            { label: '🤢 Giả vờ say rồi trốn', next: 'escape' },
+            { label: '😴 Ngủ gục', next: 'lose1' } ] },
+          bedroom: { text: 'Phòng có gương kỳ lạ - bá tước không có bóng!', choices: [
+            { label: '✝️ Lấy thánh giá', next: 'cross' },
+            { label: '🏃 Trốn', next: 'escape' } ] },
+          escape_early: { text: 'Bạn trốn sớm nhưng lạc trong rừng.', choices: [
+            { label: '🌲 Tìm đường', next: 'forest' } ] },
+          escape: { text: 'Bạn lẻn ra hành lang tối.', choices: [
+            { label: '✝️ Tìm thánh giá', next: 'cross' },
+            { label: '🏃 Chạy thẳng cổng', next: 'gate' } ] },
+          cross: { text: 'Tìm thấy thánh giá bạc trong nhà nguyện.', choices: [
+            { label: '🚪 Thoát qua cổng', next: 'gate_armed' } ] },
+          forest: { text: 'Sói xuất hiện! Chúng là tay sai ma cà rồng.', ending: 'lose' },
+          gate: { text: 'Bá tước chặn cổng!', choices: [
+            { label: '💬 Thương lượng', next: 'lose2' } ] },
+          gate_armed: { text: 'Bá tước chặn, nhưng bạn có thánh giá!', choices: [
+            { label: '✝️ Giơ thánh giá', next: 'repel' } ] },
+          repel: { text: 'Bá tước cháy xém và lùi lại!', choices: [
+            { label: '🏃 Chạy thoát', next: 'win' } ] },
+          win: { text: '🏆 SỐNG SÓT! Bạn kể chuyện lâu đài ma cà rồng.', ending: 'win' },
+          lose1: { text: '💀 Bạn trở thành bữa ăn.', ending: 'lose' },
+          lose2: { text: '💀 Bá tước cắn cổ bạn.', ending: 'lose' }
+        }
+      },
+      {
+        id: 'robot', icon: '🤖', title: 'Cuộc Nổi Dậy Robot',
+        desc: 'Sống sót khi AI nổi loạn',
+        color: '#6b7280',
+        start: 'start',
+        scenes: {
+          start: { text: 'AI chiếm quyền thế giới. Robot săn lùng loài người.', choices: [
+            { label: '🏠 Trốn trong hầm', next: 'bunker' },
+            { label: '🏃 Tìm khu an toàn', next: 'zone' } ] },
+          bunker: { text: 'Hầm hết thức ăn sau 1 tuần.', choices: [
+            { label: '🚪 Ra ngoài kiếm', next: 'outside' },
+            { label: '😴 Chờ thêm', next: 'lose1' } ] },
+          zone: { text: 'Gặp nhóm kháng chiến.', choices: [
+            { label: '🤝 Gia nhập', next: 'resistance' },
+            { label: '👋 Đi một mình', next: 'alone' } ] },
+          outside: { text: 'Robot tuần tra gần đó.', choices: [
+            { label: '🕶️ Trốn sau xe', next: 'hide' },
+            { label: '🏃 Chạy về hầm', next: 'lose1' } ] },
+          resistance: { text: 'Kháng chiến có kế hoạch phá trung tâm AI.', choices: [
+            { label: '🔫 Tham gia tấn công', next: 'attack' },
+            { label: '💻 Hack thay vì bắn', next: 'hack' } ] },
+          alone: { text: 'Bạn bị drone phát hiện!', ending: 'lose' },
+          hide: { text: 'Trốn thoát, tìm được kháng chiến.', choices: [
+            { label: '🤝 Gia nhập', next: 'resistance' } ] },
+          attack: { text: 'Chiến đấu khốc liệt ở trung tâm AI.', choices: [
+            { label: '💣 Đặt bom', next: 'bomb' },
+            { label: '🔫 Bắn tiếp', next: 'lose2' } ] },
+          hack: { text: 'Bạn vào được hệ thống!', choices: [
+            { label: '⏹️ Tắt AI', next: 'shutdown' },
+            { label: '🔄 Reset', next: 'reset' } ] },
+          bomb: { text: 'Bom phá trung tâm. Bạn chạy thoát!', choices: [
+            { label: '🏆 Kết thúc', next: 'win' } ] },
+          shutdown: { text: 'AI chủ tắt vĩnh viễn. Robot ngừng hoạt động!', choices: [
+            { label: '🏆 Cứu loài người', next: 'win' } ] },
+          reset: { text: 'Reset thất bại, AI phát hiện!', ending: 'lose' },
+          win: { text: '🏆 ANH HÙNG! Bạn giải phóng nhân loại!', ending: 'win' },
+          lose1: { text: '💀 Chết đói hoặc bị robot bắt.', ending: 'lose' },
+          lose2: { text: '💀 Robot quá nhiều, bạn hy sinh.', ending: 'lose' }
+        }
+      },
+      {
+        id: 'atlantis', icon: '🌊', title: 'Lặn Atlantis',
+        desc: 'Khám phá thành phố dưới đáy biển',
+        color: '#0284c7',
+        start: 'start',
+        scenes: {
+          start: { text: 'Tàu lặn của bạn đến tọa độ Atlantis.', choices: [
+            { label: '🌊 Lặn xuống sâu', next: 'deep' },
+            { label: '🔍 Quét sonar trước', next: 'sonar' } ] },
+          deep: { text: 'Có sinh vật lạ lướt qua!', choices: [
+            { label: '💡 Bật đèn', next: 'light' },
+            { label: '🤫 Tắt đèn im lặng', next: 'quiet' } ] },
+          sonar: { text: 'Sonar phát hiện kiến trúc cổ bên dưới.', choices: [
+            { label: '🌊 Lặn xuống', next: 'city' } ] },
+          light: { text: 'Sinh vật bỏ chạy vì đèn sáng.', choices: [
+            { label: '🏛️ Tiếp tục đến thành phố', next: 'city' } ] },
+          quiet: { text: 'Sinh vật bơi qua, không chú ý.', choices: [
+            { label: '🏛️ Đến thành phố', next: 'city' } ] },
+          city: { text: 'Atlantis huy hoàng dưới nước! Có đền thờ và cung điện.', choices: [
+            { label: '🏛️ Vào đền', next: 'temple' },
+            { label: '👑 Vào cung điện', next: 'palace' } ] },
+          temple: { text: 'Đền có viên ngọc thần phát sáng.', choices: [
+            { label: '💎 Lấy ngọc', next: 'gem' },
+            { label: '📸 Chỉ chụp ảnh', next: 'photo' } ] },
+          palace: { text: 'Cung điện có xác vua đeo vương miện.', choices: [
+            { label: '👑 Lấy vương miện', next: 'curse' },
+            { label: '🙏 Để yên, đi tiếp', next: 'photo' } ] },
+          gem: { text: 'Ngọc kích hoạt bẫy! Nước tràn vào.', choices: [
+            { label: '🏃 Chạy', next: 'flood' } ] },
+          photo: { text: 'Bạn ghi lại mọi thứ.', choices: [
+            { label: '🚀 Về mặt nước', next: 'surface' } ] },
+          curse: { text: 'Lời nguyền kích hoạt, tàu lặn hỏng!', ending: 'lose' },
+          flood: { text: 'Bạn thoát nhưng mất ngọc.', choices: [
+            { label: '🚀 Về mặt nước', next: 'surface' } ] },
+          surface: { text: 'Bạn về an toàn với bằng chứng!', choices: [
+            { label: '🏆 Công bố khám phá', next: 'win' } ] },
+          win: { text: '🏆 LỊCH SỬ! Bạn tìm thấy Atlantis!', ending: 'win' }
+        }
+      }
+    ];
+
+    // ====== PROGRESS ======
+    const STORAGE_KEY = 'rblxAdventureProgress';
+    function loadProgress() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+      catch(e) { return {}; }
+    }
+    function saveProgress(p) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch(e) {}
+    }
+
+    // ====== HUB ======
+    function Hub({ onPick, progress }) {
+      const completed = Object.values(progress).filter(p => p.win).length;
+      return (
+        <div style={{ padding: 20, maxWidth: 1200, margin: '0 auto' }}>
+          <a href="../index.html" style={{ display: 'inline-block', marginBottom: 16, padding: '10px 20px', background: '#374151', color: 'white', borderRadius: 8, textDecoration: 'none', fontWeight: 'bold' }}>← Quay lại</a>
+          <h1 style={{ textAlign: 'center', fontSize: 42, marginBottom: 8 }}>🗺️ Adventure Hub</h1>
+          <p style={{ textAlign: 'center', marginBottom: 8, opacity: 0.9 }}>10 cuộc phiêu lưu chọn lựa lôi cuốn</p>
+          <p style={{ textAlign: 'center', marginBottom: 24, fontWeight: 'bold' }}>🏆 Chiến thắng: {completed}/10</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 16 }}>
+            {STORIES.map(s => {
+              const p = progress[s.id] || {};
+              const played = p.endings ? Object.keys(p.endings).length : 0;
+              return (
+                <button key={s.id} onClick={() => onPick(s.id)} style={{
+                  background: s.color, border: 'none', borderRadius: 16, padding: 20,
+                  color: 'white', cursor: 'pointer', textAlign: 'left',
+                  boxShadow: p.win ? '0 0 20px gold' : '0 4px 12px rgba(0,0,0,0.3)'
+                }}>
+                  <div style={{ fontSize: 48, marginBottom: 8 }}>{s.icon}</div>
+                  <div style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 6 }}>{s.title}</div>
+                  <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 10 }}>{s.desc}</div>
+                  <div style={{ fontSize: 12, opacity: 0.95 }}>
+                    {p.win ? '🏆 Đã thắng' : played > 0 ? `🎯 ${played} kết thúc` : '🆕 Chưa chơi'}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ====== STORY PLAYER ======
+    function Story({ story, onBack, progress, setProgress }) {
+      const [sceneId, setSceneId] = useState(story.start);
+      const scene = story.scenes[sceneId];
+      const [history, setHistory] = useState([]);
+
+      function choose(next) {
+        setHistory(h => [...h.slice(-4), scene.text]);
+        setSceneId(next);
+        const nextScene = story.scenes[next];
+        if (nextScene && nextScene.ending) {
+          const sp = progress[story.id] || { endings: {} };
+          sp.endings = sp.endings || {};
+          sp.endings[next] = nextScene.ending;
+          if (nextScene.ending === 'win') sp.win = true;
+          const newProgress = { ...progress, [story.id]: sp };
+          setProgress(newProgress);
+          saveProgress(newProgress);
+        }
+      }
+
+      function restart() {
+        setSceneId(story.start);
+        setHistory([]);
+      }
+
+      const isEnd = scene.ending;
+
+      return (
+        <div style={{ padding: 20, maxWidth: 800, margin: '0 auto' }}>
+          <button onClick={onBack} style={{ padding: '8px 16px', background: '#374151', border: 'none', color: 'white', borderRadius: 8, cursor: 'pointer', marginBottom: 16 }}>← Menu</button>
+          <div style={{ background: story.color, borderRadius: 16, padding: 20, marginBottom: 16, textAlign: 'center' }}>
+            <div style={{ fontSize: 60 }}>{story.icon}</div>
+            <h2 style={{ fontSize: 26 }}>{story.title}</h2>
+          </div>
+
+          {history.length > 0 && (
+            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, marginBottom: 12, fontSize: 13, opacity: 0.7, maxHeight: 120, overflowY: 'auto' }}>
+              {history.map((h, i) => <div key={i} style={{ marginBottom: 4 }}>📖 {h}</div>)}
+            </div>
+          )}
+
+          <div style={{
+            background: isEnd === 'win' ? 'linear-gradient(135deg, #059669, #10b981)' :
+                        isEnd === 'lose' ? 'linear-gradient(135deg, #991b1b, #dc2626)' :
+                        'rgba(255,255,255,0.1)',
+            borderRadius: 16, padding: 24, marginBottom: 20, fontSize: 18, lineHeight: 1.6,
+            border: '2px solid rgba(255,255,255,0.2)'
+          }}>
+            {scene.text}
+          </div>
+
+          {!isEnd && scene.choices && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {scene.choices.map((c, i) => (
+                <button key={i} onClick={() => choose(c.next)} style={{
+                  padding: '14px 20px', fontSize: 16, background: 'rgba(255,255,255,0.15)',
+                  border: '2px solid rgba(255,255,255,0.3)', color: 'white',
+                  borderRadius: 12, cursor: 'pointer', textAlign: 'left', fontWeight: 'bold'
+                }}>{c.label}</button>
+              ))}
+            </div>
+          )}
+
+          {isEnd && (
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={restart} style={{ padding: '12px 24px', fontSize: 16, background: '#f59e0b', border: 'none', color: 'white', borderRadius: 12, cursor: 'pointer', fontWeight: 'bold' }}>🔄 Chơi lại</button>
+              <button onClick={onBack} style={{ padding: '12px 24px', fontSize: 16, background: '#374151', border: 'none', color: 'white', borderRadius: 12, cursor: 'pointer', fontWeight: 'bold' }}>🏠 Menu</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ====== APP ======
+    function App() {
+      const [selected, setSelected] = useState(null);
+      const [progress, setProgress] = useState(loadProgress());
+
+      if (selected) {
+        const story = STORIES.find(s => s.id === selected);
+        return <Story story={story} onBack={() => setSelected(null)} progress={progress} setProgress={setProgress} />;
+      }
+      return <Hub onPick={setSelected} progress={progress} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

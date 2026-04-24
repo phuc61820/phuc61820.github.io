@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎯 Shooter Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #2e0a0a; min-height: 100vh; color: white; overflow: hidden; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+    .arena { position: relative; width: 100%; max-width: 900px; height: 500px; margin: 0 auto; border-radius: 16px; overflow: hidden; cursor: crosshair; user-select: none; }
+    .tgt { position: absolute; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; transition: transform 0.1s; }
+    .tgt:hover { transform: scale(1.1); }
+    .hit-fx { position: absolute; pointer-events: none; font-weight: bold; animation: rise 0.8s ease-out forwards; }
+    @keyframes rise { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-60px) scale(1.8); opacity: 0; } }
+    @keyframes pop { 0% { transform: scale(0); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+    @keyframes walk { 0% { transform: translateX(0); } 100% { transform: translateX(calc(100vw)); } }
+    .card { cursor: pointer; padding: 20px; border-radius: 14px; text-align: center; background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15); }
+    .card:hover { background: rgba(255,255,255,0.18); transform: translateY(-4px); border-color: rgba(255,215,0,0.6); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const THEMES = [
+      { id:'target', name:'Target Practice', icon:'🎯', emoji:'🎯', bg:'linear-gradient(135deg,#1e3c72,#2a5298)', arenaBg:'radial-gradient(circle,#4a7ab5,#1e3c72)', desc:'Bắn bia bullseye' },
+      { id:'duck',   name:'Duck Hunt',      icon:'🦆', emoji:'🦆', bg:'linear-gradient(135deg,#87ceeb,#4a90a4)', arenaBg:'linear-gradient(180deg,#87ceeb 0%,#b6dfe8 70%,#6b8e23 70%,#556b2f 100%)', desc:'Bắn vịt bay' },
+      { id:'zombie', name:'Zombie Shoot',   icon:'🧟', emoji:'🧟', bg:'linear-gradient(135deg,#3d2817,#6b3410)', arenaBg:'linear-gradient(180deg,#2a1810,#5a3820)', desc:'Zombie tiến đến' },
+      { id:'apple',  name:'Apple Shoot',    icon:'🍎', emoji:'🍎', bg:'linear-gradient(135deg,#8b4513,#cd853f)', arenaBg:'linear-gradient(180deg,#87ceeb,#90ee90)', desc:'William Tell style' },
+      { id:'balloon',name:'Balloon Pop',    icon:'🎈', emoji:'🎈', bg:'linear-gradient(135deg,#ff6b9d,#c44569)', arenaBg:'linear-gradient(180deg,#ffb3d9,#ff6b9d)', desc:'Nổ bóng bay' },
+      { id:'alien',  name:'Alien Blast',    icon:'👾', emoji:'👾', bg:'linear-gradient(135deg,#0f0c29,#302b63)', arenaBg:'radial-gradient(circle,#1a1a4a,#000)', desc:'Bắn người ngoài hành tinh' },
+      { id:'bat',    name:'Bat Hunter',     icon:'🦇', emoji:'🦇', bg:'linear-gradient(135deg,#1a1a2e,#0f0f1e)', arenaBg:'linear-gradient(180deg,#2d1b4e,#1a0a2e)', desc:'Săn dơi đêm' },
+      { id:'snake',  name:'Snake Shoot',    icon:'🐍', emoji:'🐍', bg:'linear-gradient(135deg,#2d5016,#4a7c2a)', arenaBg:'linear-gradient(180deg,#8b7355,#654321)', desc:'Bắn rắn bò' },
+      { id:'cowboy', name:'Cowboy Duel',    icon:'🤠', emoji:'🤠', bg:'linear-gradient(135deg,#d2691e,#8b4513)', arenaBg:'linear-gradient(180deg,#f4a460,#8b4513)', desc:'Quick-draw' },
+      { id:'dragon', name:'Dragon Slayer',  icon:'🐉', emoji:'🐉', bg:'linear-gradient(135deg,#4b0082,#800000)', arenaBg:'radial-gradient(circle,#ff4500,#200)', desc:'Boss rồng' }
+    ];
+
+    const STORAGE = 'rblxShooterProgress';
+    const loadProgress = () => { try { return JSON.parse(localStorage.getItem(STORAGE) || '{}'); } catch { return {}; } };
+    const saveProgress = (p) => localStorage.setItem(STORAGE, JSON.stringify(p));
+
+    function Hub({ onPick, progress }) {
+      return (
+        <div style={{minHeight:'100vh',padding:'24px',overflow:'auto',background:'linear-gradient(135deg,#2e0a0a 0%,#4a0e0e 100%)'}}>
+          <div style={{maxWidth:'1200px',margin:'0 auto'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'24px',flexWrap:'wrap',gap:'12px'}}>
+              <button onClick={()=>location.href='../index.html'} style={{padding:'10px 18px',background:'rgba(255,255,255,0.15)',color:'white',border:'2px solid rgba(255,255,255,0.3)',borderRadius:'10px',cursor:'pointer',fontSize:'15px',fontWeight:'bold'}}>← Trang chủ</button>
+              <h1 style={{fontSize:'clamp(24px,4vw,36px)',textShadow:'0 3px 10px rgba(0,0,0,0.5)'}}>🎯 Shooter Hub</h1>
+              <div style={{width:'120px'}}></div>
+            </div>
+            <p style={{textAlign:'center',fontSize:'16px',opacity:0.85,marginBottom:'28px'}}>10 game bắn súng hấp dẫn — click chuột để bắn trúng mục tiêu!</p>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:'16px'}}>
+              {THEMES.map(t => {
+                const hs = progress[t.id]?.highScore || 0;
+                return (
+                  <div key={t.id} className="card" onClick={()=>onPick(t)} style={{background:t.bg}}>
+                    <div style={{fontSize:'54px',marginBottom:'8px'}}>{t.icon}</div>
+                    <div style={{fontSize:'17px',fontWeight:'bold',marginBottom:'6px'}}>{t.name}</div>
+                    <div style={{fontSize:'12px',opacity:0.85,marginBottom:'10px',minHeight:'16px'}}>{t.desc}</div>
+                    <div style={{fontSize:'13px',background:'rgba(0,0,0,0.3)',padding:'5px 10px',borderRadius:'8px',display:'inline-block'}}>🏆 {hs}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function Game({ theme, onBack, progress, setProgress }) {
+      const [state, setState] = useState('ready'); // ready, playing, done
+      const [score, setScore] = useState(0);
+      const [hits, setHits] = useState(0);
+      const [shots, setShots] = useState(0);
+      const [time, setTime] = useState(30);
+      const [targets, setTargets] = useState([]);
+      const [fx, setFx] = useState([]);
+      const arenaRef = useRef(null);
+      const idRef = useRef(0);
+      const fxIdRef = useRef(0);
+
+      const hs = progress[theme.id]?.highScore || 0;
+
+      useEffect(() => {
+        if (state !== 'playing') return;
+        if (time <= 0) {
+          setState('done');
+          if (score > hs) {
+            const np = {...progress, [theme.id]: { highScore: score }};
+            setProgress(np); saveProgress(np);
+          }
+          return;
+        }
+        const t = setTimeout(() => setTime(x => x - 1), 1000);
+        return () => clearTimeout(t);
+      }, [state, time]);
+
+      // Spawn targets
+      useEffect(() => {
+        if (state !== 'playing') return;
+        const spawnRate = theme.id === 'dragon' ? 2500 : theme.id === 'cowboy' ? 1800 : 900;
+        const maxTargets = theme.id === 'dragon' ? 1 : theme.id === 'cowboy' ? 2 : 4;
+        const iv = setInterval(() => {
+          setTargets(prev => {
+            if (prev.length >= maxTargets) return prev;
+            const id = idRef.current++;
+            const isBonus = Math.random() < 0.15;
+            const isBomb = theme.id !== 'target' && Math.random() < 0.12;
+            const size = theme.id === 'dragon' ? 130 : theme.id === 'target' ? 80 : isBonus ? 55 : 70;
+            const newT = {
+              id,
+              x: 5 + Math.random() * 85,
+              y: 10 + Math.random() * 70,
+              size,
+              isBonus,
+              isBomb,
+              born: Date.now(),
+              ttl: theme.id === 'duck' || theme.id === 'bat' ? 2500 : theme.id === 'dragon' ? 5000 : 3000,
+              vx: (Math.random() - 0.5) * (theme.id === 'duck' || theme.id === 'bat' ? 2 : 0.8),
+              vy: (Math.random() - 0.5) * (theme.id === 'duck' || theme.id === 'bat' ? 1 : 0.4)
+            };
+            return [...prev, newT];
+          });
+        }, spawnRate);
+        return () => clearInterval(iv);
+      }, [state, theme.id]);
+
+      // Move targets & expire
+      useEffect(() => {
+        if (state !== 'playing') return;
+        const iv = setInterval(() => {
+          setTargets(prev => prev
+            .map(t => ({...t, x: Math.max(0, Math.min(90, t.x + t.vx)), y: Math.max(0, Math.min(85, t.y + t.vy))}))
+            .filter(t => Date.now() - t.born < t.ttl)
+          );
+        }, 60);
+        return () => clearInterval(iv);
+      }, [state]);
+
+      const handleShoot = (e) => {
+        if (state !== 'playing') return;
+        setShots(s => s + 1);
+        // Add miss FX if clicked on arena (not target)
+        if (e.target === arenaRef.current) {
+          const rect = arenaRef.current.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const id = fxIdRef.current++;
+          setFx(f => [...f, { id, x, y, text: '✗', color:'#888' }]);
+          setTimeout(() => setFx(f => f.filter(v => v.id !== id)), 800);
+        }
+      };
+
+      const hitTarget = (e, t) => {
+        e.stopPropagation();
+        if (state !== 'playing') return;
+        setShots(s => s + 1);
+        const rect = arenaRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        let pts = t.isBonus ? 30 : theme.id === 'dragon' ? 50 : 10;
+        if (t.isBomb) pts = -20;
+        setScore(s => Math.max(0, s + pts));
+        if (!t.isBomb) setHits(h => h + 1);
+        const id = fxIdRef.current++;
+        setFx(f => [...f, { id, x, y, text: (pts>0?'+':'')+pts, color: t.isBomb?'#ff4444':t.isBonus?'#ffd700':'#00ff88' }]);
+        setTimeout(() => setFx(f => f.filter(v => v.id !== id)), 800);
+        setTargets(prev => prev.filter(v => v.id !== t.id));
+      };
+
+      const start = () => {
+        setState('playing'); setScore(0); setHits(0); setShots(0); setTime(30); setTargets([]); setFx([]);
+      };
+
+      const getTargetEmoji = (t) => {
+        if (t.isBomb) return '💣';
+        if (t.isBonus) return '⭐';
+        return theme.emoji;
+      };
+
+      const accuracy = shots > 0 ? Math.round((hits / shots) * 100) : 0;
+
+      return (
+        <div style={{minHeight:'100vh',padding:'16px',background:theme.bg,display:'flex',flexDirection:'column'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px',flexWrap:'wrap',gap:'10px'}}>
+            <button onClick={onBack} style={{padding:'8px 14px',background:'rgba(0,0,0,0.4)',color:'white',border:'2px solid rgba(255,255,255,0.3)',borderRadius:'8px',cursor:'pointer',fontWeight:'bold'}}>← Hub</button>
+            <h2 style={{fontSize:'clamp(18px,3vw,26px)'}}>{theme.icon} {theme.name}</h2>
+            <div style={{display:'flex',gap:'10px',fontSize:'14px',fontWeight:'bold',flexWrap:'wrap'}}>
+              <span style={{background:'rgba(0,0,0,0.4)',padding:'6px 10px',borderRadius:'8px'}}>⏱️ {time}s</span>
+              <span style={{background:'rgba(0,0,0,0.4)',padding:'6px 10px',borderRadius:'8px'}}>💯 {score}</span>
+              <span style={{background:'rgba(0,0,0,0.4)',padding:'6px 10px',borderRadius:'8px'}}>🎯 {accuracy}%</span>
+              <span style={{background:'rgba(0,0,0,0.4)',padding:'6px 10px',borderRadius:'8px'}}>🏆 {hs}</span>
+            </div>
+          </div>
+
+          <div ref={arenaRef} className="arena" onClick={handleShoot} style={{background:theme.arenaBg,border:'3px solid rgba(255,255,255,0.3)',boxShadow:'0 10px 40px rgba(0,0,0,0.5)'}}>
+            {state === 'ready' && (
+              <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.7)',zIndex:10}}>
+                <div style={{fontSize:'80px',marginBottom:'20px'}}>{theme.icon}</div>
+                <h2 style={{fontSize:'28px',marginBottom:'10px'}}>{theme.name}</h2>
+                <p style={{fontSize:'15px',opacity:0.85,marginBottom:'24px',textAlign:'center',maxWidth:'400px'}}>{theme.desc}<br/>Bắn trúng để ghi điểm. ⭐ = bonus. 💣 = tránh!</p>
+                <button onClick={start} style={{padding:'14px 36px',background:'linear-gradient(135deg,#00c851,#007e33)',color:'white',border:'none',borderRadius:'12px',fontSize:'18px',fontWeight:'bold',cursor:'pointer',boxShadow:'0 5px 15px rgba(0,0,0,0.4)'}}>🎮 Bắt đầu</button>
+              </div>
+            )}
+
+            {state === 'done' && (
+              <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.8)',zIndex:10}}>
+                <div style={{fontSize:'70px',marginBottom:'10px'}}>{score > hs ? '🏆' : '🎯'}</div>
+                <h2 style={{fontSize:'28px',marginBottom:'10px'}}>{score > hs ? 'Kỷ lục mới!' : 'Hết giờ!'}</h2>
+                <div style={{fontSize:'17px',marginBottom:'6px'}}>Điểm: <b>{score}</b></div>
+                <div style={{fontSize:'15px',marginBottom:'6px',opacity:0.9}}>Trúng: {hits}/{shots} ({accuracy}%)</div>
+                <div style={{fontSize:'14px',marginBottom:'20px',opacity:0.75}}>Cao nhất: {Math.max(hs, score)}</div>
+                <div style={{display:'flex',gap:'10px'}}>
+                  <button onClick={start} style={{padding:'12px 26px',background:'linear-gradient(135deg,#00c851,#007e33)',color:'white',border:'none',borderRadius:'10px',fontSize:'15px',fontWeight:'bold',cursor:'pointer'}}>🔄 Chơi lại</button>
+                  <button onClick={onBack} style={{padding:'12px 26px',background:'rgba(255,255,255,0.2)',color:'white',border:'2px solid rgba(255,255,255,0.4)',borderRadius:'10px',fontSize:'15px',fontWeight:'bold',cursor:'pointer'}}>🏠 Hub</button>
+                </div>
+              </div>
+            )}
+
+            {state === 'playing' && targets.map(t => (
+              <div key={t.id} className="tgt" onClick={(e)=>hitTarget(e,t)} style={{
+                left: t.x + '%',
+                top: t.y + '%',
+                width: t.size + 'px',
+                height: t.size + 'px',
+                fontSize: t.size * 0.7 + 'px',
+                animation: 'pop 0.25s ease-out',
+                filter: t.isBomb ? 'drop-shadow(0 0 8px #ff3333)' : t.isBonus ? 'drop-shadow(0 0 10px gold)' : 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))'
+              }}>
+                {getTargetEmoji(t)}
+              </div>
+            ))}
+
+            {fx.map(f => (
+              <div key={f.id} className="hit-fx" style={{left: f.x+'px', top: f.y+'px', color: f.color, fontSize:'24px', textShadow:'0 2px 4px rgba(0,0,0,0.8)'}}>
+                {f.text}
+              </div>
+            ))}
+          </div>
+
+          <div style={{textAlign:'center',marginTop:'14px',fontSize:'13px',opacity:0.75}}>
+            💡 Click nhanh vào mục tiêu để ghi điểm. ⭐ bonus +30, 💣 trừ 20 điểm!
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [progress, setProgress] = useState(loadProgress());
+      const [current, setCurrent] = useState(null);
+      if (current) return <Game theme={current} onBack={()=>setCurrent(null)} progress={progress} setProgress={setProgress} />;
+      return <Hub onPick={setCurrent} progress={progress} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

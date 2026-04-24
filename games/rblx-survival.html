@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏕️ Survival Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a0a; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const SCENARIOS = [
+      {
+        id: 'island', name: 'Đảo Hoang', emoji: '🏝️',
+        bg: 'linear-gradient(160deg, #0ea5e9, #0369a1, #064e3b)',
+        desc: 'Đảo nhiệt đới giữa đại dương. Nhiều dừa, ít thịt.',
+        start: { health: 100, hunger: 80, thirst: 70, wood: 0, food: 2, water: 2 },
+        hunt: { food: 1, chance: 0.7, label: 'Bắt cá' },
+        water: { water: 2, chance: 0.9, label: 'Hứng mưa' },
+        wood: { wood: 2, chance: 0.8, label: 'Chặt dừa' },
+        events: ['🌀 Bão nhiệt đới! -10 HP', '🦈 Cá mập tấn công! -15 HP', '🥥 Tìm thấy dừa! +2 food', '🐚 Nhặt được ngọc trai', '☀️ Nắng gắt! -10 thirst']
+      },
+      {
+        id: 'arctic', name: 'Bắc Cực', emoji: '❄️',
+        bg: 'linear-gradient(160deg, #e0f2fe, #0ea5e9, #1e3a8a)',
+        desc: 'Lạnh thấu xương. Băng nhiều nhưng ít thức ăn.',
+        start: { health: 100, hunger: 70, thirst: 90, wood: 0, food: 1, water: 3 },
+        hunt: { food: 1, chance: 0.4, label: 'Săn hải cẩu' },
+        water: { water: 3, chance: 1.0, label: 'Nấu băng' },
+        wood: { wood: 1, chance: 0.3, label: 'Tìm gỗ trôi' },
+        events: ['🌬️ Bão tuyết! -15 HP', '🐻‍❄️ Gấu Bắc Cực! -20 HP', '🐟 Bắt được cá dưới băng', '✨ Cực quang hiện lên', '🥶 Tê cóng! -15 HP']
+      },
+      {
+        id: 'volcano', name: 'Núi Lửa', emoji: '🌋',
+        bg: 'linear-gradient(160deg, #450a0a, #b91c1c, #f59e0b)',
+        desc: 'Đảo núi lửa đang hoạt động. Nguy hiểm khắp nơi.',
+        start: { health: 100, hunger: 75, thirst: 60, wood: 1, food: 2, water: 1 },
+        hunt: { food: 2, chance: 0.5, label: 'Săn thú' },
+        water: { water: 1, chance: 0.4, label: 'Tìm suối' },
+        wood: { wood: 2, chance: 0.7, label: 'Gỗ cháy' },
+        events: ['🌋 Dung nham phun trào! -20 HP', '💨 Khí độc! -10 HP', '💎 Tìm thấy obsidian!', '🔥 Cháy rừng! -10 wood', '⚡ Sét đánh! -15 HP']
+      },
+      {
+        id: 'sahara', name: 'Sa Mạc Sahara', emoji: '🏜️',
+        bg: 'linear-gradient(160deg, #fef3c7, #d97706, #78350f)',
+        desc: 'Nóng chảy mặt. Nước là vàng.',
+        start: { health: 100, hunger: 70, thirst: 50, wood: 0, food: 3, water: 1 },
+        hunt: { food: 2, chance: 0.3, label: 'Săn rắn' },
+        water: { water: 1, chance: 0.2, label: 'Đào ốc đảo' },
+        wood: { wood: 1, chance: 0.2, label: 'Cây xương rồng' },
+        events: ['🏜️ Bão cát! -15 HP', '🦂 Bọ cạp cắn! -10 HP', '🐪 Gặp lạc đà hoang', '🏺 Tìm cổ vật cổ đại', '☀️ Say nắng! -20 thirst']
+      },
+      {
+        id: 'forest', name: 'Rừng Đen', emoji: '🌲',
+        bg: 'linear-gradient(160deg, #064e3b, #14532d, #000000)',
+        desc: 'Rừng rậm tối tăm. Đầy gỗ và thú dữ.',
+        start: { health: 100, hunger: 80, thirst: 80, wood: 2, food: 2, water: 2 },
+        hunt: { food: 2, chance: 0.7, label: 'Săn hươu' },
+        water: { water: 2, chance: 0.8, label: 'Suối rừng' },
+        wood: { wood: 3, chance: 0.9, label: 'Đốn cây' },
+        events: ['🐺 Bầy sói! -15 HP', '🕷️ Nhện độc! -10 HP', '🍄 Nấm quý hiếm', '🦉 Tiếng cú rùng rợn', '🌧️ Mưa rừng! +3 water']
+      },
+      {
+        id: 'mountain', name: 'Đỉnh Núi', emoji: '🏔️',
+        bg: 'linear-gradient(160deg, #cbd5e1, #475569, #1e293b)',
+        desc: 'Không khí loãng, lạnh cóng, dốc đứng.',
+        start: { health: 100, hunger: 70, thirst: 80, wood: 1, food: 1, water: 2 },
+        hunt: { food: 1, chance: 0.5, label: 'Săn dê núi' },
+        water: { water: 2, chance: 0.9, label: 'Tuyết tan' },
+        wood: { wood: 1, chance: 0.5, label: 'Cây thông' },
+        events: ['⛰️ Lở đá! -20 HP', '🦅 Đại bàng tấn công! -10 HP', '💎 Tinh thể núi', '🌨️ Bão tuyết! -15 HP', '🧗 Leo an toàn']
+      },
+      {
+        id: 'city', name: 'Thành Phố Bỏ Hoang', emoji: '🏚️',
+        bg: 'linear-gradient(160deg, #374151, #111827, #000000)',
+        desc: 'Hậu tận thế. Tìm đồ trong đống đổ nát.',
+        start: { health: 100, hunger: 80, thirst: 70, wood: 1, food: 2, water: 2 },
+        hunt: { food: 2, chance: 0.6, label: 'Lục đồ hộp' },
+        water: { water: 2, chance: 0.5, label: 'Chai nước cũ' },
+        wood: { wood: 2, chance: 0.8, label: 'Gỗ tàn phá' },
+        events: ['🧟 Zombie tấn công! -20 HP', '🔫 Băng cướp! -15 HP', '💊 Tìm thấy thuốc!', '📻 Nghe radio lạ', '☢️ Phóng xạ! -10 HP']
+      },
+      {
+        id: 'sea', name: 'Lạc Trên Biển', emoji: '🌊',
+        bg: 'linear-gradient(160deg, #1e3a8a, #0c4a6e, #083344)',
+        desc: 'Trên chiếc bè nhỏ giữa đại dương bao la.',
+        start: { health: 100, hunger: 70, thirst: 60, wood: 0, food: 1, water: 1 },
+        hunt: { food: 1, chance: 0.5, label: 'Câu cá' },
+        water: { water: 1, chance: 0.3, label: 'Hứng mưa' },
+        wood: { wood: 0, chance: 0.0, label: 'Không có gỗ' },
+        events: ['🌊 Sóng thần! -15 HP', '🦑 Mực khổng lồ! -20 HP', '🐬 Bầy cá heo đến giúp', '⛵ Thuyền xa xa (hy vọng)', '🌞 Mặt trời gay gắt! -15 thirst']
+      },
+      {
+        id: 'alien', name: 'Hành Tinh Lạ', emoji: '🌌',
+        bg: 'linear-gradient(160deg, #4c1d95, #7c2d12, #1e1b4b)',
+        desc: 'Một hành tinh với hệ sinh thái kỳ dị.',
+        start: { health: 100, hunger: 70, thirst: 70, wood: 2, food: 1, water: 1 },
+        hunt: { food: 2, chance: 0.6, label: 'Săn quái' },
+        water: { water: 2, chance: 0.5, label: 'Nước tím' },
+        wood: { wood: 2, chance: 0.7, label: 'Cây lạ' },
+        events: ['👽 Người ngoài hành tinh! -15 HP', '🛸 UFO bay qua', '💠 Tinh thể năng lượng', '🌠 Thiên thạch rơi! -20 HP', '🍀 Thực vật biết nói']
+      },
+      {
+        id: 'castle', name: 'Lâu Đài Ma', emoji: '🏰',
+        bg: 'linear-gradient(160deg, #1e1b4b, #4c1d95, #0f172a)',
+        desc: 'Lâu đài cổ bị ma ám. Đêm nào cũng kinh hoàng.',
+        start: { health: 100, hunger: 75, thirst: 75, wood: 2, food: 2, water: 2 },
+        hunt: { food: 1, chance: 0.5, label: 'Chuột cống' },
+        water: { water: 2, chance: 0.7, label: 'Giếng cổ' },
+        wood: { wood: 2, chance: 0.8, label: 'Đồ gỗ cũ' },
+        events: ['👻 Hồn ma! -15 HP', '🧛 Ma cà rồng! -20 HP', '📜 Bí mật cổ đại', '🕯️ Nến tự cháy lên', '💀 Nghi thức ma quái! -10 HP']
+      }
+    ];
+
+    const KEY = 'rblxSurvivalProgress';
+
+    function loadProgress() {
+      try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; }
+    }
+    function saveBest(id, days) {
+      const p = loadProgress();
+      if (!p[id] || p[id] < days) { p[id] = days; localStorage.setItem(KEY, JSON.stringify(p)); }
+    }
+
+    function Bar({ label, value, max, color }) {
+      const pct = Math.max(0, Math.min(100, (value / max) * 100));
+      return (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
+            <span>{label}</span><span>{Math.round(value)}/{max}</span>
+          </div>
+          <div style={{ background: 'rgba(0,0,0,0.4)', height: 12, borderRadius: 6, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)' }}>
+            <div style={{ width: pct + '%', height: '100%', background: color, transition: 'width 0.3s' }} />
+          </div>
+        </div>
+      );
+    }
+
+    function Hub({ progress, onPick, onBack }) {
+      return (
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+            <button onClick={onBack} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>← Quay lại</button>
+            <h1 style={{ fontSize: 28, textAlign: 'center', flex: 1 }}>🏕️ Survival Hub</h1>
+            <div style={{ width: 90 }}></div>
+          </div>
+          <p style={{ textAlign: 'center', marginBottom: 24, color: '#cbd5e1' }}>Chọn một kịch bản. Sống sót 30 ngày để thắng!</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+            {SCENARIOS.map(s => (
+              <button key={s.id} onClick={() => onPick(s)} style={{
+                background: s.bg, border: '2px solid rgba(255,255,255,0.25)', borderRadius: 12,
+                padding: 18, cursor: 'pointer', textAlign: 'left', color: 'white',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.35)'
+              }}>
+                <div style={{ fontSize: 42, marginBottom: 8 }}>{s.emoji}</div>
+                <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>{s.name}</div>
+                <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 8, minHeight: 32 }}>{s.desc}</div>
+                <div style={{ fontSize: 12, background: 'rgba(0,0,0,0.35)', padding: '4px 8px', borderRadius: 6, display: 'inline-block' }}>
+                  🏆 Kỷ lục: {progress[s.id] || 0} ngày
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function Game({ scenario, onExit }) {
+      const [day, setDay] = useState(1);
+      const [stats, setStats] = useState({ ...scenario.start });
+      const [actions, setActions] = useState(0);
+      const [gathered, setGathered] = useState(0);
+      const [log, setLog] = useState([`🌅 Ngày 1 — Bạn đến ${scenario.name}. Hãy sống sót!`]);
+      const [ended, setEnded] = useState(null);
+      const [fireOn, setFireOn] = useState(false);
+      const [dailyActions, setDailyActions] = useState(3);
+
+      function addLog(msg) {
+        setLog(L => [msg, ...L].slice(0, 8));
+      }
+
+      function applyStatChange(s) {
+        const n = { ...s };
+        n.hunger = Math.max(0, Math.min(100, n.hunger));
+        n.thirst = Math.max(0, Math.min(100, n.thirst));
+        n.health = Math.max(0, Math.min(100, n.health));
+        if (n.hunger <= 0) n.health -= 5;
+        if (n.thirst <= 0) n.health -= 8;
+        if (n.health <= 0) { n.health = 0; }
+        return n;
+      }
+
+      function doAction(type) {
+        if (ended || dailyActions <= 0) return;
+        let s = { ...stats };
+        let msg = '';
+        if (type === 'hunt') {
+          if (Math.random() < scenario.hunt.chance) {
+            s.food += scenario.hunt.food;
+            setGathered(g => g + scenario.hunt.food);
+            msg = `${scenario.hunt.label}: +${scenario.hunt.food} thức ăn`;
+          } else {
+            msg = `${scenario.hunt.label}: Không bắt được gì.`;
+          }
+        } else if (type === 'water') {
+          if (Math.random() < scenario.water.chance) {
+            s.water += scenario.water.water;
+            setGathered(g => g + scenario.water.water);
+            msg = `${scenario.water.label}: +${scenario.water.water} nước`;
+          } else {
+            msg = `${scenario.water.label}: Không có nước.`;
+          }
+        } else if (type === 'wood') {
+          if (scenario.wood.chance === 0) {
+            msg = `❌ ${scenario.wood.label}`;
+          } else if (Math.random() < scenario.wood.chance) {
+            s.wood += scenario.wood.wood;
+            setGathered(g => g + scenario.wood.wood);
+            msg = `${scenario.wood.label}: +${scenario.wood.wood} gỗ`;
+          } else {
+            msg = `${scenario.wood.label}: Không tìm được.`;
+          }
+        } else if (type === 'fire') {
+          if (s.wood < 2) { msg = '⚠️ Cần 2 gỗ để đốt lửa.'; }
+          else { s.wood -= 2; setFireOn(true); msg = '🔥 Đốt lửa thành công! Giữ ấm đêm nay.'; }
+        } else if (type === 'eat') {
+          if (s.food < 1) { msg = '⚠️ Hết thức ăn!'; }
+          else { s.food -= 1; s.hunger += 30; msg = '🍖 Ăn: +30 đói'; }
+        } else if (type === 'drink') {
+          if (s.water < 1) { msg = '⚠️ Hết nước!'; }
+          else { s.water -= 1; s.thirst += 30; msg = '💧 Uống: +30 khát'; }
+        } else if (type === 'heal') {
+          if (s.food < 2 || s.water < 1) { msg = '⚠️ Cần 2 thức ăn + 1 nước để chữa.'; }
+          else { s.food -= 2; s.water -= 1; s.health += 25; msg = '🏥 Chữa thương: +25 HP'; }
+        } else if (type === 'sleep') {
+          msg = '💤 Ngủ — kết thúc ngày.';
+          setActions(a => a + 1);
+          addLog(msg);
+          endDay(s);
+          return;
+        }
+        s = applyStatChange(s);
+        setStats(s);
+        setActions(a => a + 1);
+        setDailyActions(d => d - 1);
+        addLog(msg);
+        if (dailyActions - 1 <= 0) {
+          setTimeout(() => endDay(s), 400);
+        }
+      }
+
+      function endDay(currentStats) {
+        let s = { ...currentStats };
+        // natural decay
+        s.hunger -= 15;
+        s.thirst -= 20;
+        if (!fireOn) s.health -= 5;
+        // random event
+        const ev = scenario.events[Math.floor(Math.random() * scenario.events.length)];
+        let evMsg = ev;
+        const lower = ev.toLowerCase();
+        const hpMatch = ev.match(/-(\d+)\s*HP/i);
+        const thirstMatch = ev.match(/-(\d+)\s*thirst/i);
+        const hungerMatch = ev.match(/-(\d+)\s*hunger/i);
+        const waterPlus = ev.match(/\+(\d+)\s*water/i);
+        const foodPlus = ev.match(/\+(\d+)\s*food/i);
+        const woodMinus = ev.match(/-(\d+)\s*wood/i);
+        if (hpMatch) s.health -= parseInt(hpMatch[1]);
+        if (thirstMatch) s.thirst -= parseInt(thirstMatch[1]);
+        if (hungerMatch) s.hunger -= parseInt(hungerMatch[1]);
+        if (waterPlus) s.water += parseInt(waterPlus[1]);
+        if (foodPlus) s.food += parseInt(foodPlus[1]);
+        if (woodMinus) s.wood = Math.max(0, s.wood - parseInt(woodMinus[1]));
+        // fire protection
+        if (fireOn && hpMatch) { s.health += Math.floor(parseInt(hpMatch[1]) / 2); evMsg += ' (🔥 lửa giảm nửa sát thương)'; }
+        s = applyStatChange(s);
+        setFireOn(false);
+        const nextDay = day + 1;
+        if (s.health <= 0) {
+          setStats(s);
+          addLog('🌙 ' + evMsg);
+          addLog(`☠️ Bạn đã chết vào ngày ${day}.`);
+          saveBest(scenario.id, day);
+          setEnded({ win: false, days: day });
+          return;
+        }
+        if (nextDay > 30) {
+          setStats(s);
+          addLog('🌙 ' + evMsg);
+          addLog(`🏆 Bạn đã sống sót 30 ngày! Chiến thắng!`);
+          saveBest(scenario.id, 30);
+          setEnded({ win: true, days: 30 });
+          return;
+        }
+        setStats(s);
+        setDay(nextDay);
+        setDailyActions(3);
+        addLog('🌙 ' + evMsg);
+        addLog(`🌅 Ngày ${nextDay} bắt đầu.`);
+      }
+
+      const maxD = 30;
+      const dayPct = (day / maxD) * 100;
+
+      return (
+        <div style={{ minHeight: '100vh', background: scenario.bg, padding: 16 }}>
+          <div style={{ maxWidth: 880, margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+              <button onClick={onExit} style={{ padding: '6px 14px', background: 'rgba(0,0,0,0.5)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>← Hub</button>
+              <h2 style={{ fontSize: 22, flex: 1, textAlign: 'center' }}>{scenario.emoji} {scenario.name}</h2>
+              <div style={{ fontSize: 14, background: 'rgba(0,0,0,0.5)', padding: '6px 12px', borderRadius: 8 }}>Ngày {day}/30</div>
+            </div>
+
+            <div style={{ background: 'rgba(0,0,0,0.55)', padding: 14, borderRadius: 12, marginBottom: 12, border: '1px solid rgba(255,255,255,0.15)' }}>
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 12, marginBottom: 3 }}>Tiến độ sống sót</div>
+                <div style={{ background: 'rgba(0,0,0,0.4)', height: 8, borderRadius: 4 }}>
+                  <div style={{ width: dayPct + '%', height: '100%', background: '#fbbf24', borderRadius: 4, transition: 'width 0.3s' }} />
+                </div>
+              </div>
+              <Bar label="❤️ Máu" value={stats.health} max={100} color="linear-gradient(90deg,#ef4444,#f87171)" />
+              <Bar label="🍖 Đói" value={stats.hunger} max={100} color="linear-gradient(90deg,#f59e0b,#fbbf24)" />
+              <Bar label="💧 Khát" value={stats.thirst} max={100} color="linear-gradient(90deg,#0ea5e9,#38bdf8)" />
+              <div style={{ display: 'flex', gap: 12, fontSize: 13, marginTop: 10, flexWrap: 'wrap' }}>
+                <div>🪵 Gỗ: <b>{stats.wood}</b></div>
+                <div>🍖 Thức ăn: <b>{stats.food}</b></div>
+                <div>💧 Nước: <b>{stats.water}</b></div>
+                <div>🔥 Lửa: <b>{fireOn ? 'ON' : 'OFF'}</b></div>
+                <div>⚡ Lượt: <b>{dailyActions}</b></div>
+              </div>
+            </div>
+
+            {!ended ? (
+              <div style={{ background: 'rgba(0,0,0,0.55)', padding: 12, borderRadius: 12, marginBottom: 12, border: '1px solid rgba(255,255,255,0.15)' }}>
+                <div style={{ fontSize: 13, marginBottom: 8, opacity: 0.85 }}>Hành động ({dailyActions} lượt còn lại):</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+                  <ActionBtn onClick={() => doAction('hunt')} disabled={dailyActions <= 0} color="#b91c1c" icon="🍖" label={scenario.hunt.label} />
+                  <ActionBtn onClick={() => doAction('water')} disabled={dailyActions <= 0} color="#0369a1" icon="💧" label={scenario.water.label} />
+                  <ActionBtn onClick={() => doAction('wood')} disabled={dailyActions <= 0 || scenario.wood.chance === 0} color="#78350f" icon="🪵" label={scenario.wood.label} />
+                  <ActionBtn onClick={() => doAction('fire')} disabled={dailyActions <= 0 || stats.wood < 2} color="#dc2626" icon="🔥" label="Đốt lửa (2 gỗ)" />
+                  <ActionBtn onClick={() => doAction('eat')} disabled={dailyActions <= 0 || stats.food < 1} color="#d97706" icon="🍽️" label="Ăn (+30)" />
+                  <ActionBtn onClick={() => doAction('drink')} disabled={dailyActions <= 0 || stats.water < 1} color="#0891b2" icon="🥤" label="Uống (+30)" />
+                  <ActionBtn onClick={() => doAction('heal')} disabled={dailyActions <= 0 || stats.food < 2 || stats.water < 1} color="#16a34a" icon="🏥" label="Chữa (+25 HP)" />
+                  <ActionBtn onClick={() => doAction('sleep')} color="#6b21a8" icon="💤" label="Ngủ (qua ngày)" />
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: ended.win ? 'rgba(22,163,74,0.4)' : 'rgba(127,29,29,0.5)', padding: 20, borderRadius: 12, marginBottom: 12, textAlign: 'center', border: '2px solid rgba(255,255,255,0.3)' }}>
+                <div style={{ fontSize: 48, marginBottom: 10 }}>{ended.win ? '🏆' : '☠️'}</div>
+                <h2 style={{ fontSize: 24, marginBottom: 6 }}>{ended.win ? 'CHIẾN THẮNG!' : 'TRÒ CHƠI KẾT THÚC'}</h2>
+                <p style={{ marginBottom: 4 }}>Bạn sống sót {ended.days} ngày.</p>
+                <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 14 }}>Hành động: {actions} · Tài nguyên: {gathered}</p>
+                <button onClick={onExit} style={{ padding: '10px 22px', background: 'white', color: '#1e293b', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>Về Hub</button>
+              </div>
+            )}
+
+            <div style={{ background: 'rgba(0,0,0,0.55)', padding: 12, borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)' }}>
+              <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 6 }}>📜 Nhật ký:</div>
+              <div style={{ fontSize: 13, lineHeight: 1.5, maxHeight: 180, overflowY: 'auto' }}>
+                {log.map((l, i) => (
+                  <div key={i} style={{ padding: '3px 0', opacity: 1 - i * 0.1, borderBottom: i < log.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>{l}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function ActionBtn({ onClick, disabled, color, icon, label }) {
+      return (
+        <button onClick={onClick} disabled={disabled} style={{
+          padding: '10px 8px', background: disabled ? '#374151' : color,
+          color: 'white', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8,
+          cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 'bold',
+          opacity: disabled ? 0.5 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
+        }}>
+          <span style={{ fontSize: 18 }}>{icon}</span>
+          <span style={{ fontSize: 11 }}>{label}</span>
+        </button>
+      );
+    }
+
+    function App() {
+      const [progress, setProgress] = useState(loadProgress());
+      const [scenario, setScenario] = useState(null);
+
+      function pick(s) { setScenario(s); }
+      function exit() { setScenario(null); setProgress(loadProgress()); }
+      function back() { window.location.href = '../index.html'; }
+
+      if (scenario) return <Game scenario={scenario} onExit={exit} />;
+      return <Hub progress={progress} onPick={pick} onBack={back} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

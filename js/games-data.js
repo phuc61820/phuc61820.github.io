@@ -342,6 +342,117 @@ const GAMES = [
   border: '#fbbf24',
   file: 'harrypotter.html',
   featured: true
+},
+{
+  id: 'rblx-obby',
+  name: 'Obby 10 Cấp',
+  icon: '🟩',
+  desc: '10 màn vượt chướng ngại vật: Lava, Ice, Space, Neon, Haunted...',
+  category: 'arcade',
+  tags: ['Roblox', 'nhảy nhót', 'phản xạ'],
+  bg: 'linear-gradient(135deg, #0a2e0a, #14532d)',
+  border: '#22c55e',
+  file: 'rblx-obby.html',
+  featured: true
+},
+{
+  id: 'rblx-td',
+  name: 'Tower Defense 10 Map',
+  icon: '🏰',
+  desc: '10 bản đồ phòng thủ, 3 loại tháp, 10 waves, boss cuối!',
+  category: 'strategy',
+  tags: ['Roblox', 'chiến thuật', 'phòng thủ'],
+  bg: 'linear-gradient(135deg, #1a0a2e, #4c1d95)',
+  border: '#a855f7',
+  file: 'rblx-td.html'
+},
+{
+  id: 'rblx-sim',
+  name: 'Simulator 10 Loại',
+  icon: '⚡',
+  desc: 'Strength, Mining, Ninja, Fishing... 10 simulator click-to-earn!',
+  category: 'clicker',
+  tags: ['Roblox', 'click', 'nâng cấp'],
+  bg: 'linear-gradient(135deg, #0a1a2e, #1e40af)',
+  border: '#3b82f6',
+  file: 'rblx-sim.html'
+},
+{
+  id: 'rblx-parkour',
+  name: 'Parkour 10 Map',
+  icon: '🏃',
+  desc: 'Auto-runner qua 10 map: City, Desert, Volcano, Neon...',
+  category: 'arcade',
+  tags: ['Roblox', 'chạy nhảy', 'phản xạ'],
+  bg: 'linear-gradient(135deg, #1a2e1a, #166534)',
+  border: '#4ade80',
+  file: 'rblx-parkour.html'
+},
+{
+  id: 'rblx-survival',
+  name: 'Sinh Tồn 10 Kịch Bản',
+  icon: '🏕️',
+  desc: 'Sống sót 30 ngày: Đảo Hoang, Bắc Cực, Sahara, Atlantis...',
+  category: 'simulation',
+  tags: ['Roblox', 'sinh tồn', 'chiến lược'],
+  bg: 'linear-gradient(135deg, #1a1a0a, #3d3d00)',
+  border: '#fde047',
+  file: 'rblx-survival.html'
+},
+{
+  id: 'rblx-racing',
+  name: 'Đua Xe 10 Track',
+  icon: '🏎️',
+  desc: '10 đường đua: City Night, Desert, Ice, Space, Portal...',
+  category: 'arcade',
+  tags: ['Roblox', 'tốc độ', 'lái xe'],
+  bg: 'linear-gradient(135deg, #2e1a0a, #7c2d12)',
+  border: '#fb923c',
+  file: 'rblx-racing.html'
+},
+{
+  id: 'rblx-puzzle',
+  name: 'Puzzle 10 Loại',
+  icon: '🧩',
+  desc: 'Memory, Sudoku, Match-3, Sliding, Jigsaw, Simon... 10 puzzle!',
+  category: 'puzzle',
+  tags: ['Roblox', 'tư duy', 'logic'],
+  bg: 'linear-gradient(135deg, #1a0a2e, #6b21a8)',
+  border: '#c084fc',
+  file: 'rblx-puzzle.html'
+},
+{
+  id: 'rblx-shooter',
+  name: 'Bắn Súng 10 Theme',
+  icon: '🎯',
+  desc: 'Duck Hunt, Zombie, Alien, Dragon... 10 mini-game bắn súng!',
+  category: 'arcade',
+  tags: ['Roblox', 'bắn súng', 'phản xạ'],
+  bg: 'linear-gradient(135deg, #2e0a0a, #991b1b)',
+  border: '#f87171',
+  file: 'rblx-shooter.html'
+},
+{
+  id: 'rblx-pets',
+  name: 'Pet Simulator 10 Hoạt Động',
+  icon: '🐾',
+  desc: 'Hatching, Racing, Battle, Evolution... 10 mini-game thú cưng!',
+  category: 'simulation',
+  tags: ['Roblox', 'thu thập', 'dễ thương'],
+  bg: 'linear-gradient(135deg, #2e0a2e, #86198f)',
+  border: '#ec4899',
+  file: 'rblx-pets.html'
+},
+{
+  id: 'rblx-adventure',
+  name: 'Phiêu Lưu 10 Câu Chuyện',
+  icon: '🗺️',
+  desc: '10 câu chuyện phiêu lưu: Hải tặc, Rồng, Robot, Atlantis...',
+  category: 'simulation',
+  tags: ['Roblox', 'phiêu lưu', 'kể chuyện'],
+  bg: 'linear-gradient(135deg, #0a2e1a, #047857)',
+  border: '#34d399',
+  file: 'rblx-adventure.html'
 }
 ];
 

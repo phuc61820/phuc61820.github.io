@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚡ Simulator Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a1a2e; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+    @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+    .pop { animation: pop 0.15s ease; }
+    @keyframes floatUp { 0% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -80px); } }
+    .floater { position: absolute; left: 50%; top: 30%; animation: floatUp 0.9s ease-out forwards; font-weight: bold; font-size: 24px; pointer-events: none; }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const SIMS = [
+      {
+        id: 'strength', name: 'Strength Simulator', emoji: '💪',
+        desc: 'Click để nâng tạ, mua tạ, lên phòng gym!',
+        color1: '#ef4444', color2: '#f97316',
+        currency: 'Strength', currencyIcon: '💪',
+        clickLabel: 'NÂNG TẠ!', clickIcon: '🏋️',
+        upgrades: [
+          { name: 'Tạ tay', icon: '🏋️', baseCost: 15, type: 'click', power: 1 },
+          { name: 'Tạ đơn', icon: '💪', baseCost: 100, type: 'click', power: 5 },
+          { name: 'Ghế tập', icon: '🪑', baseCost: 500, type: 'auto', power: 2 },
+          { name: 'Máy chạy', icon: '🏃', baseCost: 3000, type: 'auto', power: 15 },
+          { name: 'Phòng gym', icon: '🏢', baseCost: 20000, type: 'auto', power: 80 }
+        ]
+      },
+      {
+        id: 'ninja', name: 'Ninja Simulator', emoji: '🥷',
+        desc: 'Luyện tập, mua vũ khí, trở thành ninja!',
+        color1: '#1e3a8a', color2: '#3b0764',
+        currency: 'XP Ninja', currencyIcon: '⚔️',
+        clickLabel: 'LUYỆN TẬP!', clickIcon: '🥷',
+        upgrades: [
+          { name: 'Shuriken', icon: '🌟', baseCost: 15, type: 'click', power: 1 },
+          { name: 'Kunai', icon: '🔪', baseCost: 100, type: 'click', power: 5 },
+          { name: 'Katana', icon: '⚔️', baseCost: 500, type: 'auto', power: 2 },
+          { name: 'Bóng ma', icon: '👻', baseCost: 3000, type: 'auto', power: 15 },
+          { name: 'Làng Ninja', icon: '🏯', baseCost: 20000, type: 'auto', power: 80 }
+        ]
+      },
+      {
+        id: 'mining', name: 'Mining Simulator', emoji: '⛏️',
+        desc: 'Đào đá, nâng cấp cuốc, khai thác mỏ!',
+        color1: '#78350f', color2: '#431407',
+        currency: 'Đá', currencyIcon: '🪨',
+        clickLabel: 'ĐÀO!', clickIcon: '⛏️',
+        upgrades: [
+          { name: 'Cuốc gỗ', icon: '🪵', baseCost: 15, type: 'click', power: 1 },
+          { name: 'Cuốc đá', icon: '🪨', baseCost: 100, type: 'click', power: 5 },
+          { name: 'Cuốc sắt', icon: '⛏️', baseCost: 500, type: 'auto', power: 2 },
+          { name: 'Khoan điện', icon: '🔨', baseCost: 3000, type: 'auto', power: 15 },
+          { name: 'Mỏ lớn', icon: '🏔️', baseCost: 20000, type: 'auto', power: 80 }
+        ]
+      },
+      {
+        id: 'fishing', name: 'Fishing Simulator', emoji: '🎣',
+        desc: 'Câu cá, nâng cấp cần, bắt cá hiếm!',
+        color1: '#0369a1', color2: '#0c4a6e',
+        currency: 'Cá', currencyIcon: '🐟',
+        clickLabel: 'CÂU CÁ!', clickIcon: '🎣',
+        upgrades: [
+          { name: 'Cần tre', icon: '🎋', baseCost: 15, type: 'click', power: 1 },
+          { name: 'Cần carbon', icon: '🎣', baseCost: 100, type: 'click', power: 5 },
+          { name: 'Thuyền con', icon: '🛶', baseCost: 500, type: 'auto', power: 2 },
+          { name: 'Thuyền lớn', icon: '⛵', baseCost: 3000, type: 'auto', power: 15 },
+          { name: 'Tàu câu', icon: '🚢', baseCost: 20000, type: 'auto', power: 80 }
+        ]
+      },
+      {
+        id: 'farming', name: 'Farming Simulator', emoji: '🌾',
+        desc: 'Trồng cây, thu hoạch, mở rộng nông trại!',
+        color1: '#166534', color2: '#14532d',
+        currency: 'Nông sản', currencyIcon: '🌽',
+        clickLabel: 'THU HOẠCH!', clickIcon: '🌾',
+        upgrades: [
+          { name: 'Hạt giống', icon: '🌱', baseCost: 15, type: 'click', power: 1 },
+          { name: 'Cuốc', icon: '🪣', baseCost: 100, type: 'click', power: 5 },
+          { name: 'Máy cày', icon: '🚜', baseCost: 500, type: 'auto', power: 2 },
+          { name: 'Nhà kính', icon: '🏡', baseCost: 3000, type: 'auto', power: 15 },
+          { name: 'Nông trại', icon: '🌾', baseCost: 20000, type: 'auto', power: 80 }
+        ]
+      },
+      {
+        id: 'speed', name: 'Speed Simulator', emoji: '🏃',
+        desc: 'Chạy, mua giày, nhanh như chớp!',
+        color1: '#facc15', color2: '#ea580c',
+        currency: 'Tốc độ', currencyIcon: '⚡',
+        clickLabel: 'CHẠY!', clickIcon: '🏃',
+        upgrades: [
+          { name: 'Giày vải', icon: '👟', baseCost: 15, type: 'click', power: 1 },
+          { name: 'Giày chạy', icon: '👟', baseCost: 100, type: 'click', power: 5 },
+          { name: 'Giày lửa', icon: '🔥', baseCost: 500, type: 'auto', power: 2 },
+          { name: 'Giày sét', icon: '⚡', baseCost: 3000, type: 'auto', power: 15 },
+          { name: 'Siêu giày', icon: '🚀', baseCost: 20000, type: 'auto', power: 80 }
+        ]
+      },
+      {
+        id: 'pizza', name: 'Pizza Simulator', emoji: '🍕',
+        desc: 'Làm pizza, nâng cấp lò, mở chuỗi!',
+        color1: '#dc2626', color2: '#b45309',
+        currency: 'Xu Pizza', currencyIcon: '🍕',
+        clickLabel: 'LÀM PIZZA!', clickIcon: '🍕',
+        upgrades: [
+          { name: 'Bột mì', icon: '🌾', baseCost: 15, type: 'click', power: 1 },
+          { name: 'Dao pizza', icon: '🔪', baseCost: 100, type: 'click', power: 5 },
+          { name: 'Lò nhỏ', icon: '🔥', baseCost: 500, type: 'auto', power: 2 },
+          { name: 'Lò lớn', icon: '🏭', baseCost: 3000, type: 'auto', power: 15 },
+          { name: 'Chuỗi pizza', icon: '🏪', baseCost: 20000, type: 'auto', power: 80 }
+        ]
+      },
+      {
+        id: 'pet', name: 'Pet Simulator', emoji: '🐶',
+        desc: 'Sưu tầm thú cưng, chúng giúp kiếm xu!',
+        color1: '#a855f7', color2: '#7c3aed',
+        currency: 'Xu Pet', currencyIcon: '🦴',
+        clickLabel: 'GỌI PET!', clickIcon: '🐶',
+        upgrades: [
+          { name: 'Chó', icon: '🐶', baseCost: 15, type: 'click', power: 1 },
+          { name: 'Mèo', icon: '🐱', baseCost: 100, type: 'click', power: 5 },
+          { name: 'Rồng', icon: '🐉', baseCost: 500, type: 'auto', power: 2 },
+          { name: 'Kỳ lân', icon: '🦄', baseCost: 3000, type: 'auto', power: 15 },
+          { name: 'Phượng hoàng', icon: '🔥', baseCost: 20000, type: 'auto', power: 80 }
+        ]
+      },
+      {
+        id: 'gem', name: 'Gem Mining Simulator', emoji: '💎',
+        desc: 'Đào đá quý, tìm kim cương hiếm!',
+        color1: '#06b6d4', color2: '#3b82f6',
+        currency: 'Đá quý', currencyIcon: '💎',
+        clickLabel: 'ĐÀO ĐÁ QUÝ!', clickIcon: '💎',
+        upgrades: [
+          { name: 'Ruby', icon: '🔴', baseCost: 15, type: 'click', power: 1 },
+          { name: 'Ngọc lục', icon: '🟢', baseCost: 100, type: 'click', power: 5 },
+          { name: 'Sapphire', icon: '🔵', baseCost: 500, type: 'auto', power: 2 },
+          { name: 'Kim cương', icon: '💎', baseCost: 3000, type: 'auto', power: 15 },
+          { name: 'Huyền thoại', icon: '👑', baseCost: 20000, type: 'auto', power: 80 }
+        ]
+      },
+      {
+        id: 'rocket', name: 'Rocket Simulator', emoji: '🚀',
+        desc: 'Chế tạo tên lửa, bay vào vũ trụ!',
+        color1: '#6366f1', color2: '#0ea5e9',
+        currency: 'Nhiên liệu', currencyIcon: '⛽',
+        clickLabel: 'BUILD!', clickIcon: '🚀',
+        upgrades: [
+          { name: 'Bulong', icon: '🔩', baseCost: 15, type: 'click', power: 1 },
+          { name: 'Cờ lê', icon: '🔧', baseCost: 100, type: 'click', power: 5 },
+          { name: 'Động cơ', icon: '⚙️', baseCost: 500, type: 'auto', power: 2 },
+          { name: 'Buồng lái', icon: '🛸', baseCost: 3000, type: 'auto', power: 15 },
+          { name: 'Trạm vũ trụ', icon: '🛰️', baseCost: 20000, type: 'auto', power: 80 }
+        ]
+      }
+    ];
+
+    const STORAGE_KEY = 'rblxSimProgress';
+
+    function loadData() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+      } catch { return {}; }
+    }
+    function saveData(data) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+    }
+    function defaultState() {
+      return { coins: 0, upgrades: [0,0,0,0,0], rebirths: 0, total: 0 };
+    }
+    function fmt(n) {
+      n = Math.floor(n);
+      if (n < 1000) return n.toString();
+      if (n < 1e6) return (n/1e3).toFixed(2).replace(/\.?0+$/,'') + 'K';
+      if (n < 1e9) return (n/1e6).toFixed(2).replace(/\.?0+$/,'') + 'M';
+      if (n < 1e12) return (n/1e9).toFixed(2).replace(/\.?0+$/,'') + 'B';
+      return (n/1e12).toFixed(2).replace(/\.?0+$/,'') + 'T';
+    }
+    function upgradeCost(base, owned) {
+      return Math.floor(base * Math.pow(2, owned));
+    }
+    function computeClickPower(sim, state) {
+      let p = 1;
+      sim.upgrades.forEach((u, i) => {
+        if (u.type === 'click') p += u.power * state.upgrades[i];
+      });
+      return p * (1 + state.rebirths * 0.5);
+    }
+    function computeAutoPower(sim, state) {
+      let p = 0;
+      sim.upgrades.forEach((u, i) => {
+        if (u.type === 'auto') p += u.power * state.upgrades[i];
+      });
+      return p * (1 + state.rebirths * 0.5);
+    }
+    function rebirthThreshold(rebirths) {
+      return Math.floor(100000 * Math.pow(4, rebirths));
+    }
+
+    function Hub({ data, onOpen }) {
+      return (
+        <div style={{ padding: '20px', maxWidth: 1200, margin: '0 auto' }}>
+          <a href="../index.html" style={{
+            display: 'inline-block', padding: '10px 20px', background: 'rgba(255,255,255,0.1)',
+            color: 'white', textDecoration: 'none', borderRadius: 10, marginBottom: 20
+          }}>← Về Game Hub</a>
+          <h1 style={{ fontSize: 42, textAlign: 'center', marginBottom: 8,
+            background: 'linear-gradient(90deg,#fbbf24,#f472b6,#60a5fa)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            ⚡ Simulator Hub
+          </h1>
+          <p style={{ textAlign: 'center', opacity: 0.8, marginBottom: 30 }}>
+            10 simulator siêu gây nghiện — click, nâng cấp, rebirth!
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+            {SIMS.map(sim => {
+              const s = data[sim.id] || defaultState();
+              return (
+                <div key={sim.id} onClick={() => onOpen(sim.id)}
+                  style={{
+                    background: `linear-gradient(135deg, ${sim.color1}, ${sim.color2})`,
+                    padding: 18, borderRadius: 16, cursor: 'pointer',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                    border: '2px solid rgba(255,255,255,0.15)'
+                  }}
+                  onMouseOver={e => e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)'}
+                  onMouseOut={e => e.currentTarget.style.transform = 'none'}>
+                  <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 6 }}>{sim.emoji}</div>
+                  <div style={{ fontWeight: 'bold', fontSize: 17, textAlign: 'center', marginBottom: 6 }}>{sim.name}</div>
+                  <div style={{ fontSize: 12, opacity: 0.85, textAlign: 'center', minHeight: 32, marginBottom: 10 }}>{sim.desc}</div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 8, fontSize: 13 }}>
+                    <div>{sim.currencyIcon} {fmt(s.coins)}</div>
+                    <div style={{ opacity: 0.8 }}>🔄 Rebirth: {s.rebirths}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function SimView({ sim, state, onChange, onBack }) {
+      const [floaters, setFloaters] = useState([]);
+      const [clickAnim, setClickAnim] = useState(false);
+      const stateRef = useRef(state);
+      stateRef.current = state;
+
+      useEffect(() => {
+        const iv = setInterval(() => {
+          const auto = computeAutoPower(sim, stateRef.current);
+          if (auto > 0) {
+            const ns = { ...stateRef.current };
+            ns.coins += auto;
+            ns.total += auto;
+            onChange(ns);
+          }
+        }, 1000);
+        return () => clearInterval(iv);
+      }, [sim]);
+
+      function handleClick() {
+        const power = computeClickPower(sim, state);
+        const ns = { ...state };
+        ns.coins += power;
+        ns.total += power;
+        onChange(ns);
+        setClickAnim(true);
+        setTimeout(() => setClickAnim(false), 150);
+        const id = Date.now() + Math.random();
+        setFloaters(f => [...f, { id, text: '+' + fmt(power), left: 40 + Math.random()*20 }]);
+        setTimeout(() => setFloaters(f => f.filter(x => x.id !== id)), 900);
+      }
+
+      function buyUpgrade(i) {
+        const u = sim.upgrades[i];
+        const cost = upgradeCost(u.baseCost, state.upgrades[i]);
+        if (state.coins < cost) return;
+        const ns = { ...state, upgrades: [...state.upgrades] };
+        ns.coins -= cost;
+        ns.upgrades[i] += 1;
+        onChange(ns);
+      }
+
+      function doRebirth() {
+        const threshold = rebirthThreshold(state.rebirths);
+        if (state.total < threshold) return;
+        if (!confirm(`Rebirth sẽ reset coins và upgrades nhưng tăng +50% sức mạnh vĩnh viễn. Tiếp tục?`)) return;
+        onChange({ coins: 0, upgrades: [0,0,0,0,0], rebirths: state.rebirths + 1, total: 0 });
+      }
+
+      const clickPower = computeClickPower(sim, state);
+      const autoPower = computeAutoPower(sim, state);
+      const rbThresh = rebirthThreshold(state.rebirths);
+      const canRebirth = state.total >= rbThresh;
+
+      return (
+        <div style={{
+          minHeight: '100vh',
+          background: `linear-gradient(135deg, ${sim.color1}, ${sim.color2})`,
+          padding: 16
+        }}>
+          <div style={{ maxWidth: 600, margin: '0 auto' }}>
+            <button onClick={onBack} style={{
+              padding: '8px 16px', background: 'rgba(0,0,0,0.4)', color: 'white',
+              border: 'none', borderRadius: 8, cursor: 'pointer', marginBottom: 12, fontSize: 14
+            }}>← Hub</button>
+
+            <h1 style={{ fontSize: 28, textAlign: 'center', marginBottom: 8 }}>
+              {sim.emoji} {sim.name}
+            </h1>
+
+            <div style={{
+              background: 'rgba(0,0,0,0.35)', padding: 14, borderRadius: 12, marginBottom: 16,
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 14
+            }}>
+              <div>{sim.currencyIcon} <b>{fmt(state.coins)}</b></div>
+              <div>💥 Click: <b>{fmt(clickPower)}</b></div>
+              <div>⚙️ Auto/s: <b>{fmt(autoPower)}</b></div>
+              <div>🔄 Rebirth: <b>{state.rebirths}</b> (+{state.rebirths*50}%)</div>
+            </div>
+
+            <div style={{ position: 'relative', marginBottom: 20 }}>
+              {floaters.map(f => (
+                <div key={f.id} className="floater" style={{ left: f.left + '%', color: '#fef08a', textShadow: '0 2px 6px rgba(0,0,0,0.6)' }}>
+                  {f.text}
+                </div>
+              ))}
+              <button onClick={handleClick}
+                className={clickAnim ? 'pop' : ''}
+                style={{
+                  width: '100%', padding: '40px 20px',
+                  background: 'rgba(255,255,255,0.15)',
+                  border: '4px solid rgba(255,255,255,0.3)',
+                  borderRadius: 20, color: 'white', fontSize: 22, fontWeight: 'bold',
+                  cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,0,0,0.35)'
+                }}>
+                <div style={{ fontSize: 64 }}>{sim.clickIcon}</div>
+                <div style={{ marginTop: 6 }}>{sim.clickLabel}</div>
+                <div style={{ fontSize: 14, opacity: 0.9, marginTop: 4 }}>+{fmt(clickPower)} {sim.currency}</div>
+              </button>
+            </div>
+
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: 12, borderRadius: 12, marginBottom: 16 }}>
+              <div style={{ fontWeight: 'bold', marginBottom: 10, fontSize: 16 }}>⬆️ Nâng cấp</div>
+              {sim.upgrades.map((u, i) => {
+                const cost = upgradeCost(u.baseCost, state.upgrades[i]);
+                const can = state.coins >= cost;
+                return (
+                  <button key={i} onClick={() => buyUpgrade(i)} disabled={!can}
+                    style={{
+                      width: '100%', padding: 10, marginBottom: 6,
+                      background: can ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.3)',
+                      border: '2px solid ' + (can ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'),
+                      borderRadius: 10, color: 'white', cursor: can ? 'pointer' : 'not-allowed',
+                      display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
+                      opacity: can ? 1 : 0.55
+                    }}>
+                    <div style={{ fontSize: 28 }}>{u.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 'bold' }}>{u.name} <span style={{ opacity: 0.7, fontSize: 12 }}>Lv.{state.upgrades[i]}</span></div>
+                      <div style={{ fontSize: 11, opacity: 0.8 }}>
+                        {u.type === 'click' ? `+${u.power} click` : `+${u.power}/s auto`}
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 'bold', fontSize: 14 }}>{sim.currencyIcon} {fmt(cost)}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button onClick={doRebirth} disabled={!canRebirth}
+              style={{
+                width: '100%', padding: 14,
+                background: canRebirth ? 'linear-gradient(90deg,#fbbf24,#ef4444)' : 'rgba(0,0,0,0.35)',
+                border: '2px solid rgba(255,255,255,0.3)',
+                borderRadius: 12, color: 'white', fontSize: 16, fontWeight: 'bold',
+                cursor: canRebirth ? 'pointer' : 'not-allowed', opacity: canRebirth ? 1 : 0.6
+              }}>
+              🔄 Rebirth ({fmt(state.total)}/{fmt(rbThresh)}) — +50% sức mạnh
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [data, setData] = useState(() => loadData());
+      const [current, setCurrent] = useState(null);
+
+      useEffect(() => {
+        saveData(data);
+      }, [data]);
+
+      function update(simId, newState) {
+        setData(d => ({ ...d, [simId]: newState }));
+      }
+
+      if (current) {
+        const sim = SIMS.find(s => s.id === current);
+        const state = data[current] || defaultState();
+        return <SimView sim={sim} state={state} onChange={ns => update(current, ns)} onBack={() => setCurrent(null)} />;
+      }
+      return <Hub data={data} onOpen={setCurrent} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

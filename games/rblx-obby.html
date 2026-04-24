@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🟩 Roblox Obby Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a1e; min-height: 100vh; overflow: hidden; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ==================== LEVEL DATA ====================
+    const LEVELS = [
+      {
+        id: 0, name: 'Classic', emoji: '🟩', playerEmoji: '🟦',
+        bg: 'linear-gradient(to bottom, #87ceeb 0%, #87ceeb 70%, #8b5a2b 70%, #6b4423 100%)',
+        groundColor: '#8b5a2b', platformColor: '#5a3a1a',
+        hazardEmoji: '⚡', hazardColor: '#aaa',
+        gravity: 0.7, jumpV: -11, slippery: false,
+        obstacles: [
+          { x: 250, y: 240, w: 40, h: 20, type: 'spike' },
+          { x: 380, y: 200, w: 60, h: 10, type: 'platform' },
+          { x: 520, y: 240, w: 40, h: 20, type: 'spike' },
+          { x: 620, y: 170, w: 60, h: 10, type: 'platform' },
+          { x: 750, y: 240, w: 80, h: 20, type: 'gap' },
+          { x: 900, y: 180, w: 60, h: 10, type: 'platform' },
+          { x: 1020, y: 240, w: 40, h: 20, type: 'spike' },
+          { x: 1120, y: 200, w: 60, h: 10, type: 'platform' },
+          { x: 1250, y: 240, w: 40, h: 20, type: 'spike' },
+        ]
+      },
+      {
+        id: 1, name: 'Lava', emoji: '🌋', playerEmoji: '🦖',
+        bg: 'linear-gradient(to bottom, #2a0000 0%, #5a0000 50%, #8b2500 100%)',
+        groundColor: '#3a1500', platformColor: '#1a0a00',
+        hazardEmoji: '🔥', hazardColor: '#ff4500',
+        gravity: 0.7, jumpV: -11, slippery: false,
+        obstacles: [
+          { x: 200, y: 250, w: 60, h: 10, type: 'lava' },
+          { x: 320, y: 200, w: 60, h: 10, type: 'platform' },
+          { x: 440, y: 250, w: 80, h: 10, type: 'lava' },
+          { x: 580, y: 170, w: 60, h: 10, type: 'platform' },
+          { x: 700, y: 250, w: 70, h: 10, type: 'lava' },
+          { x: 820, y: 190, w: 50, h: 10, type: 'platform' },
+          { x: 930, y: 250, w: 80, h: 10, type: 'lava' },
+          { x: 1070, y: 160, w: 60, h: 10, type: 'platform' },
+          { x: 1190, y: 250, w: 60, h: 10, type: 'lava' },
+          { x: 1290, y: 200, w: 50, h: 10, type: 'platform' },
+        ]
+      },
+      {
+        id: 2, name: 'Ice', emoji: '❄️', playerEmoji: '🐧',
+        bg: 'linear-gradient(to bottom, #b3e0ff 0%, #e0f0ff 70%, #a0c8e8 70%, #7aa8d8 100%)',
+        groundColor: '#a0c8e8', platformColor: '#7aa8d8',
+        hazardEmoji: '❄️', hazardColor: '#cceeff',
+        gravity: 0.7, jumpV: -11, slippery: true,
+        obstacles: [
+          { x: 230, y: 240, w: 40, h: 20, type: 'spike' },
+          { x: 360, y: 200, w: 70, h: 10, type: 'platform' },
+          { x: 500, y: 240, w: 50, h: 20, type: 'spike' },
+          { x: 620, y: 170, w: 70, h: 10, type: 'platform' },
+          { x: 760, y: 240, w: 60, h: 20, type: 'spike' },
+          { x: 880, y: 200, w: 60, h: 10, type: 'platform' },
+          { x: 1000, y: 240, w: 50, h: 20, type: 'spike' },
+          { x: 1120, y: 180, w: 60, h: 10, type: 'platform' },
+          { x: 1240, y: 240, w: 50, h: 20, type: 'spike' },
+        ]
+      },
+      {
+        id: 3, name: 'Jungle', emoji: '🌴', playerEmoji: '🐒',
+        bg: 'linear-gradient(to bottom, #228b22 0%, #2e8b57 60%, #4f7942 60%, #3a5a2a 100%)',
+        groundColor: '#4f7942', platformColor: '#3a5a2a',
+        hazardEmoji: '🐊', hazardColor: '#556b2f',
+        gravity: 0.7, jumpV: -11, slippery: false,
+        obstacles: [
+          { x: 220, y: 240, w: 50, h: 20, type: 'croc' },
+          { x: 340, y: 200, w: 60, h: 10, type: 'platform' },
+          { x: 470, y: 240, w: 60, h: 20, type: 'croc' },
+          { x: 600, y: 170, w: 60, h: 10, type: 'platform' },
+          { x: 730, y: 240, w: 60, h: 20, type: 'croc' },
+          { x: 850, y: 190, w: 60, h: 10, type: 'platform' },
+          { x: 970, y: 240, w: 50, h: 20, type: 'croc' },
+          { x: 1080, y: 160, w: 60, h: 10, type: 'platform' },
+          { x: 1200, y: 240, w: 60, h: 20, type: 'croc' },
+          { x: 1310, y: 200, w: 50, h: 10, type: 'platform' },
+        ]
+      },
+      {
+        id: 4, name: 'Space', emoji: '🚀', playerEmoji: '👨‍🚀',
+        bg: 'linear-gradient(to bottom, #000010 0%, #1a0033 50%, #330066 100%)',
+        groundColor: '#220044', platformColor: '#550088',
+        hazardEmoji: '☄️', hazardColor: '#ff6600',
+        gravity: 0.4, jumpV: -9, slippery: false,
+        obstacles: [
+          { x: 250, y: 240, w: 40, h: 20, type: 'asteroid' },
+          { x: 380, y: 180, w: 60, h: 10, type: 'platform' },
+          { x: 520, y: 240, w: 40, h: 20, type: 'asteroid' },
+          { x: 650, y: 150, w: 60, h: 10, type: 'platform' },
+          { x: 790, y: 240, w: 50, h: 20, type: 'asteroid' },
+          { x: 910, y: 170, w: 60, h: 10, type: 'platform' },
+          { x: 1040, y: 240, w: 40, h: 20, type: 'asteroid' },
+          { x: 1160, y: 140, w: 60, h: 10, type: 'platform' },
+          { x: 1280, y: 240, w: 50, h: 20, type: 'asteroid' },
+        ]
+      },
+      {
+        id: 5, name: 'Sky', emoji: '☁️', playerEmoji: '🦅',
+        bg: 'linear-gradient(to bottom, #b0e0ff 0%, #d0f0ff 50%, #ffffff 100%)',
+        groundColor: '#ffffff', platformColor: '#e0e8f0',
+        hazardEmoji: '💨', hazardColor: '#a0d0ff',
+        gravity: 0.5, jumpV: -10, slippery: false,
+        obstacles: [
+          { x: 220, y: 230, w: 70, h: 15, type: 'cloud' },
+          { x: 350, y: 180, w: 70, h: 15, type: 'cloud' },
+          { x: 480, y: 220, w: 70, h: 15, type: 'cloud' },
+          { x: 610, y: 160, w: 70, h: 15, type: 'cloud' },
+          { x: 740, y: 210, w: 70, h: 15, type: 'cloud' },
+          { x: 870, y: 170, w: 70, h: 15, type: 'cloud' },
+          { x: 990, y: 220, w: 40, h: 20, type: 'wind' },
+          { x: 1080, y: 180, w: 70, h: 15, type: 'cloud' },
+          { x: 1220, y: 240, w: 40, h: 20, type: 'wind' },
+          { x: 1310, y: 200, w: 60, h: 15, type: 'cloud' },
+        ]
+      },
+      {
+        id: 6, name: 'Desert', emoji: '🏜️', playerEmoji: '🐪',
+        bg: 'linear-gradient(to bottom, #ffe0a3 0%, #ffd280 50%, #e0a85c 70%, #c89450 100%)',
+        groundColor: '#e0a85c', platformColor: '#b07840',
+        hazardEmoji: '🦂', hazardColor: '#8b4513',
+        gravity: 0.7, jumpV: -11, slippery: false,
+        obstacles: [
+          { x: 240, y: 240, w: 50, h: 20, type: 'scorpion' },
+          { x: 370, y: 200, w: 60, h: 10, type: 'platform' },
+          { x: 490, y: 250, w: 80, h: 10, type: 'quicksand' },
+          { x: 640, y: 180, w: 60, h: 10, type: 'platform' },
+          { x: 770, y: 240, w: 50, h: 20, type: 'scorpion' },
+          { x: 890, y: 200, w: 60, h: 10, type: 'platform' },
+          { x: 1010, y: 250, w: 80, h: 10, type: 'quicksand' },
+          { x: 1140, y: 170, w: 60, h: 10, type: 'platform' },
+          { x: 1260, y: 240, w: 50, h: 20, type: 'scorpion' },
+        ]
+      },
+      {
+        id: 7, name: 'Candy', emoji: '🍭', playerEmoji: '🧁',
+        bg: 'linear-gradient(to bottom, #ffb3d9 0%, #ffc0e0 50%, #ff80bf 70%, #e060a0 100%)',
+        groundColor: '#ff80bf', platformColor: '#e060a0',
+        hazardEmoji: '🍬', hazardColor: '#ff3385',
+        gravity: 0.6, jumpV: -10, slippery: false,
+        obstacles: [
+          { x: 220, y: 240, w: 40, h: 20, type: 'candy' },
+          { x: 340, y: 200, w: 60, h: 10, type: 'platform' },
+          { x: 470, y: 240, w: 50, h: 20, type: 'candy' },
+          { x: 590, y: 170, w: 60, h: 10, type: 'platform' },
+          { x: 720, y: 240, w: 50, h: 20, type: 'candy' },
+          { x: 840, y: 190, w: 60, h: 10, type: 'platform' },
+          { x: 960, y: 240, w: 50, h: 20, type: 'candy' },
+          { x: 1080, y: 160, w: 60, h: 10, type: 'platform' },
+          { x: 1200, y: 240, w: 50, h: 20, type: 'candy' },
+          { x: 1310, y: 200, w: 50, h: 10, type: 'platform' },
+        ]
+      },
+      {
+        id: 8, name: 'Neon', emoji: '💡', playerEmoji: '🤖',
+        bg: 'linear-gradient(to bottom, #000000 0%, #0a0020 50%, #100030 100%)',
+        groundColor: '#0f0f2f', platformColor: '#00ffff',
+        hazardEmoji: '⚡', hazardColor: '#ff00ff',
+        gravity: 0.7, jumpV: -11, slippery: false,
+        obstacles: [
+          { x: 230, y: 240, w: 10, h: 30, type: 'laser' },
+          { x: 340, y: 200, w: 60, h: 6, type: 'platform' },
+          { x: 480, y: 240, w: 10, h: 30, type: 'laser' },
+          { x: 600, y: 170, w: 60, h: 6, type: 'platform' },
+          { x: 740, y: 240, w: 10, h: 30, type: 'laser' },
+          { x: 860, y: 190, w: 60, h: 6, type: 'platform' },
+          { x: 990, y: 240, w: 10, h: 30, type: 'laser' },
+          { x: 1100, y: 160, w: 60, h: 6, type: 'platform' },
+          { x: 1230, y: 240, w: 10, h: 30, type: 'laser' },
+          { x: 1320, y: 200, w: 50, h: 6, type: 'platform' },
+        ]
+      },
+      {
+        id: 9, name: 'Haunted', emoji: '👻', playerEmoji: '🧛',
+        bg: 'linear-gradient(to bottom, #0a0015 0%, #1a0030 50%, #2a0050 100%)',
+        groundColor: '#2a1040', platformColor: '#4a1060',
+        hazardEmoji: '👻', hazardColor: '#dddddd',
+        gravity: 0.7, jumpV: -11, slippery: false,
+        obstacles: [
+          { x: 220, y: 240, w: 40, h: 20, type: 'ghost' },
+          { x: 340, y: 200, w: 60, h: 10, type: 'platform' },
+          { x: 470, y: 240, w: 40, h: 20, type: 'pumpkin' },
+          { x: 590, y: 170, w: 60, h: 10, type: 'platform' },
+          { x: 720, y: 240, w: 40, h: 20, type: 'ghost' },
+          { x: 840, y: 190, w: 60, h: 10, type: 'platform' },
+          { x: 960, y: 240, w: 40, h: 20, type: 'pumpkin' },
+          { x: 1080, y: 160, w: 60, h: 10, type: 'platform' },
+          { x: 1200, y: 240, w: 40, h: 20, type: 'ghost' },
+          { x: 1310, y: 200, w: 50, h: 10, type: 'platform' },
+        ]
+      },
+    ];
+
+    // ==================== STORAGE ====================
+    const loadProgress = () => {
+      try {
+        const raw = localStorage.getItem('rblxObbyProgress');
+        return raw ? JSON.parse(raw) : {};
+      } catch { return {}; }
+    };
+    const saveProgress = (p) => {
+      try { localStorage.setItem('rblxObbyProgress', JSON.stringify(p)); } catch {}
+    };
+
+    // ==================== MENU ====================
+    function Menu({ progress, onPick }) {
+      const done = Object.keys(progress).filter(k => progress[k]).length;
+      return (
+        <div style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%)',
+          padding: '20px',
+          overflowY: 'auto',
+          maxHeight: '100vh'
+        }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <a href="../index.html" style={{
+              display: 'inline-block', padding: '8px 16px', background: 'rgba(0,0,0,0.4)',
+              color: 'white', borderRadius: '8px', textDecoration: 'none', marginBottom: '20px',
+              fontWeight: 'bold'
+            }}>← Về trang chủ</a>
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <h1 style={{
+                fontSize: 'clamp(28px, 6vw, 42px)', fontWeight: '900',
+                textShadow: '3px 3px 0 #000, 0 0 20px rgba(255,255,255,0.5)',
+                letterSpacing: '2px'
+              }}>🟩 ROBLOX OBBY HUB</h1>
+              <p style={{ fontSize: '16px', opacity: 0.9, marginTop: '6px' }}>
+                10 màn vượt chướng ngại vật — Hoàn thành: {done}/10
+              </p>
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: '14px'
+            }}>
+              {LEVELS.map((lv, i) => {
+                const unlocked = i === 0 || progress[i - 1];
+                const completed = progress[i];
+                return (
+                  <button key={lv.id}
+                    onClick={() => unlocked && onPick(i)}
+                    disabled={!unlocked}
+                    style={{
+                      padding: '16px 10px',
+                      background: unlocked ? lv.bg : '#333',
+                      border: completed ? '4px solid gold' : '3px solid rgba(255,255,255,0.3)',
+                      borderRadius: '14px',
+                      color: 'white',
+                      cursor: unlocked ? 'pointer' : 'not-allowed',
+                      opacity: unlocked ? 1 : 0.5,
+                      textShadow: '2px 2px 0 #000',
+                      minHeight: '130px',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center'
+                    }}>
+                    <div style={{ fontSize: '40px' }}>{lv.emoji}</div>
+                    <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '4px' }}>Level {i + 1}</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '2px' }}>{lv.name}</div>
+                    {completed && <div style={{ fontSize: '18px', marginTop: '4px' }}>⭐ CLEAR</div>}
+                    {!unlocked && <div style={{ fontSize: '14px', marginTop: '4px' }}>🔒 Khóa</div>}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{
+              marginTop: '24px', padding: '14px',
+              background: 'rgba(0,0,0,0.4)', borderRadius: '12px',
+              textAlign: 'center', fontSize: '14px', lineHeight: 1.6
+            }}>
+              <b>🎮 Điều khiển:</b> ← → hoặc A/D để di chuyển · Space / ↑ để nhảy · Trên mobile: nút cảm ứng
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==================== GAME ====================
+    const WORLD_W = 1450;
+    const WORLD_H = 300;
+    const VIEW_W = 400;
+    const VIEW_H = 300;
+    const GROUND_Y = 260;
+    const PLAYER_W = 24;
+    const PLAYER_H = 28;
+
+    function Game({ levelIdx, onWin, onExit }) {
+      const level = LEVELS[levelIdx];
+      const [, forceRender] = useState(0);
+      const [status, setStatus] = useState('playing'); // playing | won | dead
+      const stateRef = useRef({
+        px: 20, py: GROUND_Y - PLAYER_H, vx: 0, vy: 0,
+        onGround: true, cam: 0, tick: 0
+      });
+      const keysRef = useRef({ left: false, right: false, jump: false });
+      const statusRef = useRef('playing');
+
+      useEffect(() => { statusRef.current = status; }, [status]);
+
+      // Reset on level change
+      useEffect(() => {
+        stateRef.current = { px: 20, py: GROUND_Y - PLAYER_H, vx: 0, vy: 0, onGround: true, cam: 0, tick: 0 };
+        setStatus('playing');
+        statusRef.current = 'playing';
+      }, [levelIdx]);
+
+      // Input
+      useEffect(() => {
+        const kd = (e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keysRef.current.left = true;
+          if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keysRef.current.right = true;
+          if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+            keysRef.current.jump = true;
+            e.preventDefault();
+          }
+        };
+        const ku = (e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keysRef.current.left = false;
+          if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keysRef.current.right = false;
+          if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keysRef.current.jump = false;
+        };
+        window.addEventListener('keydown', kd);
+        window.addEventListener('keyup', ku);
+        return () => {
+          window.removeEventListener('keydown', kd);
+          window.removeEventListener('keyup', ku);
+        };
+      }, []);
+
+      // Game loop
+      useEffect(() => {
+        const interval = setInterval(() => {
+          if (statusRef.current !== 'playing') {
+            forceRender(t => t + 1);
+            return;
+          }
+          const s = stateRef.current;
+          const k = keysRef.current;
+          s.tick++;
+
+          // Horizontal movement
+          const accel = level.slippery ? 0.25 : 1.2;
+          const maxSpeed = 4;
+          const friction = level.slippery ? 0.96 : 0.75;
+          if (k.left) s.vx = Math.max(s.vx - accel, -maxSpeed);
+          if (k.right) s.vx = Math.min(s.vx + accel, maxSpeed);
+          if (!k.left && !k.right) s.vx *= friction;
+
+          // Jump
+          if (k.jump && s.onGround) {
+            s.vy = level.jumpV;
+            s.onGround = false;
+          }
+
+          // Gravity
+          s.vy += level.gravity;
+          if (s.vy > 14) s.vy = 14;
+
+          // Apply velocity
+          s.px += s.vx;
+          s.py += s.vy;
+
+          // Clamp bounds
+          if (s.px < 0) s.px = 0;
+          if (s.px > WORLD_W - PLAYER_W) s.px = WORLD_W - PLAYER_W;
+
+          // Ground collision
+          s.onGround = false;
+          if (s.py + PLAYER_H >= GROUND_Y) {
+            // Check for gap
+            let inGap = false;
+            for (const o of level.obstacles) {
+              if (o.type === 'gap' && s.px + PLAYER_W > o.x && s.px < o.x + o.w) {
+                inGap = true; break;
+              }
+            }
+            if (!inGap) {
+              s.py = GROUND_Y - PLAYER_H;
+              s.vy = 0;
+              s.onGround = true;
+            } else if (s.py > WORLD_H + 50) {
+              setStatus('dead');
+              return;
+            }
+          }
+
+          // Platform collision (only when falling)
+          for (const o of level.obstacles) {
+            if (o.type === 'platform' || o.type === 'cloud') {
+              const prevBottom = s.py + PLAYER_H - s.vy;
+              if (
+                s.vy >= 0 &&
+                s.px + PLAYER_W > o.x &&
+                s.px < o.x + o.w &&
+                s.py + PLAYER_H >= o.y &&
+                prevBottom <= o.y + 2
+              ) {
+                s.py = o.y - PLAYER_H;
+                s.vy = 0;
+                s.onGround = true;
+              }
+            }
+          }
+
+          // Hazard collision
+          for (const o of level.obstacles) {
+            if (['spike','lava','croc','asteroid','wind','scorpion','quicksand','candy','laser','ghost','pumpkin'].includes(o.type)) {
+              if (
+                s.px + PLAYER_W > o.x + 2 &&
+                s.px < o.x + o.w - 2 &&
+                s.py + PLAYER_H > o.y &&
+                s.py < o.y + o.h
+              ) {
+                setStatus('dead');
+                return;
+              }
+            }
+          }
+
+          // Fall off world
+          if (s.py > WORLD_H + 50) {
+            setStatus('dead');
+            return;
+          }
+
+          // Win: reach right edge
+          if (s.px >= WORLD_W - PLAYER_W - 10) {
+            setStatus('won');
+            onWin(levelIdx);
+            return;
+          }
+
+          // Camera follows player
+          s.cam = Math.max(0, Math.min(WORLD_W - VIEW_W, s.px - VIEW_W / 2 + PLAYER_W / 2));
+
+          forceRender(t => t + 1);
+        }, 33);
+        return () => clearInterval(interval);
+      }, [levelIdx]);
+
+      const s = stateRef.current;
+
+      const restart = () => {
+        stateRef.current = { px: 20, py: GROUND_Y - PLAYER_H, vx: 0, vy: 0, onGround: true, cam: 0, tick: 0 };
+        setStatus('playing');
+        statusRef.current = 'playing';
+      };
+
+      const nextLevel = () => {
+        if (levelIdx < LEVELS.length - 1) {
+          onPickNext(levelIdx + 1);
+        } else {
+          onExit();
+        }
+      };
+      const onPickNext = (i) => {
+        stateRef.current = { px: 20, py: GROUND_Y - PLAYER_H, vx: 0, vy: 0, onGround: true, cam: 0, tick: 0 };
+        // parent-controlled: use onWin's idx + exit pattern — we instead raise via onExit with hop
+        window.__obbyGoto && window.__obbyGoto(i);
+      };
+
+      // Touch controls
+      const touchStart = (key) => (e) => {
+        e.preventDefault();
+        keysRef.current[key] = true;
+      };
+      const touchEnd = (key) => (e) => {
+        e.preventDefault();
+        keysRef.current[key] = false;
+      };
+
+      return (
+        <div style={{
+          minHeight: '100vh',
+          background: '#000',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          padding: '10px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            width: '100%', maxWidth: '500px', marginBottom: '8px',
+            padding: '0 6px'
+          }}>
+            <button onClick={onExit} style={{
+              padding: '6px 14px', background: '#333', color: 'white',
+              border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'
+            }}>← Menu</button>
+            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
+              {level.emoji} {level.name} — Level {levelIdx + 1}
+            </div>
+            <button onClick={restart} style={{
+              padding: '6px 14px', background: '#c22', color: 'white',
+              border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'
+            }}>↻</button>
+          </div>
+
+          {/* Game viewport */}
+          <div style={{
+            position: 'relative',
+            width: 'min(95vw, 500px)',
+            aspectRatio: `${VIEW_W} / ${VIEW_H}`,
+            maxHeight: '60vh',
+            background: level.bg,
+            border: '4px solid #fff',
+            borderRadius: '10px',
+            overflow: 'hidden',
+            boxShadow: '0 6px 20px rgba(0,0,0,0.6)'
+          }}>
+            <div style={{
+              position: 'absolute',
+              width: `${(WORLD_W / VIEW_W) * 100}%`,
+              height: '100%',
+              left: `${-(s.cam / VIEW_W) * 100}%`,
+              top: 0
+            }}>
+              {/* Ground */}
+              <div style={{
+                position: 'absolute',
+                left: 0, right: 0,
+                top: `${(GROUND_Y / VIEW_H) * 100}%`,
+                bottom: 0,
+                background: level.groundColor
+              }} />
+
+              {/* Obstacles */}
+              {level.obstacles.map((o, i) => {
+                const style = {
+                  position: 'absolute',
+                  left: `${(o.x / WORLD_W) * 100}%`,
+                  top: `${(o.y / VIEW_H) * 100}%`,
+                  width: `${(o.w / WORLD_W) * 100}%`,
+                  height: `${(o.h / VIEW_H) * 100}%`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 'calc(min(95vw, 500px) / 400 * 18px)'
+                };
+                if (o.type === 'platform') {
+                  return <div key={i} style={{
+                    ...style,
+                    background: level.platformColor,
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    borderRadius: '3px'
+                  }} />;
+                }
+                if (o.type === 'cloud') {
+                  return <div key={i} style={{
+                    ...style,
+                    background: 'rgba(255,255,255,0.9)',
+                    borderRadius: '15px',
+                    boxShadow: '0 0 10px rgba(255,255,255,0.6)'
+                  }} />;
+                }
+                if (o.type === 'gap') {
+                  return <div key={i} style={{
+                    ...style,
+                    top: `${(GROUND_Y / VIEW_H) * 100}%`,
+                    height: `${((VIEW_H - GROUND_Y) / VIEW_H) * 100}%`,
+                    background: '#000'
+                  }} />;
+                }
+                if (o.type === 'lava') {
+                  return <div key={i} style={{
+                    ...style,
+                    top: `${(GROUND_Y / VIEW_H) * 100}%`,
+                    height: `${((VIEW_H - GROUND_Y) / VIEW_H) * 100}%`,
+                    background: 'linear-gradient(to bottom, #ff4500, #8b0000)',
+                    boxShadow: '0 0 8px #ff4500 inset'
+                  }}>
+                    <span style={{ fontSize: 'calc(min(95vw, 500px) / 400 * 16px)' }}>🔥</span>
+                  </div>;
+                }
+                if (o.type === 'quicksand') {
+                  return <div key={i} style={{
+                    ...style,
+                    top: `${(GROUND_Y / VIEW_H) * 100}%`,
+                    height: `${((VIEW_H - GROUND_Y) / VIEW_H) * 100}%`,
+                    background: '#c8a060'
+                  }} />;
+                }
+                if (o.type === 'laser') {
+                  return <div key={i} style={{
+                    ...style,
+                    background: '#ff00ff',
+                    boxShadow: '0 0 12px #ff00ff, 0 0 24px #ff00ff'
+                  }} />;
+                }
+                // Hazard emojis
+                const emojiMap = {
+                  spike: '⚡', croc: '🐊', asteroid: '☄️', wind: '💨',
+                  scorpion: '🦂', candy: '🍬', ghost: '👻', pumpkin: '🎃'
+                };
+                return <div key={i} style={{
+                  ...style,
+                  fontSize: `calc(min(95vw, 500px) / 400 * ${o.h}px)`
+                }}>{emojiMap[o.type] || '⚠️'}</div>;
+              })}
+
+              {/* Goal flag */}
+              <div style={{
+                position: 'absolute',
+                left: `${((WORLD_W - 40) / WORLD_W) * 100}%`,
+                top: `${((GROUND_Y - 50) / VIEW_H) * 100}%`,
+                width: `${(30 / WORLD_W) * 100}%`,
+                height: `${(50 / VIEW_H) * 100}%`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 'calc(min(95vw, 500px) / 400 * 32px)'
+              }}>🏁</div>
+
+              {/* Player */}
+              <div style={{
+                position: 'absolute',
+                left: `${(s.px / WORLD_W) * 100}%`,
+                top: `${(s.py / VIEW_H) * 100}%`,
+                width: `${(PLAYER_W / WORLD_W) * 100}%`,
+                height: `${(PLAYER_H / VIEW_H) * 100}%`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 'calc(min(95vw, 500px) / 400 * 24px)',
+                textShadow: '0 0 4px rgba(0,0,0,0.8)',
+                transform: s.vx < 0 ? 'scaleX(-1)' : 'scaleX(1)'
+              }}>{level.playerEmoji}</div>
+            </div>
+
+            {/* Death overlay */}
+            {status === 'dead' && (
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'rgba(0,0,0,0.75)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: '12px'
+              }}>
+                <div style={{ fontSize: '40px' }}>💀</div>
+                <div style={{ fontSize: '22px', fontWeight: 'bold' }}>Thua rồi!</div>
+                <button onClick={restart} style={{
+                  padding: '10px 24px', background: '#ff4500', color: 'white',
+                  border: 'none', borderRadius: '8px', cursor: 'pointer',
+                  fontSize: '16px', fontWeight: 'bold'
+                }}>↻ Thử lại</button>
+              </div>
+            )}
+
+            {/* Win overlay */}
+            {status === 'won' && (
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'rgba(0,0,0,0.8)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: '12px'
+              }}>
+                <div style={{ fontSize: '48px' }}>🏆</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'gold' }}>Hoàn thành!</div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <button onClick={restart} style={{
+                    padding: '10px 18px', background: '#555', color: 'white',
+                    border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'
+                  }}>Chơi lại</button>
+                  {levelIdx < LEVELS.length - 1 && (
+                    <button onClick={() => window.__obbyGoto && window.__obbyGoto(levelIdx + 1)} style={{
+                      padding: '10px 18px', background: '#4caf50', color: 'white',
+                      border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'
+                    }}>Màn kế tiếp →</button>
+                  )}
+                  <button onClick={onExit} style={{
+                    padding: '10px 18px', background: '#2196f3', color: 'white',
+                    border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'
+                  }}>Menu</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Touch controls */}
+          <div style={{
+            marginTop: '14px',
+            width: 'min(95vw, 500px)',
+            display: 'flex', justifyContent: 'space-between',
+            gap: '8px'
+          }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onTouchStart={touchStart('left')} onTouchEnd={touchEnd('left')}
+                onMouseDown={touchStart('left')} onMouseUp={touchEnd('left')} onMouseLeave={touchEnd('left')}
+                style={{
+                  width: '60px', height: '60px', fontSize: '28px',
+                  background: '#444', color: 'white', border: '2px solid #888',
+                  borderRadius: '12px', cursor: 'pointer', userSelect: 'none'
+                }}>←</button>
+              <button
+                onTouchStart={touchStart('right')} onTouchEnd={touchEnd('right')}
+                onMouseDown={touchStart('right')} onMouseUp={touchEnd('right')} onMouseLeave={touchEnd('right')}
+                style={{
+                  width: '60px', height: '60px', fontSize: '28px',
+                  background: '#444', color: 'white', border: '2px solid #888',
+                  borderRadius: '12px', cursor: 'pointer', userSelect: 'none'
+                }}>→</button>
+            </div>
+            <button
+              onTouchStart={touchStart('jump')} onTouchEnd={touchEnd('jump')}
+              onMouseDown={touchStart('jump')} onMouseUp={touchEnd('jump')} onMouseLeave={touchEnd('jump')}
+              style={{
+                width: '90px', height: '60px', fontSize: '22px',
+                background: '#4caf50', color: 'white', border: '2px solid #6c6',
+                borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', userSelect: 'none'
+              }}>↑ NHẢY</button>
+          </div>
+        </div>
+      );
+    }
+
+    // ==================== APP ====================
+    function App() {
+      const [screen, setScreen] = useState('menu'); // menu | game
+      const [currentLevel, setCurrentLevel] = useState(0);
+      const [progress, setProgress] = useState(loadProgress());
+
+      useEffect(() => {
+        window.__obbyGoto = (i) => {
+          setCurrentLevel(i);
+          setScreen('game');
+        };
+      }, []);
+
+      const onWin = (idx) => {
+        const next = { ...progress, [idx]: true };
+        setProgress(next);
+        saveProgress(next);
+      };
+
+      if (screen === 'menu') {
+        return <Menu progress={progress} onPick={(i) => {
+          setCurrentLevel(i);
+          setScreen('game');
+        }} />;
+      }
+      return <Game
+        levelIdx={currentLevel}
+        onWin={onWin}
+        onExit={() => setScreen('menu')}
+      />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
