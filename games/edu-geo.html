@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌍 Địa Lý — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0c4a6e; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const GAMES = [
+      { id: 'provinces', icon: '🇻🇳', title: 'Tỉnh thành Việt Nam', desc: '63 tỉnh thành', color: '#dc2626' },
+      { id: 'capitals', icon: '🏛️', title: 'Thủ đô các nước', desc: 'Paris, Tokyo, London...', color: '#7c3aed' },
+      { id: 'rivers', icon: '🌊', title: 'Sông lớn thế giới', desc: 'Mekong, Amazon, Nile', color: '#0891b2' },
+      { id: 'mountains', icon: '🏔️', title: 'Núi cao', desc: 'Everest, Fansipan...', color: '#64748b' },
+      { id: 'oceans', icon: '🌊', title: '5 Đại dương', desc: 'Thái Bình Dương, Đại Tây Dương...', color: '#2563eb' },
+      { id: 'continents', icon: '🗺️', title: '7 Châu lục', desc: 'Á, Âu, Phi, Mỹ, Úc, Nam Cực', color: '#16a34a' },
+      { id: 'flags', icon: '🏳️', title: 'Cờ quốc gia', desc: 'Nhận diện cờ các nước', color: '#ea580c' },
+      { id: 'climate', icon: '☀️', title: 'Khí hậu', desc: 'Nhiệt đới, ôn đới, hàn đới', color: '#eab308' },
+      { id: 'population', icon: '👥', title: 'Dân số', desc: 'Top 10 nước đông dân', color: '#db2777' },
+      { id: 'landmarks', icon: '🗽', title: 'Địa danh nổi tiếng', desc: 'Vịnh Hạ Long, Kim Tự Tháp...', color: '#059669' }
+    ];
+
+    const QUIZZES = {
+      provinces: [
+        { q: 'Thủ đô của Việt Nam là tỉnh nào?', a: ['Hà Nội', 'TP.HCM', 'Đà Nẵng', 'Hải Phòng'], c: 0 },
+        { q: 'Tỉnh nào có diện tích lớn nhất Việt Nam?', a: ['Nghệ An', 'Gia Lai', 'Sơn La', 'Đắk Lắk'], c: 0 },
+        { q: 'Tỉnh nào cực Bắc của Việt Nam?', a: ['Lào Cai', 'Hà Giang', 'Cao Bằng', 'Lai Châu'], c: 1 },
+        { q: 'Tỉnh nào cực Nam của Việt Nam?', a: ['Cà Mau', 'Bạc Liêu', 'Kiên Giang', 'Sóc Trăng'], c: 0 },
+        { q: 'Việt Nam có bao nhiêu tỉnh thành?', a: ['60', '61', '63', '64'], c: 2 },
+        { q: 'Tỉnh nào nổi tiếng với Vịnh Hạ Long?', a: ['Hải Phòng', 'Quảng Ninh', 'Nam Định', 'Thái Bình'], c: 1 },
+        { q: 'Cố đô Huế thuộc tỉnh nào?', a: ['Quảng Trị', 'Quảng Bình', 'Thừa Thiên Huế', 'Đà Nẵng'], c: 2 },
+        { q: 'Phố cổ Hội An thuộc tỉnh nào?', a: ['Quảng Nam', 'Đà Nẵng', 'Quảng Ngãi', 'Bình Định'], c: 0 },
+        { q: 'Tỉnh nào có đỉnh Fansipan?', a: ['Yên Bái', 'Lào Cai', 'Hà Giang', 'Điện Biên'], c: 1 },
+        { q: 'Đảo Phú Quốc thuộc tỉnh nào?', a: ['Cà Mau', 'Bạc Liêu', 'Kiên Giang', 'An Giang'], c: 2 }
+      ],
+      capitals: [
+        { q: 'Thủ đô của Pháp là?', a: ['London', 'Paris', 'Berlin', 'Madrid'], c: 1 },
+        { q: 'Thủ đô của Nhật Bản?', a: ['Seoul', 'Bắc Kinh', 'Tokyo', 'Bangkok'], c: 2 },
+        { q: 'Thủ đô của Anh?', a: ['Paris', 'London', 'Dublin', 'Edinburgh'], c: 1 },
+        { q: 'Thủ đô của Đức?', a: ['Munich', 'Hamburg', 'Berlin', 'Frankfurt'], c: 2 },
+        { q: 'Thủ đô của Hoa Kỳ?', a: ['New York', 'Washington D.C.', 'Los Angeles', 'Chicago'], c: 1 },
+        { q: 'Thủ đô của Nga?', a: ['St. Petersburg', 'Moscow', 'Kiev', 'Minsk'], c: 1 },
+        { q: 'Thủ đô của Hàn Quốc?', a: ['Busan', 'Seoul', 'Incheon', 'Daegu'], c: 1 },
+        { q: 'Thủ đô của Trung Quốc?', a: ['Thượng Hải', 'Hong Kong', 'Bắc Kinh', 'Quảng Châu'], c: 2 },
+        { q: 'Thủ đô của Thái Lan?', a: ['Bangkok', 'Chiang Mai', 'Phuket', 'Pattaya'], c: 0 },
+        { q: 'Thủ đô của Ý?', a: ['Milan', 'Venice', 'Rome', 'Naples'], c: 2 },
+        { q: 'Thủ đô của Tây Ban Nha?', a: ['Barcelona', 'Madrid', 'Seville', 'Valencia'], c: 1 },
+        { q: 'Thủ đô của Úc?', a: ['Sydney', 'Melbourne', 'Canberra', 'Brisbane'], c: 2 }
+      ],
+      rivers: [
+        { q: 'Sông nào dài nhất thế giới?', a: ['Amazon', 'Nile', 'Mississippi', 'Trường Giang'], c: 1 },
+        { q: 'Sông Mekong chảy qua bao nhiêu nước?', a: ['4', '5', '6', '7'], c: 2 },
+        { q: 'Sông nào chảy qua Hà Nội?', a: ['Sông Hồng', 'Sông Đà', 'Sông Lam', 'Sông Mã'], c: 0 },
+        { q: 'Sông Amazon chủ yếu chảy qua nước nào?', a: ['Peru', 'Colombia', 'Brazil', 'Venezuela'], c: 2 },
+        { q: 'Sông nào chảy qua London?', a: ['Thames', 'Seine', 'Rhine', 'Danube'], c: 0 },
+        { q: 'Sông Trường Giang thuộc nước nào?', a: ['Nhật', 'Hàn Quốc', 'Trung Quốc', 'Việt Nam'], c: 2 },
+        { q: 'Sông nào đổ ra biển tại TP.HCM?', a: ['Sông Sài Gòn', 'Sông Đồng Nai', 'Sông Vàm Cỏ', 'Sông Tiền'], c: 0 },
+        { q: 'Sông Nile chảy qua nước nào?', a: ['Ai Cập', 'Iraq', 'Iran', 'Syria'], c: 0 },
+        { q: 'Sông nào dài nhất châu Âu?', a: ['Rhine', 'Danube', 'Volga', 'Seine'], c: 2 },
+        { q: 'Đồng bằng sông Cửu Long nằm ở đâu?', a: ['Miền Bắc', 'Miền Trung', 'Miền Nam', 'Tây Nguyên'], c: 2 }
+      ],
+      mountains: [
+        { q: 'Đỉnh núi cao nhất thế giới?', a: ['K2', 'Everest', 'Kangchenjunga', 'Lhotse'], c: 1 },
+        { q: 'Đỉnh Everest cao bao nhiêu mét?', a: ['8,848m', '8,611m', '8,586m', '8,516m'], c: 0 },
+        { q: 'Đỉnh núi cao nhất Việt Nam?', a: ['Pu Ta Leng', 'Fansipan', 'Bạch Mộc', 'Ky Quan San'], c: 1 },
+        { q: 'Fansipan cao bao nhiêu mét?', a: ['3,143m', '3,000m', '3,200m', '3,500m'], c: 0 },
+        { q: 'Dãy núi nào ngăn cách Bắc Mỹ?', a: ['Alps', 'Andes', 'Rocky', 'Himalaya'], c: 2 },
+        { q: 'Dãy Himalaya nằm ở châu nào?', a: ['Á', 'Âu', 'Phi', 'Mỹ'], c: 0 },
+        { q: 'Đỉnh cao nhất châu Phi?', a: ['Kilimanjaro', 'Kenya', 'Stanley', 'Meru'], c: 0 },
+        { q: 'Dãy Alps nằm ở châu nào?', a: ['Á', 'Âu', 'Phi', 'Mỹ'], c: 1 },
+        { q: 'Đỉnh cao nhất châu Mỹ?', a: ['Aconcagua', 'Denali', 'Chimborazo', 'Huascarán'], c: 0 },
+        { q: 'Núi Phú Sĩ ở nước nào?', a: ['Trung Quốc', 'Hàn Quốc', 'Nhật Bản', 'Thái Lan'], c: 2 }
+      ],
+      oceans: [
+        { q: 'Đại dương nào lớn nhất thế giới?', a: ['Đại Tây Dương', 'Thái Bình Dương', 'Ấn Độ Dương', 'Bắc Băng Dương'], c: 1 },
+        { q: 'Có bao nhiêu đại dương trên Trái Đất?', a: ['3', '4', '5', '6'], c: 2 },
+        { q: 'Đại dương nào nhỏ nhất?', a: ['Đại Tây Dương', 'Ấn Độ Dương', 'Bắc Băng Dương', 'Nam Đại Dương'], c: 2 },
+        { q: 'Việt Nam giáp đại dương nào?', a: ['Thái Bình Dương', 'Ấn Độ Dương', 'Đại Tây Dương', 'Bắc Băng Dương'], c: 0 },
+        { q: 'Điểm sâu nhất đại dương?', a: ['Rãnh Puerto Rico', 'Rãnh Mariana', 'Rãnh Java', 'Rãnh Kermadec'], c: 1 },
+        { q: 'Rãnh Mariana sâu bao nhiêu?', a: ['~11,000m', '~9,000m', '~7,000m', '~5,000m'], c: 0 },
+        { q: 'Đại dương nào giữa châu Mỹ và châu Âu?', a: ['Thái Bình Dương', 'Đại Tây Dương', 'Ấn Độ Dương', 'Nam Đại Dương'], c: 1 },
+        { q: 'Biển Đỏ nối liền với đại dương nào?', a: ['Thái Bình Dương', 'Đại Tây Dương', 'Ấn Độ Dương', 'Bắc Băng Dương'], c: 2 },
+        { q: 'Đại dương nào bao quanh Nam Cực?', a: ['Nam Đại Dương', 'Ấn Độ Dương', 'Thái Bình Dương', 'Đại Tây Dương'], c: 0 },
+        { q: '% bề mặt Trái Đất là nước?', a: ['50%', '60%', '71%', '85%'], c: 2 }
+      ],
+      continents: [
+        { q: 'Có bao nhiêu châu lục trên Trái Đất?', a: ['5', '6', '7', '8'], c: 2 },
+        { q: 'Châu lục nào lớn nhất?', a: ['Á', 'Phi', 'Mỹ', 'Âu'], c: 0 },
+        { q: 'Châu lục nào nhỏ nhất?', a: ['Âu', 'Úc', 'Nam Cực', 'Bắc Mỹ'], c: 1 },
+        { q: 'Việt Nam thuộc châu lục nào?', a: ['Á', 'Âu', 'Phi', 'Úc'], c: 0 },
+        { q: 'Châu lục lạnh nhất?', a: ['Bắc Mỹ', 'Nam Mỹ', 'Nam Cực', 'Âu'], c: 2 },
+        { q: 'Kim Tự Tháp nằm ở châu lục nào?', a: ['Á', 'Phi', 'Âu', 'Mỹ'], c: 1 },
+        { q: 'Nước Pháp thuộc châu lục nào?', a: ['Á', 'Âu', 'Phi', 'Mỹ'], c: 1 },
+        { q: 'Châu lục nào đông dân nhất?', a: ['Á', 'Phi', 'Âu', 'Mỹ'], c: 0 },
+        { q: 'Úc là châu lục và cũng là?', a: ['Thành phố', 'Quốc gia', 'Vùng lãnh thổ', 'Biển'], c: 1 },
+        { q: 'Châu lục nào không có người bản địa?', a: ['Úc', 'Nam Cực', 'Bắc Mỹ', 'Phi'], c: 1 }
+      ],
+      flags: [
+        { q: 'Cờ Việt Nam nền đỏ có ngôi sao màu gì?', a: ['Trắng', 'Xanh', 'Vàng', 'Đỏ'], c: 2 },
+        { q: 'Cờ nào có hình mặt trời đỏ trên nền trắng?', a: ['Trung Quốc', 'Nhật Bản', 'Hàn Quốc', 'Thái Lan'], c: 1 },
+        { q: 'Cờ Mỹ có bao nhiêu ngôi sao?', a: ['48', '49', '50', '51'], c: 2 },
+        { q: 'Cờ Pháp gồm 3 sọc màu gì?', a: ['Xanh-Trắng-Đỏ', 'Đỏ-Trắng-Xanh', 'Xanh-Đỏ-Trắng', 'Trắng-Đỏ-Xanh'], c: 0 },
+        { q: 'Cờ nào có hình lá phong đỏ?', a: ['Anh', 'Canada', 'Úc', 'New Zealand'], c: 1 },
+        { q: 'Cờ Trung Quốc nền đỏ có bao nhiêu ngôi sao?', a: ['3', '4', '5', '6'], c: 2 },
+        { q: 'Cờ Đức gồm 3 sọc ngang màu?', a: ['Đen-Đỏ-Vàng', 'Đỏ-Trắng-Đen', 'Vàng-Đỏ-Đen', 'Đen-Vàng-Đỏ'], c: 0 },
+        { q: 'Cờ Thụy Sĩ có hình gì trên nền đỏ?', a: ['Chữ thập trắng', 'Ngôi sao', 'Mặt trăng', 'Đại bàng'], c: 0 },
+        { q: 'Cờ Brazil có hình gì chính giữa?', a: ['Bản đồ', 'Hình cầu xanh', 'Chim', 'Cây'], c: 1 },
+        { q: 'Cờ nào có chữ thập xanh trên nền trắng?', a: ['Thụy Điển', 'Na Uy', 'Phần Lan', 'Đan Mạch'], c: 2 }
+      ],
+      climate: [
+        { q: 'Việt Nam có khí hậu chủ yếu nào?', a: ['Ôn đới', 'Nhiệt đới gió mùa', 'Hàn đới', 'Sa mạc'], c: 1 },
+        { q: 'Vùng nào lạnh nhất Trái Đất?', a: ['Bắc Cực', 'Nam Cực', 'Siberia', 'Alaska'], c: 1 },
+        { q: 'Sa mạc lớn nhất thế giới?', a: ['Gobi', 'Sahara', 'Kalahari', 'Nam Cực'], c: 3 },
+        { q: 'Khí hậu ôn đới có đặc điểm?', a: ['Nóng quanh năm', '4 mùa rõ rệt', 'Lạnh quanh năm', 'Khô hạn'], c: 1 },
+        { q: 'Nơi nào có mùa đêm trắng?', a: ['Xích đạo', 'Bắc cực', 'Vùng nhiệt đới', 'Sa mạc'], c: 1 },
+        { q: 'Rừng mưa nhiệt đới lớn nhất ở đâu?', a: ['Châu Á', 'Amazon', 'Congo', 'Đông Nam Á'], c: 1 },
+        { q: 'Hiện tượng El Niño liên quan đến?', a: ['Động đất', 'Núi lửa', 'Nhiệt độ đại dương', 'Bão tuyết'], c: 2 },
+        { q: 'Miền Bắc VN có mấy mùa rõ rệt?', a: ['2', '3', '4', '5'], c: 2 },
+        { q: 'Nơi nào khô hạn nhất thế giới?', a: ['Sahara', 'Atacama', 'Gobi', 'Death Valley'], c: 1 },
+        { q: 'Gió mùa Đông Bắc ở VN thổi vào mùa nào?', a: ['Xuân', 'Hè', 'Thu', 'Đông'], c: 3 }
+      ],
+      population: [
+        { q: 'Nước đông dân nhất thế giới (2023)?', a: ['Trung Quốc', 'Ấn Độ', 'Mỹ', 'Indonesia'], c: 1 },
+        { q: 'Dân số thế giới hiện tại khoảng?', a: ['5 tỷ', '7 tỷ', '8 tỷ', '10 tỷ'], c: 2 },
+        { q: 'Dân số Việt Nam khoảng?', a: ['80 triệu', '90 triệu', '100 triệu', '120 triệu'], c: 2 },
+        { q: 'Thành phố đông dân nhất thế giới?', a: ['Bắc Kinh', 'Tokyo', 'Delhi', 'Thượng Hải'], c: 1 },
+        { q: 'Nước nào đông dân thứ 3?', a: ['Indonesia', 'Mỹ', 'Pakistan', 'Brazil'], c: 1 },
+        { q: 'TP đông dân nhất VN?', a: ['Hà Nội', 'TP.HCM', 'Đà Nẵng', 'Hải Phòng'], c: 1 },
+        { q: 'Nước nào ít dân nhất thế giới?', a: ['Vatican', 'Monaco', 'Tuvalu', 'San Marino'], c: 0 },
+        { q: 'Châu lục đông dân nhất?', a: ['Phi', 'Á', 'Âu', 'Mỹ'], c: 1 },
+        { q: 'Nước Nhật có dân số khoảng?', a: ['50 triệu', '100 triệu', '125 triệu', '150 triệu'], c: 2 },
+        { q: 'Indonesia đông dân thứ mấy?', a: ['2', '3', '4', '5'], c: 2 }
+      ],
+      landmarks: [
+        { q: 'Vịnh Hạ Long ở tỉnh nào?', a: ['Hải Phòng', 'Quảng Ninh', 'Thái Bình', 'Nam Định'], c: 1 },
+        { q: 'Kim Tự Tháp ở nước nào?', a: ['Hy Lạp', 'Ai Cập', 'Mexico', 'Iraq'], c: 1 },
+        { q: 'Vạn Lý Trường Thành ở nước nào?', a: ['Mông Cổ', 'Trung Quốc', 'Hàn Quốc', 'Nhật Bản'], c: 1 },
+        { q: 'Tháp Eiffel ở đâu?', a: ['London', 'Paris', 'Rome', 'Madrid'], c: 1 },
+        { q: 'Tượng Nữ thần Tự do ở đâu?', a: ['Washington', 'New York', 'Boston', 'Chicago'], c: 1 },
+        { q: 'Đấu trường Colosseum ở đâu?', a: ['Hy Lạp', 'Rome', 'Venice', 'Milan'], c: 1 },
+        { q: 'Taj Mahal ở nước nào?', a: ['Pakistan', 'Ấn Độ', 'Bangladesh', 'Nepal'], c: 1 },
+        { q: 'Phố cổ Hội An thuộc tỉnh?', a: ['Quảng Nam', 'Đà Nẵng', 'Quảng Ngãi', 'Thừa Thiên Huế'], c: 0 },
+        { q: 'Angkor Wat ở nước nào?', a: ['Thái Lan', 'Lào', 'Campuchia', 'Myanmar'], c: 2 },
+        { q: 'Nhà hát Opera Sydney ở nước nào?', a: ['Anh', 'Mỹ', 'Úc', 'Canada'], c: 2 },
+        { q: 'Động Phong Nha ở tỉnh nào?', a: ['Quảng Bình', 'Quảng Trị', 'Hà Tĩnh', 'Nghệ An'], c: 0 },
+        { q: 'Đền Machu Picchu ở nước nào?', a: ['Mexico', 'Peru', 'Chile', 'Argentina'], c: 1 }
+      ]
+    };
+
+    function getProgress() {
+      try { return JSON.parse(localStorage.getItem('eduGeoProgress') || '{}'); }
+      catch(e) { return {}; }
+    }
+    function saveProgress(id, score) {
+      const p = getProgress();
+      if (!p[id] || score > p[id]) p[id] = score;
+      localStorage.setItem('eduGeoProgress', JSON.stringify(p));
+    }
+
+    function Hub({ onPick }) {
+      const progress = getProgress();
+      return (
+        <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{ marginBottom: '20px' }}>
+            <a href="../index.html" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>← Về trang chủ</a>
+          </div>
+          <h1 style={{ fontSize: '36px', marginBottom: '8px', textAlign: 'center' }}>🌍 Địa Lý Game Hub</h1>
+          <p style={{ textAlign: 'center', opacity: 0.85, marginBottom: '28px' }}>Khám phá thế giới qua 10 trò chơi</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
+            {GAMES.map(g => (
+              <button key={g.id} onClick={() => onPick(g.id)}
+                style={{ background: g.color, border: 'none', borderRadius: '14px', padding: '20px', color: 'white', textAlign: 'left', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.25)' }}>
+                <div style={{ fontSize: '38px', marginBottom: '8px' }}>{g.icon}</div>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '4px' }}>{g.title}</div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>{g.desc}</div>
+                {progress[g.id] !== undefined && (
+                  <div style={{ marginTop: '8px', fontSize: '12px', background: 'rgba(0,0,0,0.25)', padding: '4px 8px', borderRadius: '6px', display: 'inline-block' }}>
+                    🏆 Kỷ lục: {progress[g.id]}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function Quiz({ id, onExit }) {
+      const game = GAMES.find(g => g.id === id);
+      const questions = QUIZZES[id] || [];
+      const [idx, setIdx] = useState(0);
+      const [score, setScore] = useState(0);
+      const [picked, setPicked] = useState(null);
+      const [done, setDone] = useState(false);
+
+      const q = questions[idx];
+
+      function handlePick(i) {
+        if (picked !== null) return;
+        setPicked(i);
+        const correct = i === q.c;
+        if (correct) setScore(s => s + 1);
+        setTimeout(() => {
+          if (idx + 1 >= questions.length) {
+            const finalScore = score + (correct ? 1 : 0);
+            saveProgress(id, finalScore);
+            setDone(true);
+          } else {
+            setIdx(idx + 1);
+            setPicked(null);
+          }
+        }, 900);
+      }
+
+      function reset() {
+        setIdx(0); setScore(0); setPicked(null); setDone(false);
+      }
+
+      if (done) {
+        const pct = Math.round((score / questions.length) * 100);
+        const msg = pct === 100 ? '🎉 Hoàn hảo!' : pct >= 80 ? '🌟 Xuất sắc!' : pct >= 60 ? '👍 Tốt!' : pct >= 40 ? '💪 Cố lên!' : '📚 Học thêm nhé!';
+        return (
+          <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+            <div style={{ marginBottom: '20px', textAlign: 'left' }}>
+              <button onClick={onExit} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>← Quay lại</button>
+            </div>
+            <div style={{ background: game.color, padding: '40px', borderRadius: '16px', marginTop: '40px' }}>
+              <div style={{ fontSize: '80px', marginBottom: '16px' }}>{game.icon}</div>
+              <h2 style={{ fontSize: '32px', marginBottom: '12px' }}>Kết quả</h2>
+              <div style={{ fontSize: '48px', fontWeight: 'bold', marginBottom: '8px' }}>{score}/{questions.length}</div>
+              <div style={{ fontSize: '20px', marginBottom: '24px' }}>{msg}</div>
+              <button onClick={reset} style={{ background: 'white', color: game.color, border: 'none', padding: '12px 32px', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginRight: '10px' }}>🔄 Chơi lại</button>
+              <button onClick={onExit} style={{ background: 'rgba(0,0,0,0.3)', color: 'white', border: 'none', padding: '12px 32px', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>🏠 Trang chủ</button>
+            </div>
+          </div>
+        );
+      }
+
+      if (!q) return null;
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button onClick={onExit} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}>← Thoát</button>
+            <div style={{ fontSize: '14px', opacity: 0.9 }}>Điểm: {score} / {questions.length}</div>
+          </div>
+
+          <div style={{ background: game.color, padding: '20px', borderRadius: '14px', marginBottom: '16px' }}>
+            <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '6px' }}>{game.icon} {game.title}</div>
+            <div style={{ fontSize: '14px', marginBottom: '10px' }}>Câu {idx + 1} / {questions.length}</div>
+            <div style={{ background: 'rgba(0,0,0,0.2)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ background: 'white', height: '100%', width: `${((idx) / questions.length) * 100}%`, transition: 'width 0.3s' }}></div>
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.12)', padding: '24px', borderRadius: '14px', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '22px', lineHeight: 1.4 }}>{q.q}</h2>
+          </div>
+
+          <div style={{ display: 'grid', gap: '10px' }}>
+            {q.a.map((ans, i) => {
+              let bg = 'rgba(255,255,255,0.15)';
+              if (picked !== null) {
+                if (i === q.c) bg = '#16a34a';
+                else if (i === picked) bg = '#dc2626';
+              }
+              return (
+                <button key={i} onClick={() => handlePick(i)} disabled={picked !== null}
+                  style={{ background: bg, border: '2px solid rgba(255,255,255,0.2)', color: 'white', padding: '14px 18px', borderRadius: '10px', fontSize: '16px', textAlign: 'left', cursor: picked !== null ? 'default' : 'pointer' }}>
+                  <span style={{ fontWeight: 'bold', marginRight: '10px' }}>{String.fromCharCode(65 + i)}.</span>
+                  {ans}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [route, setRoute] = useState(window.location.hash.slice(1) || '');
+
+      useEffect(() => {
+        const onHash = () => setRoute(window.location.hash.slice(1) || '');
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+
+      function pick(id) { window.location.hash = id; }
+      function exit() { window.location.hash = ''; }
+
+      if (route && QUIZZES[route]) {
+        return <Quiz id={route} onExit={exit} />;
+      }
+      return <Hub onPick={pick} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

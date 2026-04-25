@@ -641,6 +641,157 @@ const MORE_GAMES = [
   ['life-hub', 'retirement', 'Nghỉ Hưu',         '👴', 'Quản lý sinh hoạt hàng ngày', 'simulation', '#374151', '#9ca3af'],
 ];
 
+// ============================================================
+// 100 Education games across 10 new hubs
+// ============================================================
+const EDU_GAMES = [
+  // MATH (10)
+  ['edu-math', 'fraction',  'Phân Số',          '🍰', 'So sánh và tính phân số', '#be185d', '#f472b6'],
+  ['edu-math', 'decimal',   'Số Thập Phân',     '💲', 'Cộng trừ số thập phân', '#0c4a6e', '#38bdf8'],
+  ['edu-math', 'percent',   'Phần Trăm',        '💯', 'Tính % của số', '#7c2d12', '#fb923c'],
+  ['edu-math', 'equation',  'Giải Phương Trình','🔍', 'Tìm x trong phương trình', '#4c1d95', '#c084fc'],
+  ['edu-math', 'geometry',  'Hình Học',         '📐', 'Chu vi, diện tích hình', '#166534', '#4ade80'],
+  ['edu-math', 'graph',     'Đọc Đồ Thị',       '📊', 'Đọc biểu đồ cột đơn giản', '#1e40af', '#60a5fa'],
+  ['edu-math', 'prime',     'Số Nguyên Tố',     '🔢', 'Nhận biết số nguyên tố', '#78350f', '#fbbf24'],
+  ['edu-math', 'factor',    'Phân Tích Thừa Số','🔓', 'Tìm thừa số của số', '#0f766e', '#2dd4bf'],
+  ['edu-math', 'negative',  'Số Âm',            '❄️', 'Cộng trừ số âm', '#1e293b', '#94a3b8'],
+  ['edu-math', 'root',      'Căn Bậc 2',        '√', 'Tính căn bậc 2', '#581c87', '#a78bfa'],
+
+  // ENGLISH (10)
+  ['edu-english', 'family',  'Gia Đình',      '👪', 'Từ vựng gia đình EN-VI', '#be185d', '#f472b6'],
+  ['edu-english', 'colors',  'Màu Sắc',       '🎨', 'Tên các màu trong tiếng Anh', '#7e22ce', '#d8b4fe'],
+  ['edu-english', 'numbers', 'Số Đếm',        '🔢', 'One, two, three...', '#0c4a6e', '#38bdf8'],
+  ['edu-english', 'food',    'Đồ Ăn',         '🍔', 'Bread, rice, fish...', '#7c2d12', '#fb923c'],
+  ['edu-english', 'animals', 'Động Vật',      '🐶', 'Dog, cat, cow...', '#166534', '#4ade80'],
+  ['edu-english', 'body',    'Cơ Thể',        '👁️', 'Eye, hand, leg...', '#9d174d', '#f9a8d4'],
+  ['edu-english', 'school',  'Đồ Học Tập',    '✏️', 'Pen, book, bag...', '#1e40af', '#60a5fa'],
+  ['edu-english', 'weather', 'Thời Tiết',     '☀️', 'Sunny, rainy, cold...', '#854d0e', '#fde047'],
+  ['edu-english', 'verbs',   'Động Từ',       '🏃', 'Run, eat, sleep...', '#0f766e', '#2dd4bf'],
+  ['edu-english', 'plural',  'Số Nhiều',      '👥', 'Cat → cats, man → men', '#4c1d95', '#a78bfa'],
+
+  // VIETNAMESE (10)
+  ['edu-viet', 'tuloai',    'Phân Loại Từ',    '📚', 'Danh từ, động từ, tính từ', '#7f1d1d', '#f87171'],
+  ['edu-viet', 'dongtu',    'Động Từ',         '🏃', 'Chọn động từ trong câu', '#166534', '#4ade80'],
+  ['edu-viet', 'danhtu',    'Danh Từ',         '🎒', 'Chọn danh từ trong câu', '#1e40af', '#60a5fa'],
+  ['edu-viet', 'tinhtu',    'Tính Từ',         '✨', 'Chọn tính từ trong câu', '#854d0e', '#fde047'],
+  ['edu-viet', 'dongnghia', 'Từ Đồng Nghĩa',   '🔁', 'Từ nghĩa tương đương', '#0f766e', '#2dd4bf'],
+  ['edu-viet', 'trainghia', 'Từ Trái Nghĩa',   '⚖️', 'Từ đối nghĩa', '#7e22ce', '#c084fc'],
+  ['edu-viet', 'thanh',     'Đánh Dấu Thanh',  '🎵', 'Huyền, sắc, hỏi, ngã, nặng', '#be185d', '#f472b6'],
+  ['edu-viet', 'camtu',     'Ghép Âm Vần',     '🔤', 'Ghép âm vần thành tiếng', '#4c1d95', '#a78bfa'],
+  ['edu-viet', 'chinhta',   'Chính Tả',        '✏️', 'd/gi, s/x, ch/tr', '#78350f', '#fbbf24'],
+  ['edu-viet', 'thanhngu',  'Thành Ngữ',       '📜', 'Điền thành ngữ còn thiếu', '#92400e', '#f59e0b'],
+
+  // SCIENCE (10)
+  ['edu-science', 'body',      'Cơ Thể Người',   '🫀', 'Các cơ quan cơ thể', '#be123c', '#fb7185'],
+  ['edu-science', 'plant',     'Thực Vật',       '🌱', 'Rễ, thân, lá, hoa, quả', '#166534', '#4ade80'],
+  ['edu-science', 'animal',    'Động Vật',       '🐾', 'Có vú, bò sát, chim, cá', '#78350f', '#fbbf24'],
+  ['edu-science', 'weather',   'Thời Tiết',      '🌦️', 'Hiện tượng khí hậu', '#0c4a6e', '#7dd3fc'],
+  ['edu-science', 'planet',    'Hệ Mặt Trời',    '🪐', '8 hành tinh', '#1e1b4b', '#818cf8'],
+  ['edu-science', 'chemistry', 'Hóa Học Cơ Bản', '⚗️', 'Rắn, lỏng, khí', '#0f766e', '#2dd4bf'],
+  ['edu-science', 'physics',   'Vật Lý Cơ Bản',  '⚡', 'Lực và chuyển động', '#4c1d95', '#c084fc'],
+  ['edu-science', 'electric',  'Điện',           '💡', 'Mạch điện, dòng điện', '#854d0e', '#fde047'],
+  ['edu-science', 'ecosystem', 'Hệ Sinh Thái',   '🌳', 'Chuỗi thức ăn', '#065f46', '#34d399'],
+  ['edu-science', 'human',     'Giác Quan',      '🧑', '5 giác quan', '#9d174d', '#f9a8d4'],
+
+  // HISTORY (10)
+  ['edu-history', 'vua',       'Vua Việt Nam',   '👑', 'Lê Lợi, Nguyễn Huệ...', '#78350f', '#fbbf24'],
+  ['edu-history', 'chien',     'Trận Chiến Lớn', '⚔️', 'Bạch Đằng, Điện Biên Phủ', '#7f1d1d', '#f87171'],
+  ['edu-history', 'danh',      'Danh Nhân',      '🏛️', 'Lý Thường Kiệt, Trần Hưng Đạo', '#1e293b', '#94a3b8'],
+  ['edu-history', 'thoigian',  'Dòng Thời Gian', '⏰', 'Sắp xếp sự kiện', '#4c1d95', '#a78bfa'],
+  ['edu-history', 'anhhung',   'Anh Hùng DT',    '🦸', 'Hai Bà Trưng, Kim Đồng', '#be123c', '#fb7185'],
+  ['edu-history', 'lechoi',    'Lễ Hội',         '🎎', 'Giỗ Tổ, Tết, Trung Thu', '#9d174d', '#f472b6'],
+  ['edu-history', 'trieu',     'Triều Đại',      '👑', 'Lý, Trần, Lê, Nguyễn', '#854d0e', '#fde68a'],
+  ['edu-history', 'sukien',    'Năm Sự Kiện',    '📅', '1945, 1954, 1975', '#166534', '#4ade80'],
+  ['edu-history', 'ww2',       'Thế Chiến 2',    '🌍', 'Thông tin cơ bản WW2', '#0c4a6e', '#38bdf8'],
+  ['edu-history', 'ancient',   'Văn Minh Cổ',    '🏺', 'Ai Cập, La Mã, Hy Lạp', '#78350f', '#f59e0b'],
+
+  // GEOGRAPHY (10)
+  ['edu-geo', 'provinces',  'Tỉnh VN',         '🇻🇳', '63 tỉnh thành Việt Nam', '#7f1d1d', '#f87171'],
+  ['edu-geo', 'capitals',   'Thủ Đô',          '🏛️', 'Paris, Tokyo, London...', '#0c4a6e', '#38bdf8'],
+  ['edu-geo', 'rivers',     'Sông Lớn',        '🌊', 'Mekong, Amazon, Nile', '#0369a1', '#7dd3fc'],
+  ['edu-geo', 'mountains',  'Núi Cao',         '🏔️', 'Everest, Fansipan', '#1e293b', '#94a3b8'],
+  ['edu-geo', 'oceans',     '5 Đại Dương',     '🌊', 'Thái Bình, Đại Tây...', '#0c4a6e', '#22d3ee'],
+  ['edu-geo', 'continents', '7 Châu Lục',      '🗺️', 'Á, Âu, Phi, Mỹ...', '#166534', '#4ade80'],
+  ['edu-geo', 'flags',      'Cờ Quốc Gia',     '🏳️', 'Nhận diện cờ', '#4c1d95', '#c084fc'],
+  ['edu-geo', 'climate',    'Khí Hậu',         '☀️', 'Nhiệt đới, ôn đới, hàn đới', '#854d0e', '#fde047'],
+  ['edu-geo', 'population', 'Dân Số',          '👥', 'Top 10 nước đông dân', '#9d174d', '#f9a8d4'],
+  ['edu-geo', 'landmarks',  'Địa Danh',        '🗽', 'Hạ Long, Kim Tự Tháp...', '#0f766e', '#2dd4bf'],
+
+  // TYPING (10)
+  ['edu-typing', 'letters',   'Gõ Chữ Cái',    '🔤', 'Gõ từng chữ cái xuất hiện', '#18181b', '#d4d4d8'],
+  ['edu-typing', 'words',     'Gõ Từ',         '📝', 'Gõ từ tiếng Việt', '#1e293b', '#94a3b8'],
+  ['edu-typing', 'sentences', 'Gõ Câu',        '📄', 'Gõ câu đơn giản', '#0f172a', '#60a5fa'],
+  ['edu-typing', 'numbers',   'Gõ Số',         '🔢', 'Gõ dãy số ngẫu nhiên', '#44403c', '#d6d3d1'],
+  ['edu-typing', 'symbols',   'Gõ Ký Hiệu',    '🔣', '@, #, $, %, ^', '#27272a', '#fbbf24'],
+  ['edu-typing', 'code',      'Gõ Code',       '💻', 'Snippet lập trình', '#0f172a', '#38bdf8'],
+  ['edu-typing', 'speed',     'Đua Tốc Độ',    '🏃', '60 giây gõ càng nhanh càng tốt', '#7c2d12', '#fb923c'],
+  ['edu-typing', 'accuracy',  'Độ Chính Xác',  '🎯', 'Sai 1 từ là thua', '#7f1d1d', '#f87171'],
+  ['edu-typing', 'blind',     'Gõ Mù',         '👁️‍🗨️', 'Không nhìn bàn phím', '#18181b', '#71717a'],
+  ['edu-typing', 'zigzag',    'Chữ Rơi',       '🔀', 'Gõ chữ rơi ngẫu nhiên', '#4c1d95', '#a78bfa'],
+
+  // CODING (10)
+  ['edu-code', 'sequence',  'Sắp Xếp Bước',  '🔄', 'Đặt các bước đúng thứ tự', '#0f172a', '#38bdf8'],
+  ['edu-code', 'loop',      'Vòng Lặp',      '🔁', 'Tính kết quả for/while', '#1e40af', '#60a5fa'],
+  ['edu-code', 'variable',  'Biến',          '📦', 'Giá trị biến sau gán', '#166534', '#4ade80'],
+  ['edu-code', 'condition', 'If/Else',       '❓', 'Dự đoán nhánh điều kiện', '#7c2d12', '#fb923c'],
+  ['edu-code', 'function',  'Hàm',           '🛠️', 'Tính f(x)', '#4c1d95', '#a78bfa'],
+  ['edu-code', 'debug',     'Tìm Lỗi',       '🐛', 'Phát hiện bug trong code', '#7f1d1d', '#f87171'],
+  ['edu-code', 'output',    'Đoán Output',   '📤', 'console.log sẽ in gì?', '#0f766e', '#2dd4bf'],
+  ['edu-code', 'operator',  'Toán Tử',       '➕', '++, +=, ==, &&', '#9d174d', '#f472b6'],
+  ['edu-code', 'array',     'Mảng',          '📋', 'push, pop, length', '#854d0e', '#fde047'],
+  ['edu-code', 'logic',     'Logic Bool',    '🧠', 'AND, OR, NOT bảng chân trị', '#1e1b4b', '#818cf8'],
+
+  // MEMORY (10)
+  ['edu-memory', 'digits',    'Nhớ Dãy Số',    '🔢', 'Xem rồi gõ lại dãy số', '#4c1d95', '#c084fc'],
+  ['edu-memory', 'colors',    'Nhớ Màu',       '🎨', 'Simon says với màu', '#be185d', '#f472b6'],
+  ['edu-memory', 'shapes',    'Nhớ Hình',      '🔺', 'Vị trí hình trong lưới', '#0c4a6e', '#38bdf8'],
+  ['edu-memory', 'positions', 'Nhớ Vị Trí',    '📍', 'Ô sáng trong bảng', '#166534', '#4ade80'],
+  ['edu-memory', 'faces',     'Nhớ Khuôn Mặt', '👥', 'Emoji và tên đi kèm', '#9d174d', '#f9a8d4'],
+  ['edu-memory', 'words',     'Nhớ Từ',       '📝', 'Danh sách từ cần nhớ', '#854d0e', '#fde047'],
+  ['edu-memory', 'order',     'Nhớ Thứ Tự',    '⏱️', 'Thứ tự vật xuất hiện', '#7e22ce', '#d8b4fe'],
+  ['edu-memory', 'audio',     'Nhớ Nốt Nhạc',  '🔊', 'Dãy nốt Web Audio', '#0f766e', '#2dd4bf'],
+  ['edu-memory', 'visual',    'Nhớ Hình Ảnh',  '👁️', 'Flash emoji 2s', '#7c2d12', '#fb923c'],
+  ['edu-memory', 'mix',       'Kết Hợp',       '🎲', 'Kết hợp nhiều loại', '#1e1b4b', '#818cf8'],
+
+  // QUIZ (10)
+  ['edu-quiz', 'general', 'Kiến Thức Chung',    '🎓', 'Trắc nghiệm đa chủ đề', '#1e3a8a', '#60a5fa'],
+  ['edu-quiz', 'sports',  'Thể Thao',           '⚽', 'Câu đố thể thao', '#166534', '#4ade80'],
+  ['edu-quiz', 'music',   'Âm Nhạc',            '🎵', 'Nhạc cụ, nhịp điệu', '#4c1d95', '#c084fc'],
+  ['edu-quiz', 'movies',  'Điện Ảnh',           '🎬', 'Thể loại phim, kỹ thuật', '#1e293b', '#94a3b8'],
+  ['edu-quiz', 'food',    'Ẩm Thực',            '🍜', 'Món ăn thế giới', '#7c2d12', '#fb923c'],
+  ['edu-quiz', 'tech',    'Công Nghệ',          '💻', 'Phát minh, IT', '#0c4a6e', '#38bdf8'],
+  ['edu-quiz', 'art',     'Nghệ Thuật',         '🎨', 'Họa sĩ, phong trào', '#9d174d', '#f472b6'],
+  ['edu-quiz', 'nature',  'Thiên Nhiên',        '🌿', 'Sinh thái, động thực vật', '#065f46', '#34d399'],
+  ['edu-quiz', 'mixed',   'Tổng Hợp',           '🎲', 'Mọi chủ đề', '#7e22ce', '#d8b4fe'],
+  ['edu-quiz', 'trivia',  'Câu Hỏi Kỳ Thú',     '🎯', 'Fun facts', '#854d0e', '#fde047'],
+];
+
+EDU_GAMES.forEach(([hub, hash, name, icon, desc, bgDark, border]) => {
+  const tagMap = {
+    'edu-math': ['học tập', 'toán', 'tư duy'],
+    'edu-english': ['học tập', 'tiếng Anh', 'từ vựng'],
+    'edu-viet': ['học tập', 'tiếng Việt', 'ngữ pháp'],
+    'edu-science': ['học tập', 'khoa học', 'kiến thức'],
+    'edu-history': ['học tập', 'lịch sử', 'Việt Nam'],
+    'edu-geo': ['học tập', 'địa lý', 'thế giới'],
+    'edu-typing': ['học tập', 'gõ phím', 'kỹ năng'],
+    'edu-code': ['học tập', 'lập trình', 'tư duy'],
+    'edu-memory': ['học tập', 'trí nhớ', 'luyện não'],
+    'edu-quiz': ['học tập', 'đố vui', 'kiến thức']
+  };
+  GAMES.push({
+    id: `${hub}-${hash}`,
+    name: name,
+    icon: icon,
+    desc: desc,
+    category: 'puzzle',
+    tags: tagMap[hub],
+    bg: `linear-gradient(135deg, #0a0a1e, ${bgDark})`,
+    border: border,
+    file: `${hub}.html#${hash}`
+  });
+});
+
 MORE_GAMES.forEach(([hub, hash, name, icon, desc, category, bgDark, border]) => {
   const tagMap = {
     'cook-hub': ['nấu ăn', 'Việt Nam', 'timing'],

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📜 Lịch Sử — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #78350f; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const STORAGE_KEY = 'eduHistoryProgress';
+
+    const loadProgress = () => {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+      catch { return {}; }
+    };
+    const saveProgress = (id, score) => {
+      const p = loadProgress();
+      if (!p[id] || score > p[id]) { p[id] = score; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }
+    };
+
+    const GAMES = [
+      { id: 'vua', icon: '👑', title: 'Các Vua Việt Nam', color: '#b91c1c', desc: 'Lê Lợi, Nguyễn Huệ, Trần Nhân Tông...' },
+      { id: 'chien', icon: '⚔️', title: 'Các Trận Chiến Lớn', color: '#dc2626', desc: 'Bạch Đằng, Đống Đa, Điện Biên Phủ' },
+      { id: 'danh', icon: '🏛️', title: 'Danh Nhân Lịch Sử', color: '#ea580c', desc: 'Lý Thường Kiệt, Trần Hưng Đạo...' },
+      { id: 'thoigian', icon: '⏰', title: 'Sắp Xếp Thời Gian', color: '#d97706', desc: 'Sắp xếp sự kiện theo thời gian' },
+      { id: 'anhhung', icon: '🦸', title: 'Anh Hùng Dân Tộc', color: '#ca8a04', desc: 'Những vị anh hùng của dân tộc' },
+      { id: 'lechoi', icon: '🎎', title: 'Lễ Hội Truyền Thống', color: '#65a30d', desc: 'Giỗ tổ Hùng Vương, Tết...' },
+      { id: 'trieu', icon: '👑', title: 'Các Triều Đại', color: '#0d9488', desc: 'Lý, Trần, Lê, Nguyễn' },
+      { id: 'sukien', icon: '📅', title: 'Năm Sự Kiện', color: '#0284c7', desc: '1945, 1954, 1975...' },
+      { id: 'ww2', icon: '🌍', title: 'Thế Chiến Thứ 2', color: '#4f46e5', desc: 'Thông tin cơ bản về WWII' },
+      { id: 'ancient', icon: '🏺', title: 'Văn Minh Cổ Đại', color: '#9333ea', desc: 'Ai Cập, La Mã, Hy Lạp' }
+    ];
+
+    const QUESTIONS = {
+      vua: [
+        { q: 'Ai là người sáng lập nhà Lê sơ?', a: ['Lê Lợi', 'Lê Thánh Tông', 'Lê Hoàn', 'Lê Long Đĩnh'], c: 0 },
+        { q: 'Vua Quang Trung tên thật là gì?', a: ['Nguyễn Huệ', 'Nguyễn Nhạc', 'Nguyễn Lữ', 'Nguyễn Ánh'], c: 0 },
+        { q: 'Vua nào đã hai lần đánh thắng quân Nguyên Mông?', a: ['Trần Nhân Tông', 'Lý Thái Tổ', 'Lê Lợi', 'Trần Thái Tông'], c: 0 },
+        { q: 'Ai là vị vua đầu tiên của nhà Nguyễn?', a: ['Gia Long', 'Minh Mạng', 'Tự Đức', 'Bảo Đại'], c: 0 },
+        { q: 'Vua Lý Thái Tổ đã dời đô về đâu?', a: ['Thăng Long', 'Hoa Lư', 'Phú Xuân', 'Cổ Loa'], c: 0 },
+        { q: 'Vị vua cuối cùng của triều Nguyễn là ai?', a: ['Bảo Đại', 'Khải Định', 'Duy Tân', 'Thành Thái'], c: 0 },
+        { q: 'Lê Thánh Tông nổi tiếng về lĩnh vực nào?', a: ['Luật pháp và văn hóa', 'Quân sự', 'Kinh tế', 'Ngoại giao'], c: 0 },
+        { q: 'Ai là người lập ra nhà Lý?', a: ['Lý Công Uẩn', 'Lý Thường Kiệt', 'Lý Thái Tông', 'Lý Nhân Tông'], c: 0 },
+        { q: 'Vua nào đánh thắng quân Tống năm 1077?', a: ['Lý Nhân Tông', 'Lý Thái Tổ', 'Trần Thái Tông', 'Lê Đại Hành'], c: 0 },
+        { q: 'Hồ Quý Ly lập ra triều đại nào?', a: ['Nhà Hồ', 'Nhà Trần', 'Nhà Lê', 'Nhà Nguyễn'], c: 0 },
+        { q: 'Vua nào đã phế bỏ chế độ quân chủ Việt Nam?', a: ['Bảo Đại', 'Hàm Nghi', 'Duy Tân', 'Thành Thái'], c: 0 },
+        { q: 'Lê Đại Hành đánh thắng quân Tống năm nào?', a: ['981', '938', '1077', '1288'], c: 0 }
+      ],
+      chien: [
+        { q: 'Trận Bạch Đằng năm 938 do ai chỉ huy?', a: ['Ngô Quyền', 'Lê Hoàn', 'Trần Hưng Đạo', 'Lý Thường Kiệt'], c: 0 },
+        { q: 'Chiến thắng Điện Biên Phủ diễn ra vào năm nào?', a: ['1954', '1945', '1975', '1968'], c: 0 },
+        { q: 'Trận Đống Đa đánh thắng quân nào?', a: ['Quân Thanh', 'Quân Nguyên', 'Quân Minh', 'Quân Tống'], c: 0 },
+        { q: 'Trận Bạch Đằng năm 1288 do ai chỉ huy?', a: ['Trần Hưng Đạo', 'Trần Quang Khải', 'Lê Lợi', 'Trần Nhật Duật'], c: 0 },
+        { q: 'Khởi nghĩa Lam Sơn do ai lãnh đạo?', a: ['Lê Lợi', 'Nguyễn Trãi', 'Trần Hưng Đạo', 'Nguyễn Huệ'], c: 0 },
+        { q: 'Quân Nguyên Mông xâm lược Đại Việt mấy lần?', a: ['3 lần', '2 lần', '4 lần', '1 lần'], c: 0 },
+        { q: 'Trận Chi Lăng năm 1427 đánh thắng tướng nào?', a: ['Liễu Thăng', 'Thoát Hoan', 'Tôn Sĩ Nghị', 'Ô Mã Nhi'], c: 0 },
+        { q: 'Chiến dịch Hồ Chí Minh kết thúc vào ngày nào?', a: ['30/4/1975', '2/9/1945', '7/5/1954', '19/8/1945'], c: 0 },
+        { q: 'Trận nào Quang Trung đại phá quân Thanh?', a: ['Ngọc Hồi - Đống Đa', 'Bạch Đằng', 'Chi Lăng', 'Rạch Gầm'], c: 0 },
+        { q: 'Lý Thường Kiệt đánh quân Tống ở sông nào?', a: ['Sông Như Nguyệt', 'Sông Bạch Đằng', 'Sông Hồng', 'Sông Mã'], c: 0 },
+        { q: 'Trận Rạch Gầm - Xoài Mút đánh thắng ai?', a: ['Quân Xiêm', 'Quân Thanh', 'Quân Pháp', 'Quân Minh'], c: 0 },
+        { q: 'Chiến thắng Vạn Tường diễn ra năm nào?', a: ['1965', '1954', '1968', '1975'], c: 0 }
+      ],
+      danh: [
+        { q: 'Ai viết bản "Nam Quốc Sơn Hà"?', a: ['Lý Thường Kiệt', 'Nguyễn Trãi', 'Trần Hưng Đạo', 'Lê Lợi'], c: 0 },
+        { q: 'Tác giả "Bình Ngô Đại Cáo" là ai?', a: ['Nguyễn Trãi', 'Lê Lợi', 'Lý Thường Kiệt', 'Chu Văn An'], c: 0 },
+        { q: 'Trần Hưng Đạo tên thật là gì?', a: ['Trần Quốc Tuấn', 'Trần Quang Khải', 'Trần Thủ Độ', 'Trần Nhật Duật'], c: 0 },
+        { q: 'Hồ Chí Minh đọc Tuyên ngôn Độc lập ngày nào?', a: ['2/9/1945', '30/4/1975', '19/8/1945', '7/5/1954'], c: 0 },
+        { q: 'Ai là thầy của vua Trần Nhân Tông?', a: ['Tuệ Trung Thượng Sĩ', 'Chu Văn An', 'Mạc Đĩnh Chi', 'Nguyễn Hiền'], c: 0 },
+        { q: 'Chu Văn An nổi tiếng là người thế nào?', a: ['Nhà giáo', 'Võ tướng', 'Nhà thơ', 'Nhạc sĩ'], c: 0 },
+        { q: 'Nguyễn Du là tác giả của tác phẩm nào?', a: ['Truyện Kiều', 'Chinh Phụ Ngâm', 'Cung Oán Ngâm', 'Hoa Tiên'], c: 0 },
+        { q: 'Ai là tác giả "Hịch Tướng Sĩ"?', a: ['Trần Hưng Đạo', 'Lý Thường Kiệt', 'Nguyễn Trãi', 'Lê Lợi'], c: 0 },
+        { q: 'Võ Nguyên Giáp là tướng chỉ huy chiến dịch nào nổi tiếng?', a: ['Điện Biên Phủ', 'Bạch Đằng', 'Chi Lăng', 'Đống Đa'], c: 0 },
+        { q: 'Lê Quý Đôn là danh nhân thời nào?', a: ['Thời Lê - Trịnh', 'Thời Trần', 'Thời Lý', 'Thời Nguyễn'], c: 0 },
+        { q: 'Ai lập ra trường Đông Kinh Nghĩa Thục?', a: ['Phan Bội Châu và cộng sự', 'Phan Chu Trinh', 'Nguyễn Thái Học', 'Hồ Chí Minh'], c: 0 },
+        { q: 'Hai Bà Trưng khởi nghĩa chống quân nào?', a: ['Quân Hán', 'Quân Đường', 'Quân Tống', 'Quân Minh'], c: 0 }
+      ],
+      thoigian: [
+        { q: 'Sự kiện nào xảy ra sớm nhất?', a: ['Ngô Quyền đánh quân Nam Hán (938)', 'Lý Thường Kiệt đánh Tống (1077)', 'Trần Hưng Đạo đánh Nguyên (1288)', 'Lê Lợi khởi nghĩa Lam Sơn (1418)'], c: 0 },
+        { q: 'Sự kiện nào xảy ra muộn nhất?', a: ['Giải phóng miền Nam (1975)', 'Điện Biên Phủ (1954)', 'Cách mạng Tháng 8 (1945)', 'Đảng Cộng sản Việt Nam (1930)'], c: 0 },
+        { q: 'Chiến thắng Bạch Đằng lần đầu năm nào?', a: ['938', '1288', '981', '1077'], c: 0 },
+        { q: 'Nhà Lý được lập năm nào?', a: ['1009', '1010', '1226', '938'], c: 0 },
+        { q: 'Nhà Trần được lập năm nào?', a: ['1226', '1009', '1400', '1428'], c: 0 },
+        { q: 'Thành lập nhà Hồ năm nào?', a: ['1400', '1428', '1226', '1802'], c: 0 },
+        { q: 'Nhà Nguyễn được thành lập năm nào?', a: ['1802', '1428', '1858', '1884'], c: 0 },
+        { q: 'Pháp tấn công Đà Nẵng năm nào?', a: ['1858', '1884', '1802', '1945'], c: 0 },
+        { q: 'Cách mạng Tháng 8 thành công năm nào?', a: ['1945', '1954', '1975', '1930'], c: 0 },
+        { q: 'Hiệp định Genève ký năm nào?', a: ['1954', '1945', '1973', '1975'], c: 0 },
+        { q: 'Hiệp định Paris ký năm nào?', a: ['1973', '1954', '1975', '1945'], c: 0 },
+        { q: 'Sự kiện 30/4 giải phóng miền Nam năm nào?', a: ['1975', '1954', '1973', '1968'], c: 0 }
+      ],
+      anhhung: [
+        { q: 'Ai là vị nữ anh hùng lãnh đạo khởi nghĩa năm 40?', a: ['Hai Bà Trưng', 'Bà Triệu', 'Nguyễn Thị Định', 'Võ Thị Sáu'], c: 0 },
+        { q: 'Bà Triệu có câu nói nổi tiếng nào?', a: ['"Tôi muốn cưỡi cơn gió mạnh..."', '"Đánh cho để dài tóc..."', '"Sát Thát"', '"Độc lập hay là chết"'], c: 0 },
+        { q: 'Ai đã dùng cọc gỗ chống quân Nguyên trên sông Bạch Đằng?', a: ['Trần Hưng Đạo', 'Ngô Quyền', 'Lê Hoàn', 'Lý Thường Kiệt'], c: 0 },
+        { q: 'Võ Thị Sáu hy sinh ở đâu?', a: ['Côn Đảo', 'Hỏa Lò', 'Phú Quốc', 'Sơn La'], c: 0 },
+        { q: 'Lý Tự Trọng hy sinh khi bao nhiêu tuổi?', a: ['17 tuổi', '18 tuổi', '20 tuổi', '15 tuổi'], c: 0 },
+        { q: 'Ai là anh hùng nhỏ tuổi trong Cách mạng Tháng 8?', a: ['Kim Đồng', 'Vừ A Dính', 'Lê Văn Tám', 'Nguyễn Văn Trỗi'], c: 0 },
+        { q: 'Nguyễn Văn Trỗi là anh hùng thời nào?', a: ['Kháng chiến chống Mỹ', 'Kháng chiến chống Pháp', 'Cách mạng Tháng 8', 'Khởi nghĩa Yên Bái'], c: 0 },
+        { q: 'Bế Văn Đàn hy sinh trong chiến dịch nào?', a: ['Điện Biên Phủ', 'Hồ Chí Minh', 'Vạn Tường', 'Tây Nguyên'], c: 0 },
+        { q: 'Ai là người lấy thân mình chèn pháo?', a: ['Tô Vĩnh Diện', 'Bế Văn Đàn', 'Phan Đình Giót', 'La Văn Cầu'], c: 0 },
+        { q: 'Phan Đình Giót anh hùng làm việc gì?', a: ['Lấy thân mình lấp lỗ châu mai', 'Chèn pháo', 'Làm giá súng', 'Cắt dây thép gai'], c: 0 },
+        { q: 'Nguyễn Thái Học lãnh đạo khởi nghĩa nào?', a: ['Khởi nghĩa Yên Bái', 'Khởi nghĩa Bắc Sơn', 'Khởi nghĩa Nam Kỳ', 'Khởi nghĩa Ba Tơ'], c: 0 },
+        { q: 'Phan Bội Châu sáng lập tổ chức nào?', a: ['Việt Nam Quang Phục Hội', 'Việt Nam Quốc Dân Đảng', 'Đông Du', 'Đảng Cộng Sản'], c: 0 }
+      ],
+      lechoi: [
+        { q: 'Giỗ Tổ Hùng Vương diễn ra vào ngày nào?', a: ['10/3 âm lịch', '15/8 âm lịch', '1/1 âm lịch', '5/5 âm lịch'], c: 0 },
+        { q: 'Tết Nguyên Đán là tết của nền văn hoá nào?', a: ['Văn hoá Á Đông', 'Văn hoá Tây Âu', 'Văn hoá Ấn Độ', 'Văn hoá Ai Cập'], c: 0 },
+        { q: 'Lễ hội Chùa Hương diễn ra ở tỉnh nào?', a: ['Hà Nội', 'Ninh Bình', 'Bắc Ninh', 'Thanh Hóa'], c: 0 },
+        { q: 'Tết Trung Thu còn gọi là gì?', a: ['Tết Thiếu Nhi', 'Tết Đoan Ngọ', 'Tết Hàn Thực', 'Tết Nguyên Tiêu'], c: 0 },
+        { q: 'Tết Đoan Ngọ vào ngày nào?', a: ['5/5 âm lịch', '3/3 âm lịch', '15/8 âm lịch', '10/3 âm lịch'], c: 0 },
+        { q: 'Lễ hội Đền Hùng tôn vinh ai?', a: ['Các Vua Hùng', 'Hai Bà Trưng', 'Trần Hưng Đạo', 'Lê Lợi'], c: 0 },
+        { q: 'Tết Trung Thu tổ chức ngày nào?', a: ['15/8 âm lịch', '10/3 âm lịch', '5/5 âm lịch', '1/1 âm lịch'], c: 0 },
+        { q: 'Lễ hội Gióng tôn vinh ai?', a: ['Thánh Gióng', 'Thánh Tản Viên', 'Thánh Chử Đồng Tử', 'Thánh Mẫu Liễu Hạnh'], c: 0 },
+        { q: 'Tết Hàn Thực vào ngày nào?', a: ['3/3 âm lịch', '5/5 âm lịch', '15/8 âm lịch', '10/3 âm lịch'], c: 0 },
+        { q: 'Lễ hội Yên Tử gắn với vị vua nào?', a: ['Trần Nhân Tông', 'Lý Thái Tổ', 'Lê Thánh Tông', 'Trần Thái Tông'], c: 0 },
+        { q: 'Lễ hội Cồng Chiêng Tây Nguyên được UNESCO công nhận năm?', a: ['2005', '2010', '2000', '2015'], c: 0 },
+        { q: 'Tết Nguyên Tiêu vào ngày nào?', a: ['Rằm tháng Giêng', 'Rằm tháng 7', 'Rằm tháng 8', 'Rằm tháng 4'], c: 0 }
+      ],
+      trieu: [
+        { q: 'Triều đại nào dài nhất trong lịch sử Việt Nam?', a: ['Nhà Lê (1428-1789)', 'Nhà Lý (1009-1225)', 'Nhà Trần (1226-1400)', 'Nhà Nguyễn (1802-1945)'], c: 0 },
+        { q: 'Nhà Lý do ai sáng lập?', a: ['Lý Công Uẩn', 'Lý Thường Kiệt', 'Lý Nhân Tông', 'Lý Thái Tông'], c: 0 },
+        { q: 'Nhà Trần kế vị sau triều đại nào?', a: ['Nhà Lý', 'Nhà Lê', 'Nhà Hồ', 'Nhà Đinh'], c: 0 },
+        { q: 'Nhà Lê Sơ do ai sáng lập?', a: ['Lê Lợi', 'Lê Hoàn', 'Lê Đại Hành', 'Lê Thánh Tông'], c: 0 },
+        { q: 'Nhà Nguyễn do ai sáng lập?', a: ['Nguyễn Ánh', 'Nguyễn Huệ', 'Nguyễn Hoàng', 'Nguyễn Kim'], c: 0 },
+        { q: 'Nhà Đinh do ai sáng lập?', a: ['Đinh Bộ Lĩnh', 'Đinh Công Trứ', 'Đinh Liễn', 'Đinh Toàn'], c: 0 },
+        { q: 'Nhà Tiền Lê bắt đầu với vua nào?', a: ['Lê Hoàn', 'Lê Lợi', 'Lê Thánh Tông', 'Lê Đại Hành'], c: 0 },
+        { q: 'Triều đại nào dời đô ra Thăng Long?', a: ['Nhà Lý', 'Nhà Trần', 'Nhà Lê', 'Nhà Nguyễn'], c: 0 },
+        { q: 'Nhà Hồ tồn tại bao lâu?', a: ['7 năm', '20 năm', '50 năm', '100 năm'], c: 0 },
+        { q: 'Nhà Tây Sơn do ai sáng lập?', a: ['Ba anh em Nguyễn Nhạc - Huệ - Lữ', 'Nguyễn Huệ', 'Nguyễn Ánh', 'Nguyễn Nhạc'], c: 0 },
+        { q: 'Triều đại cuối cùng của Việt Nam là?', a: ['Nhà Nguyễn', 'Nhà Lê', 'Nhà Trần', 'Nhà Tây Sơn'], c: 0 },
+        { q: 'Kinh đô của nhà Nguyễn ở đâu?', a: ['Huế', 'Thăng Long', 'Hoa Lư', 'Sài Gòn'], c: 0 }
+      ],
+      sukien: [
+        { q: 'Cách mạng Tháng 8 thành công năm nào?', a: ['1945', '1954', '1975', '1930'], c: 0 },
+        { q: 'Chiến thắng Điện Biên Phủ năm nào?', a: ['1954', '1945', '1975', '1968'], c: 0 },
+        { q: 'Giải phóng miền Nam năm nào?', a: ['1975', '1954', '1945', '1973'], c: 0 },
+        { q: 'Đảng Cộng sản Việt Nam thành lập năm?', a: ['1930', '1945', '1911', '1920'], c: 0 },
+        { q: 'Pháp bắt đầu xâm lược Việt Nam năm nào?', a: ['1858', '1884', '1945', '1802'], c: 0 },
+        { q: 'Hiệp ước Patenôtre ký năm nào?', a: ['1884', '1858', '1862', '1883'], c: 0 },
+        { q: 'Nguyễn Tất Thành ra đi tìm đường cứu nước năm?', a: ['1911', '1920', '1930', '1945'], c: 0 },
+        { q: 'Năm Việt Nam gia nhập Liên Hợp Quốc?', a: ['1977', '1975', '1986', '1995'], c: 0 },
+        { q: 'Năm bắt đầu Đổi Mới?', a: ['1986', '1975', '1977', '1995'], c: 0 },
+        { q: 'Việt Nam gia nhập ASEAN năm nào?', a: ['1995', '1986', '1977', '2007'], c: 0 },
+        { q: 'Hiệp định Paris ký năm nào?', a: ['1973', '1954', '1945', '1975'], c: 0 },
+        { q: 'Việt Nam gia nhập WTO năm nào?', a: ['2007', '1995', '2000', '2010'], c: 0 }
+      ],
+      ww2: [
+        { q: 'Thế chiến thứ 2 bắt đầu năm nào?', a: ['1939', '1914', '1945', '1941'], c: 0 },
+        { q: 'Thế chiến thứ 2 kết thúc năm nào?', a: ['1945', '1939', '1944', '1950'], c: 0 },
+        { q: 'Nước nào khởi xướng Thế chiến thứ 2?', a: ['Đức Quốc Xã', 'Nhật Bản', 'Ý', 'Liên Xô'], c: 0 },
+        { q: 'Ai là lãnh đạo Đức Quốc Xã?', a: ['Adolf Hitler', 'Mussolini', 'Stalin', 'Churchill'], c: 0 },
+        { q: 'Ai là thủ tướng Anh trong Thế chiến 2?', a: ['Winston Churchill', 'Chamberlain', 'Attlee', 'Eden'], c: 0 },
+        { q: 'Trận Trân Châu Cảng diễn ra năm nào?', a: ['1941', '1939', '1945', '1942'], c: 0 },
+        { q: 'Nước nào đã ném bom nguyên tử xuống Nhật?', a: ['Mỹ', 'Liên Xô', 'Anh', 'Pháp'], c: 0 },
+        { q: 'Hai thành phố Nhật bị ném bom nguyên tử?', a: ['Hiroshima và Nagasaki', 'Tokyo và Osaka', 'Kyoto và Kobe', 'Yokohama và Nagoya'], c: 0 },
+        { q: 'Phe Đồng Minh gồm những nước chính nào?', a: ['Mỹ, Anh, Liên Xô', 'Đức, Ý, Nhật', 'Pháp, Đức, Ý', 'Anh, Pháp, Đức'], c: 0 },
+        { q: 'Phe Trục gồm những nước chính nào?', a: ['Đức, Ý, Nhật', 'Mỹ, Anh, Liên Xô', 'Anh, Pháp, Mỹ', 'Liên Xô, Trung Quốc'], c: 0 },
+        { q: 'Ngày D-Day (đổ bộ Normandy) diễn ra năm nào?', a: ['1944', '1939', '1945', '1941'], c: 0 },
+        { q: 'Ai là Tổng thống Mỹ trong phần lớn Thế chiến 2?', a: ['Franklin D. Roosevelt', 'Truman', 'Eisenhower', 'Wilson'], c: 0 }
+      ],
+      ancient: [
+        { q: 'Kim tự tháp nổi tiếng ở đâu?', a: ['Ai Cập', 'Hy Lạp', 'La Mã', 'Trung Quốc'], c: 0 },
+        { q: 'Đấu trường Colosseum ở thành phố nào?', a: ['Rome', 'Athens', 'Alexandria', 'Cairo'], c: 0 },
+        { q: 'Văn minh Hy Lạp cổ nổi tiếng về?', a: ['Triết học và dân chủ', 'Kim tự tháp', 'Vạn Lý Trường Thành', 'Đấu trường'], c: 0 },
+        { q: 'Ai là triết gia nổi tiếng của Hy Lạp?', a: ['Socrates', 'Caesar', 'Cleopatra', 'Napoleon'], c: 0 },
+        { q: 'Julius Caesar là nhân vật của nền văn minh nào?', a: ['La Mã', 'Hy Lạp', 'Ai Cập', 'Ba Tư'], c: 0 },
+        { q: 'Cleopatra là nữ hoàng của nước nào?', a: ['Ai Cập', 'La Mã', 'Hy Lạp', 'Ba Tư'], c: 0 },
+        { q: 'Đỉnh Olympus gắn với thần thoại nào?', a: ['Hy Lạp', 'La Mã', 'Ai Cập', 'Bắc Âu'], c: 0 },
+        { q: 'Chữ viết tượng hình của Ai Cập gọi là?', a: ['Hieroglyph', 'Cuneiform', 'Alphabet', 'Hanzi'], c: 0 },
+        { q: 'Thần Zeus là chúa tể thần thoại nào?', a: ['Hy Lạp', 'La Mã', 'Ai Cập', 'Nhật Bản'], c: 0 },
+        { q: 'Alexander Đại đế là vua của đâu?', a: ['Macedonia (Hy Lạp)', 'La Mã', 'Ba Tư', 'Ai Cập'], c: 0 },
+        { q: 'Đế chế La Mã sụp đổ (Tây La Mã) năm nào?', a: ['476', '1000', '100', '800'], c: 0 },
+        { q: 'Thế vận hội Olympic đầu tiên ở đâu?', a: ['Hy Lạp cổ đại', 'La Mã', 'Ai Cập', 'Ba Tư'], c: 0 }
+      ]
+    };
+
+    // Shuffle helper
+    const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+    const prepareQuestions = (list) => {
+      return shuffle(list).map(item => {
+        const correctAns = item.a[item.c];
+        const shuffled = shuffle(item.a);
+        return { q: item.q, a: shuffled, c: shuffled.indexOf(correctAns) };
+      });
+    };
+
+    function Quiz({ gameId, title, icon, color, onExit }) {
+      const [questions] = useState(() => prepareQuestions(QUESTIONS[gameId]));
+      const [idx, setIdx] = useState(0);
+      const [score, setScore] = useState(0);
+      const [selected, setSelected] = useState(null);
+      const [showResult, setShowResult] = useState(false);
+      const [done, setDone] = useState(false);
+      const highScore = loadProgress()[gameId] || 0;
+
+      const handleAnswer = (i) => {
+        if (selected !== null) return;
+        setSelected(i);
+        setShowResult(true);
+        if (i === questions[idx].c) setScore(s => s + 1);
+      };
+
+      const next = () => {
+        if (idx + 1 >= questions.length) {
+          saveProgress(gameId, score + (selected === questions[idx].c ? 0 : 0));
+          setDone(true);
+        } else {
+          setIdx(idx + 1);
+          setSelected(null);
+          setShowResult(false);
+        }
+      };
+
+      useEffect(() => {
+        if (done) saveProgress(gameId, score);
+      }, [done]);
+
+      if (done) {
+        const pct = Math.round((score / questions.length) * 100);
+        return (
+          <div style={{ padding: 20, maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
+            <div style={{ fontSize: 80, marginTop: 40 }}>{pct >= 80 ? '🏆' : pct >= 50 ? '🎉' : '📚'}</div>
+            <h1 style={{ fontSize: 32, marginBottom: 20 }}>Hoàn thành!</h1>
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: 30, borderRadius: 16, marginBottom: 20 }}>
+              <div style={{ fontSize: 56, fontWeight: 'bold', color: '#fbbf24' }}>{score}/{questions.length}</div>
+              <div style={{ fontSize: 20, opacity: 0.9, marginTop: 8 }}>{pct}% đúng</div>
+              <div style={{ marginTop: 16, fontSize: 16, opacity: 0.85 }}>Kỷ lục: {Math.max(highScore, score)}/{questions.length}</div>
+            </div>
+            <button onClick={() => { window.location.reload(); }} style={{ background: color, color: 'white', border: 'none', padding: '14px 28px', fontSize: 18, borderRadius: 12, cursor: 'pointer', margin: 6, fontWeight: 'bold' }}>Chơi lại</button>
+            <button onClick={onExit} style={{ background: '#475569', color: 'white', border: 'none', padding: '14px 28px', fontSize: 18, borderRadius: 12, cursor: 'pointer', margin: 6, fontWeight: 'bold' }}>Về Hub</button>
+          </div>
+        );
+      }
+
+      const q = questions[idx];
+      return (
+        <div style={{ padding: 20, maxWidth: 700, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <button onClick={onExit} style={{ background: 'rgba(0,0,0,0.35)', color: 'white', border: 'none', padding: '8px 14px', borderRadius: 10, cursor: 'pointer', fontSize: 14 }}>← Hub</button>
+            <div style={{ fontSize: 14, opacity: 0.9 }}>Câu {idx + 1}/{questions.length}</div>
+            <div style={{ fontSize: 14, background: 'rgba(0,0,0,0.3)', padding: '6px 12px', borderRadius: 10 }}>⭐ {score}</div>
+          </div>
+
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <div style={{ fontSize: 48 }}>{icon}</div>
+            <h2 style={{ fontSize: 20, marginTop: 6 }}>{title}</h2>
+          </div>
+
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: 22, borderRadius: 14, marginBottom: 16 }}>
+            <div style={{ fontSize: 18, lineHeight: 1.5, fontWeight: 500 }}>{q.q}</div>
+          </div>
+
+          <div style={{ display: 'grid', gap: 10 }}>
+            {q.a.map((opt, i) => {
+              let bg = 'rgba(255,255,255,0.12)';
+              if (showResult) {
+                if (i === q.c) bg = '#16a34a';
+                else if (i === selected) bg = '#dc2626';
+              } else if (selected === i) {
+                bg = color;
+              }
+              return (
+                <button key={i} onClick={() => handleAnswer(i)} disabled={showResult}
+                  style={{ background: bg, color: 'white', border: '2px solid rgba(255,255,255,0.25)', padding: '14px 18px', borderRadius: 12, fontSize: 16, cursor: showResult ? 'default' : 'pointer', textAlign: 'left', fontWeight: 500 }}>
+                  {String.fromCharCode(65 + i)}. {opt}
+                </button>
+              );
+            })}
+          </div>
+
+          {showResult && (
+            <button onClick={next} style={{ background: '#fbbf24', color: '#1f2937', border: 'none', padding: '14px', borderRadius: 12, fontSize: 18, fontWeight: 'bold', cursor: 'pointer', width: '100%', marginTop: 16 }}>
+              {idx + 1 >= questions.length ? 'Xem kết quả' : 'Câu tiếp theo →'}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    function Hub({ onPick }) {
+      const progress = loadProgress();
+      return (
+        <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
+            <a href="../index.html" style={{ background: 'rgba(0,0,0,0.35)', color: 'white', textDecoration: 'none', padding: '8px 14px', borderRadius: 10, fontSize: 14 }}>← Trang chủ</a>
+          </div>
+
+          <div style={{ textAlign: 'center', marginBottom: 26 }}>
+            <div style={{ fontSize: 64 }}>📜</div>
+            <h1 style={{ fontSize: 32, fontWeight: 'bold' }}>Lịch Sử</h1>
+            <p style={{ opacity: 0.85, marginTop: 6 }}>10 trò chơi học lịch sử Việt Nam và thế giới</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+            {GAMES.map(g => {
+              const hs = progress[g.id] || 0;
+              return (
+                <button key={g.id} onClick={() => onPick(g.id)}
+                  style={{ background: g.color, color: 'white', border: 'none', padding: 18, borderRadius: 16, cursor: 'pointer', textAlign: 'left', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>
+                  <div style={{ fontSize: 40, marginBottom: 6 }}>{g.icon}</div>
+                  <div style={{ fontSize: 17, fontWeight: 'bold', marginBottom: 4 }}>{g.title}</div>
+                  <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 8 }}>{g.desc}</div>
+                  {hs > 0 && <div style={{ fontSize: 12, background: 'rgba(0,0,0,0.3)', padding: '3px 8px', borderRadius: 8, display: 'inline-block' }}>🏆 {hs}</div>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [route, setRoute] = useState(window.location.hash.replace('#', ''));
+      useEffect(() => {
+        const onHash = () => setRoute(window.location.hash.replace('#', ''));
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+
+      const pick = (id) => { window.location.hash = id; };
+      const exit = () => { window.location.hash = ''; };
+
+      const game = GAMES.find(g => g.id === route);
+      if (game) {
+        return <Quiz gameId={game.id} title={game.title} icon={game.icon} color={game.color} onExit={exit} />;
+      }
+      return <Hub onPick={pick} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⌨️ Gõ Phím — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #18181b; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const GAMES = [
+      { id: 'letters', icon: '🔤', name: 'Gõ Chữ Cái', desc: 'Gõ chữ cái xuất hiện', color: '#ef4444' },
+      { id: 'words', icon: '📝', name: 'Gõ Từ', desc: 'Gõ từ tiếng Việt đơn giản', color: '#f97316' },
+      { id: 'sentences', icon: '📄', name: 'Gõ Câu', desc: 'Gõ câu ngắn đơn giản', color: '#eab308' },
+      { id: 'numbers', icon: '🔢', name: 'Gõ Số', desc: 'Gõ số ngẫu nhiên', color: '#22c55e' },
+      { id: 'symbols', icon: '🔣', name: 'Gõ Ký Hiệu', desc: 'Gõ ký hiệu đặc biệt', color: '#14b8a6' },
+      { id: 'code', icon: '💻', name: 'Gõ Code', desc: 'Gõ đoạn mã cơ bản', color: '#06b6d4' },
+      { id: 'speed', icon: '🏃', name: 'Đua Tốc Độ', desc: 'Gõ càng nhanh càng tốt 60s', color: '#3b82f6' },
+      { id: 'accuracy', icon: '🎯', name: 'Độ Chính Xác', desc: 'Sai 1 từ là thua', color: '#8b5cf6' },
+      { id: 'blind', icon: '👁️‍🗨️', name: 'Gõ Mù', desc: 'Không nhìn bàn phím', color: '#ec4899' },
+      { id: 'zigzag', icon: '🔀', name: 'Chữ Rơi', desc: 'Gõ ký tự rơi ngẫu nhiên', color: '#a855f7' },
+    ];
+
+    const STORAGE_KEY = 'eduTypingProgress';
+    const loadProgress = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; } };
+    const saveBest = (id, wpm) => {
+      const p = loadProgress();
+      if (!p[id] || wpm > p[id]) { p[id] = wpm; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }
+    };
+
+    const WORDS = ['mèo','chó','cá','chim','hoa','lá','cây','núi','sông','biển','trời','mây','sao','trăng','mặt','tay','chân','đầu','tóc','mắt','mũi','tai','miệng','răng','ăn','uống','ngủ','đi','chạy','nhảy','học','chơi','vui','buồn','yêu','ghét','đẹp','xấu','to','nhỏ','cao','thấp','xa','gần','nhanh','chậm','sáng','tối','nóng','lạnh'];
+    const SENTENCES = ['Hôm nay trời đẹp quá.','Em yêu trường em.','Mẹ đi chợ mua rau.','Bé chơi với bạn.','Cây xanh tươi tốt.','Chim hót trên cành.','Con mèo nhỏ dễ thương.','Gia đình là số một.','Học tập chăm chỉ mỗi ngày.','Đi bộ quanh hồ rất vui.'];
+    const CODE = ['var x = 1;','let y = 2;','const z = 3;','if (a > b) {}','for (i=0; i<10; i++) {}','function f() {}','return true;','console.log(x);','a = a + 1;','x === y;'];
+    const SYMBOLS = '@#$%&*+=-_?!/<>(){}[]:;,.';
+
+    function Hub() {
+      const progress = loadProgress();
+      return (
+        <div style={{padding:'20px', maxWidth:900, margin:'0 auto'}}>
+          <div style={{textAlign:'center', marginBottom:30, paddingTop:20}}>
+            <h1 style={{fontSize:42, marginBottom:10}}>⌨️ Gõ Phím</h1>
+            <p style={{color:'#a1a1aa', fontSize:16}}>10 trò chơi luyện gõ phím</p>
+            <a href="../index.html" style={{display:'inline-block', marginTop:15, padding:'10px 20px', background:'#3f3f46', color:'white', textDecoration:'none', borderRadius:8}}>← Về trang chính</a>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:15}}>
+            {GAMES.map(g => (
+              <a key={g.id} href={`#${g.id}`} style={{background:g.color, padding:20, borderRadius:12, textDecoration:'none', color:'white', display:'block', cursor:'pointer'}}>
+                <div style={{fontSize:40, marginBottom:8}}>{g.icon}</div>
+                <div style={{fontSize:18, fontWeight:'bold', marginBottom:4}}>{g.name}</div>
+                <div style={{fontSize:13, opacity:0.9, marginBottom:8}}>{g.desc}</div>
+                <div style={{fontSize:12, background:'rgba(0,0,0,0.3)', padding:'4px 8px', borderRadius:6, display:'inline-block'}}>
+                  🏆 {progress[g.id] || 0} WPM
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function calcWPM(chars, ms) {
+      if (ms <= 0) return 0;
+      const mins = ms / 60000;
+      return Math.round((chars / 5) / mins);
+    }
+
+    function TypingGame({ id, getTarget, duration, mode }) {
+      const game = GAMES.find(g => g.id === id);
+      const [target, setTarget] = useState('');
+      const [typed, setTyped] = useState('');
+      const [startTime, setStartTime] = useState(null);
+      const [done, setDone] = useState(false);
+      const [timeLeft, setTimeLeft] = useState(duration || 0);
+      const [totalChars, setTotalChars] = useState(0);
+      const [errors, setErrors] = useState(0);
+      const [bestWpm, setBestWpm] = useState(0);
+      const [finalWpm, setFinalWpm] = useState(0);
+      const inputRef = useRef(null);
+
+      useEffect(() => { setTarget(getTarget()); inputRef.current?.focus(); }, []);
+
+      useEffect(() => {
+        if (!startTime || !duration || done) return;
+        const t = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          const left = duration - elapsed;
+          if (left <= 0) { finish(); } else { setTimeLeft(left); }
+        }, 200);
+        return () => clearInterval(t);
+      }, [startTime, done]);
+
+      function finish() {
+        if (done) return;
+        const elapsed = Date.now() - (startTime || Date.now());
+        const correct = totalChars - errors;
+        const wpm = calcWPM(correct, elapsed);
+        setFinalWpm(wpm);
+        setBestWpm(wpm);
+        saveBest(id, wpm);
+        setDone(true);
+      }
+
+      function handleChange(e) {
+        if (done) return;
+        const val = e.target.value;
+        if (!startTime) setStartTime(Date.now());
+
+        if (mode === 'single') {
+          // single char, letters/symbols
+          if (val.length >= 1) {
+            const ch = val[0];
+            const ok = ch === target;
+            setTotalChars(c => c + 1);
+            if (!ok) setErrors(x => x + 1);
+            e.target.value = '';
+            setTarget(getTarget());
+          }
+        } else if (mode === 'accuracy') {
+          setTyped(val);
+          if (val.length > target.length) return;
+          // check last char
+          const idx = val.length - 1;
+          if (idx >= 0 && val[idx] !== target[idx]) {
+            setErrors(x => x + 1);
+            // fail immediately
+            setTotalChars(val.length);
+            finish();
+            return;
+          }
+          if (val === target) {
+            setTotalChars(c => c + val.length);
+            setTyped('');
+            e.target.value = '';
+            setTarget(getTarget());
+          }
+        } else {
+          // normal: whole phrase
+          setTyped(val);
+          if (val === target) {
+            setTotalChars(c => c + val.length);
+            setTyped('');
+            e.target.value = '';
+            setTarget(getTarget());
+          } else if (val.length >= target.length) {
+            // count errors
+            let err = 0;
+            for (let i = 0; i < val.length; i++) if (val[i] !== target[i]) err++;
+            setErrors(x => x + err);
+            setTotalChars(c => c + val.length);
+            setTyped('');
+            e.target.value = '';
+            setTarget(getTarget());
+          }
+        }
+      }
+
+      function reset() {
+        setTyped(''); setStartTime(null); setDone(false);
+        setTimeLeft(duration || 0); setTotalChars(0); setErrors(0);
+        setFinalWpm(0); setTarget(getTarget());
+        if (inputRef.current) inputRef.current.value = '';
+        inputRef.current?.focus();
+      }
+
+      const accuracy = totalChars > 0 ? Math.round(((totalChars - errors) / totalChars) * 100) : 100;
+      const liveWpm = startTime ? calcWPM(totalChars - errors, Date.now() - startTime) : 0;
+
+      return (
+        <div style={{padding:20, maxWidth:800, margin:'0 auto'}}>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, paddingTop:10}}>
+            <a href="#" style={{padding:'8px 16px', background:'#3f3f46', color:'white', textDecoration:'none', borderRadius:8}}>← Menu</a>
+            <h2 style={{fontSize:24}}>{game.icon} {game.name}</h2>
+            <div style={{width:80}}></div>
+          </div>
+
+          <div style={{display:'flex', gap:10, marginBottom:20, flexWrap:'wrap', justifyContent:'center'}}>
+            <div style={{background:'#27272a', padding:'10px 20px', borderRadius:8}}><div style={{fontSize:12, color:'#a1a1aa'}}>WPM</div><div style={{fontSize:22, fontWeight:'bold'}}>{liveWpm}</div></div>
+            <div style={{background:'#27272a', padding:'10px 20px', borderRadius:8}}><div style={{fontSize:12, color:'#a1a1aa'}}>Chính xác</div><div style={{fontSize:22, fontWeight:'bold'}}>{accuracy}%</div></div>
+            {duration ? <div style={{background:'#27272a', padding:'10px 20px', borderRadius:8}}><div style={{fontSize:12, color:'#a1a1aa'}}>Thời gian</div><div style={{fontSize:22, fontWeight:'bold'}}>{timeLeft}s</div></div> : null}
+            <div style={{background:'#27272a', padding:'10px 20px', borderRadius:8}}><div style={{fontSize:12, color:'#a1a1aa'}}>Ký tự</div><div style={{fontSize:22, fontWeight:'bold'}}>{totalChars}</div></div>
+          </div>
+
+          {done ? (
+            <div style={{background:game.color, padding:30, borderRadius:12, textAlign:'center'}}>
+              <div style={{fontSize:50, marginBottom:10}}>🎉</div>
+              <div style={{fontSize:28, fontWeight:'bold', marginBottom:10}}>Hoàn thành!</div>
+              <div style={{fontSize:18, marginBottom:20}}>Tốc độ: {finalWpm} WPM — Chính xác: {accuracy}%</div>
+              <button onClick={reset} style={{padding:'12px 24px', background:'white', color:game.color, border:'none', borderRadius:8, fontSize:16, fontWeight:'bold', cursor:'pointer'}}>Chơi lại</button>
+            </div>
+          ) : (
+            <>
+              <div style={{background: id === 'blind' ? '#000' : '#27272a', padding:30, borderRadius:12, marginBottom:15, minHeight:100, fontSize: mode === 'single' ? 72 : 24, textAlign:'center', fontFamily: id === 'code' ? 'monospace' : 'inherit', color: id === 'blind' ? '#000' : 'white', border: id === 'blind' ? '2px dashed #555' : 'none'}}>
+                {mode === 'single' ? (
+                  <span style={{fontSize:80, fontWeight:'bold'}}>{target}</span>
+                ) : (
+                  target.split('').map((ch, i) => {
+                    let color = '#71717a';
+                    if (i < typed.length) color = typed[i] === ch ? '#22c55e' : '#ef4444';
+                    return <span key={i} style={{color, fontWeight: i < typed.length ? 'bold' : 'normal'}}>{ch}</span>;
+                  })
+                )}
+              </div>
+              <input ref={inputRef} type="text" onChange={handleChange} autoFocus placeholder={id === 'blind' ? 'Gõ không nhìn bàn phím...' : 'Gõ vào đây...'} style={{width:'100%', padding:15, fontSize:20, borderRadius:8, border:'2px solid #3f3f46', background:'#27272a', color:'white', outline:'none', fontFamily: id === 'code' ? 'monospace' : 'inherit'}} />
+              {!duration && <button onClick={finish} style={{marginTop:15, padding:'10px 20px', background:game.color, color:'white', border:'none', borderRadius:8, fontSize:14, cursor:'pointer'}}>Kết thúc</button>}
+            </>
+          )}
+        </div>
+      );
+    }
+
+    function FallingGame() {
+      const game = GAMES.find(g => g.id === 'zigzag');
+      const [items, setItems] = useState([]);
+      const [score, setScore] = useState(0);
+      const [missed, setMissed] = useState(0);
+      const [done, setDone] = useState(false);
+      const [startTime] = useState(Date.now());
+      const [totalTyped, setTotalTyped] = useState(0);
+      const [finalWpm, setFinalWpm] = useState(0);
+      const nextId = useRef(0);
+
+      useEffect(() => {
+        if (done) return;
+        const spawn = setInterval(() => {
+          const chars = 'abcdefghijklmnopqrstuvwxyz';
+          setItems(arr => [...arr, { id: nextId.current++, ch: chars[Math.floor(Math.random() * chars.length)], x: Math.random() * 90, y: 0 }]);
+        }, 1200);
+        const move = setInterval(() => {
+          setItems(arr => {
+            const newArr = arr.map(it => ({...it, y: it.y + 2}));
+            const kept = newArr.filter(it => it.y < 100);
+            const lost = newArr.length - kept.length;
+            if (lost > 0) setMissed(m => m + lost);
+            return kept;
+          });
+        }, 100);
+        const timer = setTimeout(() => finish(), 60000);
+        return () => { clearInterval(spawn); clearInterval(move); clearTimeout(timer); };
+      }, [done]);
+
+      useEffect(() => {
+        const handler = (e) => {
+          if (done) return;
+          const key = e.key.toLowerCase();
+          setTotalTyped(t => t + 1);
+          setItems(arr => {
+            const idx = arr.findIndex(it => it.ch === key);
+            if (idx >= 0) {
+              setScore(s => s + 1);
+              return arr.filter((_, i) => i !== idx);
+            }
+            return arr;
+          });
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+      }, [done]);
+
+      useEffect(() => {
+        if (missed >= 10 && !done) finish();
+      }, [missed, done]);
+
+      function finish() {
+        if (done) return;
+        const elapsed = Date.now() - startTime;
+        const wpm = calcWPM(score, elapsed);
+        setFinalWpm(wpm);
+        saveBest('zigzag', wpm);
+        setDone(true);
+      }
+
+      function reset() { window.location.reload(); }
+
+      const accuracy = totalTyped > 0 ? Math.round((score / totalTyped) * 100) : 100;
+
+      return (
+        <div style={{padding:20, maxWidth:800, margin:'0 auto'}}>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:15, paddingTop:10}}>
+            <a href="#" style={{padding:'8px 16px', background:'#3f3f46', color:'white', textDecoration:'none', borderRadius:8}}>← Menu</a>
+            <h2 style={{fontSize:22}}>{game.icon} {game.name}</h2>
+            <div style={{width:80}}></div>
+          </div>
+          <div style={{display:'flex', gap:10, marginBottom:15, flexWrap:'wrap', justifyContent:'center'}}>
+            <div style={{background:'#27272a', padding:'8px 16px', borderRadius:8}}>Bắt: <b>{score}</b></div>
+            <div style={{background:'#27272a', padding:'8px 16px', borderRadius:8}}>Rớt: <b style={{color: missed > 7 ? '#ef4444' : 'white'}}>{missed}/10</b></div>
+            <div style={{background:'#27272a', padding:'8px 16px', borderRadius:8}}>Chính xác: <b>{accuracy}%</b></div>
+          </div>
+          {done ? (
+            <div style={{background:game.color, padding:30, borderRadius:12, textAlign:'center'}}>
+              <div style={{fontSize:50, marginBottom:10}}>🎉</div>
+              <div style={{fontSize:26, fontWeight:'bold', marginBottom:10}}>Kết thúc!</div>
+              <div style={{fontSize:18, marginBottom:20}}>Tốc độ: {finalWpm} WPM — Bắt: {score}</div>
+              <button onClick={reset} style={{padding:'12px 24px', background:'white', color:game.color, border:'none', borderRadius:8, fontSize:16, fontWeight:'bold', cursor:'pointer'}}>Chơi lại</button>
+            </div>
+          ) : (
+            <div style={{position:'relative', width:'100%', height:400, background:'#0a0a0a', borderRadius:12, overflow:'hidden', border:'2px solid #3f3f46'}}>
+              {items.map(it => (
+                <div key={it.id} style={{position:'absolute', left:`${it.x}%`, top:`${it.y}%`, fontSize:32, fontWeight:'bold', color:game.color, textShadow:'0 0 10px rgba(168,85,247,0.6)'}}>{it.ch}</div>
+              ))}
+              <div style={{position:'absolute', bottom:10, left:0, right:0, textAlign:'center', color:'#71717a', fontSize:13}}>Gõ chữ rơi xuống (không nhập vào ô, chỉ bấm phím)</div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function randLetter() { return String.fromCharCode(97 + Math.floor(Math.random() * 26)); }
+    function randNumber() { return String(Math.floor(Math.random() * 9000) + 1000); }
+    function randSymbol() { return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]; }
+    function randWord() { return WORDS[Math.floor(Math.random() * WORDS.length)]; }
+    function randSentence() { return SENTENCES[Math.floor(Math.random() * SENTENCES.length)]; }
+    function randCode() { return CODE[Math.floor(Math.random() * CODE.length)]; }
+    function randWordPhrase() {
+      const n = 3 + Math.floor(Math.random() * 3);
+      const arr = []; for (let i = 0; i < n; i++) arr.push(randWord());
+      return arr.join(' ');
+    }
+
+    function App() {
+      const [hash, setHash] = useState(window.location.hash.slice(1));
+      useEffect(() => {
+        const onHash = () => setHash(window.location.hash.slice(1));
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+
+      if (!hash) return <Hub />;
+      switch (hash) {
+        case 'letters': return <TypingGame id="letters" getTarget={randLetter} mode="single" />;
+        case 'words': return <TypingGame id="words" getTarget={randWord} mode="normal" />;
+        case 'sentences': return <TypingGame id="sentences" getTarget={randSentence} mode="normal" />;
+        case 'numbers': return <TypingGame id="numbers" getTarget={randNumber} mode="normal" />;
+        case 'symbols': return <TypingGame id="symbols" getTarget={randSymbol} mode="single" />;
+        case 'code': return <TypingGame id="code" getTarget={randCode} mode="normal" />;
+        case 'speed': return <TypingGame id="speed" getTarget={randWordPhrase} mode="normal" duration={60} />;
+        case 'accuracy': return <TypingGame id="accuracy" getTarget={randSentence} mode="accuracy" />;
+        case 'blind': return <TypingGame id="blind" getTarget={randWordPhrase} mode="normal" duration={30} />;
+        case 'zigzag': return <FallingGame />;
+        default: return <Hub />;
+      }
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

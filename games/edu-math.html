@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧮 Toán Học — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a1a3e; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const STORAGE_KEY = 'eduMathProgress';
+    const loadProgress = () => {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+      catch(e) { return {}; }
+    };
+    const saveProgress = (id, score) => {
+      const p = loadProgress();
+      if (!p[id] || score > p[id]) { p[id] = score; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }
+    };
+
+    const GAMES = [
+      { id:'fraction', icon:'🍰', title:'So sánh phân số', desc:'Chọn phân số lớn hơn', color:'#ef4444' },
+      { id:'decimal',  icon:'💲', title:'Số thập phân',   desc:'Cộng / trừ số thập phân', color:'#f97316' },
+      { id:'percent',  icon:'💯', title:'Phần trăm',      desc:'Tính phần trăm của số', color:'#eab308' },
+      { id:'equation', icon:'🔍', title:'Phương trình',   desc:'Giải tìm x', color:'#22c55e' },
+      { id:'geometry', icon:'📐', title:'Hình học',       desc:'Chu vi & diện tích', color:'#14b8a6' },
+      { id:'graph',    icon:'📊', title:'Đọc đồ thị',     desc:'Đọc biểu đồ cột', color:'#3b82f6' },
+      { id:'prime',    icon:'🔢', title:'Số nguyên tố',   desc:'Có phải số nguyên tố?', color:'#8b5cf6' },
+      { id:'factor',   icon:'🔓', title:'Thừa số',        desc:'Phân tích thừa số', color:'#ec4899' },
+      { id:'negative', icon:'❄️', title:'Số âm',          desc:'Cộng trừ số âm', color:'#06b6d4' },
+      { id:'root',     icon:'√',  title:'Căn bậc 2',      desc:'Tính căn bậc hai', color:'#a855f7' },
+    ];
+
+    const rnd = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+    const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+    const gcd = (a,b) => b ? gcd(b, a%b) : a;
+    const isPrime = n => { if (n<2) return false; for (let i=2;i*i<=n;i++) if (n%i===0) return false; return true; };
+    const primeFactors = n => { const f=[]; let x=n; for (let i=2;i*i<=x;i++) while(x%i===0){f.push(i); x/=i;} if (x>1) f.push(x); return f; };
+
+    // ========= Question generators =========
+    function genFraction() {
+      const a1=rnd(1,9), b1=rnd(2,10), a2=rnd(1,9), b2=rnd(2,10);
+      const v1=a1/b1, v2=a2/b2;
+      if (v1===v2) return genFraction();
+      const opts = [`${a1}/${b1}`, `${a2}/${b2}`];
+      const ans = v1>v2 ? opts[0] : opts[1];
+      return { q: `Phân số nào lớn hơn?`, opts, ans };
+    }
+    function genDecimal() {
+      const a=(rnd(10,99)/10), b=(rnd(10,99)/10);
+      const op = pick(['+','-']);
+      const ans = op==='+' ? (a+b) : (a-b);
+      const correct = ans.toFixed(1);
+      const opts = [correct, (ans+0.1).toFixed(1), (ans-0.2).toFixed(1), (ans+0.5).toFixed(1)].sort(()=>Math.random()-0.5);
+      return { q: `${a.toFixed(1)} ${op} ${b.toFixed(1)} = ?`, opts, ans: correct };
+    }
+    function genPercent() {
+      const pct = pick([10,20,25,30,40,50,60,75]);
+      const n = pick([100,200,300,400,500,80,60,40,160]);
+      const correct = (pct*n/100);
+      const ans = String(correct);
+      const opts = [ans, String(correct+n/10), String(correct-n/10), String(Math.max(1,correct*2))]
+        .filter((v,i,a)=>a.indexOf(v)===i).sort(()=>Math.random()-0.5);
+      while (opts.length<4) opts.push(String(correct+rnd(1,20)));
+      return { q: `${pct}% của ${n} = ?`, opts: opts.slice(0,4), ans };
+    }
+    function genEquation() {
+      const x = rnd(1,20);
+      const b = rnd(1,30);
+      const type = pick(['add','sub','mul']);
+      let q, ans=String(x);
+      if (type==='add') q = `x + ${b} = ${x+b}`;
+      else if (type==='sub') q = `x - ${b} = ${x-b}`;
+      else q = `${b} · x = ${b*x}`;
+      const opts = [ans, String(x+1), String(Math.max(0,x-1)), String(x+rnd(2,5))]
+        .filter((v,i,a)=>a.indexOf(v)===i).sort(()=>Math.random()-0.5);
+      while (opts.length<4) opts.push(String(x+rnd(6,10)));
+      return { q: `${q}. Tìm x = ?`, opts: opts.slice(0,4), ans };
+    }
+    function genGeometry() {
+      const type = pick(['rect_peri','rect_area','sq_peri','sq_area','tri_area']);
+      let q, ans;
+      if (type==='rect_peri') { const a=rnd(3,15), b=rnd(3,15); q=`Chu vi hình chữ nhật: dài ${a}, rộng ${b}`; ans=String(2*(a+b)); }
+      else if (type==='rect_area') { const a=rnd(3,12), b=rnd(3,12); q=`Diện tích hình chữ nhật: dài ${a}, rộng ${b}`; ans=String(a*b); }
+      else if (type==='sq_peri') { const a=rnd(2,20); q=`Chu vi hình vuông cạnh ${a}`; ans=String(4*a); }
+      else if (type==='sq_area') { const a=rnd(2,15); q=`Diện tích hình vuông cạnh ${a}`; ans=String(a*a); }
+      else { const a=rnd(4,20), h=rnd(2,10); q=`Diện tích tam giác: đáy ${a}, cao ${h}`; ans=String(a*h/2); }
+      const n = Number(ans);
+      const opts = [ans, String(n+rnd(1,5)), String(Math.max(1,n-rnd(1,5))), String(n+rnd(6,15))]
+        .filter((v,i,a)=>a.indexOf(v)===i).sort(()=>Math.random()-0.5);
+      while (opts.length<4) opts.push(String(n+rnd(16,30)));
+      return { q, opts: opts.slice(0,4), ans };
+    }
+    function genGraph() {
+      const labels = ['T2','T3','T4','T5','T6'];
+      const values = labels.map(()=>rnd(2,10));
+      const idx = rnd(0, labels.length-1);
+      const type = pick(['read','max','sum']);
+      let q, ans;
+      if (type==='read') { q=`Giá trị cột ${labels[idx]}?`; ans=String(values[idx]); }
+      else if (type==='max') { q=`Cột nào cao nhất?`; const m=Math.max(...values); ans=labels[values.indexOf(m)]; }
+      else { q=`Tổng tất cả các cột?`; ans=String(values.reduce((s,v)=>s+v,0)); }
+      let opts;
+      if (type==='max') opts = [...labels].sort(()=>Math.random()-0.5);
+      else {
+        const n=Number(ans);
+        opts = [ans, String(n+1), String(Math.max(0,n-1)), String(n+3)]
+          .filter((v,i,a)=>a.indexOf(v)===i).sort(()=>Math.random()-0.5);
+        while (opts.length<4) opts.push(String(n+rnd(4,10)));
+        opts = opts.slice(0,4);
+      }
+      return { q, opts, ans, chart: { labels, values } };
+    }
+    function genPrime() {
+      const n = rnd(2,60);
+      return { q: `${n} có phải số nguyên tố?`, opts: ['Có','Không'], ans: isPrime(n)?'Có':'Không' };
+    }
+    function genFactor() {
+      const n = rnd(6,60);
+      const f = primeFactors(n);
+      const ans = f.join('×');
+      const wrong1 = f.slice(0,-1).concat([f[f.length-1]+1]).join('×');
+      const wrong2 = f.concat([2]).join('×');
+      const wrong3 = (f.length>1 ? [f[0]+1, ...f.slice(1)] : [n+1]).join('×');
+      const opts = [ans, wrong1, wrong2, wrong3]
+        .filter((v,i,a)=>a.indexOf(v)===i).sort(()=>Math.random()-0.5);
+      while (opts.length<4) opts.push(String(n)+'×1');
+      return { q: `${n} = ?`, opts: opts.slice(0,4), ans };
+    }
+    function genNegative() {
+      const a = rnd(-15,15), b = rnd(-15,15);
+      const op = pick(['+','-']);
+      const ans = op==='+' ? a+b : a-b;
+      const sA = a<0?`(${a})`:a, sB = b<0?`(${b})`:b;
+      const opts = [String(ans), String(ans+1), String(ans-1), String(ans+rnd(2,5))]
+        .filter((v,i,a)=>a.indexOf(v)===i).sort(()=>Math.random()-0.5);
+      while (opts.length<4) opts.push(String(ans+rnd(6,10)));
+      return { q: `${sA} ${op} ${sB} = ?`, opts: opts.slice(0,4), ans: String(ans) };
+    }
+    function genRoot() {
+      const x = rnd(1,15);
+      const n = x*x;
+      const ans = String(x);
+      const opts = [ans, String(x+1), String(Math.max(1,x-1)), String(x+2)]
+        .filter((v,i,a)=>a.indexOf(v)===i).sort(()=>Math.random()-0.5);
+      while (opts.length<4) opts.push(String(x+rnd(3,6)));
+      return { q: `√${n} = ?`, opts: opts.slice(0,4), ans };
+    }
+    const GEN = { fraction:genFraction, decimal:genDecimal, percent:genPercent, equation:genEquation,
+      geometry:genGeometry, graph:genGraph, prime:genPrime, factor:genFactor, negative:genNegative, root:genRoot };
+
+    // ========= Shared Game Component =========
+    function Game({ id }) {
+      const meta = GAMES.find(g=>g.id===id);
+      const [q, setQ] = useState(GEN[id]());
+      const [score, setScore] = useState(0);
+      const [streak, setStreak] = useState(0);
+      const [correct, setCorrect] = useState(0);
+      const [time, setTime] = useState(60);
+      const [over, setOver] = useState(false);
+      const [flash, setFlash] = useState(null);
+      const high = loadProgress()[id] || 0;
+
+      useEffect(() => {
+        if (over) return;
+        if (time<=0) { setOver(true); saveProgress(id, score); return; }
+        const t = setTimeout(()=>setTime(time-1), 1000);
+        return () => clearTimeout(t);
+      }, [time, over]);
+
+      const answer = (opt) => {
+        if (over) return;
+        if (opt===q.ans) {
+          const gain = 10 + streak*2;
+          setScore(s=>s+gain); setStreak(s=>s+1); setCorrect(c=>c+1);
+          setFlash('ok');
+        } else {
+          setStreak(0); setFlash('bad');
+        }
+        setTimeout(()=>{ setFlash(null); setQ(GEN[id]()); }, 350);
+      };
+
+      const restart = () => {
+        setScore(0); setStreak(0); setCorrect(0); setTime(60); setOver(false); setQ(GEN[id]());
+      };
+
+      return (
+        <div style={{ maxWidth:640, margin:'0 auto', padding:20 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+            <button onClick={()=>{ location.hash=''; }} style={{ padding:'8px 14px', background:'rgba(255,255,255,0.15)', color:'white', border:'none', borderRadius:8, cursor:'pointer', fontSize:14 }}>← Hub</button>
+            <div style={{ fontSize:14, color:'#cbd5e1' }}>Kỷ lục: <b style={{ color:'#fbbf24' }}>{high}</b></div>
+          </div>
+
+          <div style={{ background:'rgba(255,255,255,0.08)', border:`2px solid ${meta.color}`, borderRadius:16, padding:24, textAlign:'center' }}>
+            <div style={{ fontSize:40, marginBottom:8 }}>{meta.icon}</div>
+            <h2 style={{ fontSize:22, marginBottom:16 }}>{meta.title}</h2>
+
+            <div style={{ display:'flex', justifyContent:'space-around', marginBottom:20, fontSize:14 }}>
+              <div>⏱️ <b>{time}s</b></div>
+              <div>⭐ <b>{score}</b></div>
+              <div>🔥 <b>{streak}</b></div>
+              <div>✅ <b>{correct}</b></div>
+            </div>
+
+            {!over ? (
+              <>
+                <div style={{
+                  background: flash==='ok' ? 'rgba(34,197,94,0.25)' : flash==='bad' ? 'rgba(239,68,68,0.25)' : 'rgba(0,0,0,0.3)',
+                  padding:24, borderRadius:12, marginBottom:20, fontSize:24, fontWeight:600, minHeight:80,
+                  display:'flex', alignItems:'center', justifyContent:'center'
+                }}>
+                  {q.q}
+                </div>
+
+                {q.chart && (
+                  <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'center', gap:8, height:120, marginBottom:16 }}>
+                    {q.chart.labels.map((lb,i)=>(
+                      <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                        <div style={{ width:36, height: q.chart.values[i]*10, background:meta.color, borderRadius:'6px 6px 0 0' }}></div>
+                        <div style={{ fontSize:12 }}>{lb}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  {q.opts.map((opt,i)=>(
+                    <button key={i} onClick={()=>answer(opt)} style={{
+                      padding:'14px 10px', fontSize:18, fontWeight:600,
+                      background:meta.color, color:'white', border:'none', borderRadius:10, cursor:'pointer'
+                    }}>{opt}</button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div>
+                <div style={{ fontSize:48, marginBottom:8 }}>🏁</div>
+                <h3 style={{ fontSize:22, marginBottom:12 }}>Hết giờ!</h3>
+                <div style={{ fontSize:18, marginBottom:8 }}>Điểm: <b style={{ color:'#fbbf24' }}>{score}</b></div>
+                <div style={{ fontSize:14, color:'#cbd5e1', marginBottom:20 }}>Trả lời đúng: {correct}</div>
+                {score>high && <div style={{ color:'#22c55e', marginBottom:16, fontWeight:600 }}>🎉 Kỷ lục mới!</div>}
+                <button onClick={restart} style={{ padding:'10px 24px', fontSize:16, background:meta.color, color:'white', border:'none', borderRadius:10, cursor:'pointer', marginRight:8 }}>Chơi lại</button>
+                <button onClick={()=>{ location.hash=''; }} style={{ padding:'10px 24px', fontSize:16, background:'rgba(255,255,255,0.15)', color:'white', border:'none', borderRadius:10, cursor:'pointer' }}>Về Hub</button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ========= Hub =========
+    function Hub() {
+      const progress = loadProgress();
+      return (
+        <div style={{ maxWidth:960, margin:'0 auto', padding:20 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+            <a href="../index.html" style={{ color:'#cbd5e1', textDecoration:'none', fontSize:14 }}>← Trang chính</a>
+          </div>
+          <div style={{ textAlign:'center', marginBottom:30 }}>
+            <h1 style={{ fontSize:36, marginBottom:6 }}>🧮 Toán Học</h1>
+            <p style={{ color:'#cbd5e1' }}>10 trò chơi luyện toán — mỗi ván 60 giây</p>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:14 }}>
+            {GAMES.map(g=>(
+              <button key={g.id} onClick={()=>{ location.hash=g.id; }} style={{
+                padding:20, background:`linear-gradient(135deg, ${g.color}, ${g.color}cc)`,
+                border:'none', borderRadius:14, cursor:'pointer', color:'white', textAlign:'left'
+              }}>
+                <div style={{ fontSize:32, marginBottom:6 }}>{g.icon}</div>
+                <div style={{ fontSize:16, fontWeight:700, marginBottom:4 }}>{g.title}</div>
+                <div style={{ fontSize:12, opacity:0.9, marginBottom:8 }}>{g.desc}</div>
+                <div style={{ fontSize:12, background:'rgba(0,0,0,0.25)', padding:'4px 8px', borderRadius:6, display:'inline-block' }}>
+                  Kỷ lục: <b>{progress[g.id] || 0}</b>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ========= App (hash router) =========
+    function App() {
+      const [hash, setHash] = useState(location.hash.replace('#',''));
+      useEffect(() => {
+        const onHash = () => setHash(location.hash.replace('#',''));
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+      const valid = GAMES.find(g=>g.id===hash);
+      return valid ? <Game key={hash} id={hash} /> : <Hub />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

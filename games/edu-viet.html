@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🇻🇳 Tiếng Việt — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #7f1d1d; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const GAMES = [
+      { id: 'tuloai', icon: '📚', title: 'Phân loại từ', desc: 'Danh từ / Động từ / Tính từ' },
+      { id: 'dongtu', icon: '🏃', title: 'Chọn động từ', desc: 'Tìm động từ trong câu' },
+      { id: 'danhtu', icon: '🎒', title: 'Chọn danh từ', desc: 'Tìm danh từ trong câu' },
+      { id: 'tinhtu', icon: '✨', title: 'Chọn tính từ', desc: 'Tìm tính từ trong câu' },
+      { id: 'dongnghia', icon: '🔁', title: 'Từ đồng nghĩa', desc: 'to → lớn' },
+      { id: 'trainghia', icon: '⚖️', title: 'Từ trái nghĩa', desc: 'cao ↔ thấp' },
+      { id: 'thanh', icon: '🎵', title: 'Đánh dấu thanh', desc: 'huyền, sắc, hỏi, ngã, nặng' },
+      { id: 'camtu', icon: '🔤', title: 'Ghép âm vần', desc: 'Ghép thành tiếng' },
+      { id: 'chinhta', icon: '✏️', title: 'Chính tả', desc: 'd/gi, s/x, ch/tr' },
+      { id: 'thanhngu', icon: '📜', title: 'Thành ngữ', desc: 'Nhanh như ___' }
+    ];
+
+    const STORE = 'eduVietProgress';
+    const loadProgress = () => { try { return JSON.parse(localStorage.getItem(STORE) || '{}'); } catch { return {}; } };
+    const saveHigh = (id, score) => {
+      const p = loadProgress();
+      if (!p[id] || score > p[id]) { p[id] = score; localStorage.setItem(STORE, JSON.stringify(p)); }
+    };
+
+    // ============ DATA ============
+    const DATA_TULOAI = [
+      { w: 'chạy', t: 'động từ' }, { w: 'sách', t: 'danh từ' }, { w: 'đẹp', t: 'tính từ' },
+      { w: 'học', t: 'động từ' }, { w: 'nhà', t: 'danh từ' }, { w: 'cao', t: 'tính từ' },
+      { w: 'ăn', t: 'động từ' }, { w: 'cây', t: 'danh từ' }, { w: 'xanh', t: 'tính từ' },
+      { w: 'ngủ', t: 'động từ' }, { w: 'bàn', t: 'danh từ' }, { w: 'nhanh', t: 'tính từ' },
+      { w: 'viết', t: 'động từ' }, { w: 'mẹ', t: 'danh từ' }, { w: 'vui', t: 'tính từ' },
+      { w: 'nhảy', t: 'động từ' }, { w: 'ghế', t: 'danh từ' }, { w: 'buồn', t: 'tính từ' },
+      { w: 'đọc', t: 'động từ' }, { w: 'trường', t: 'danh từ' }, { w: 'rộng', t: 'tính từ' },
+      { w: 'cười', t: 'động từ' }, { w: 'bút', t: 'danh từ' }, { w: 'ngon', t: 'tính từ' },
+      { w: 'hát', t: 'động từ' }, { w: 'chó', t: 'danh từ' }, { w: 'lạnh', t: 'tính từ' }
+    ];
+
+    const DATA_DONGTU = [
+      { s: 'Em bé đang chạy trong sân.', a: 'chạy', o: ['chạy', 'bé', 'sân'] },
+      { s: 'Mẹ nấu cơm ngon.', a: 'nấu', o: ['mẹ', 'nấu', 'ngon'] },
+      { s: 'Con mèo bắt chuột.', a: 'bắt', o: ['mèo', 'bắt', 'chuột'] },
+      { s: 'Học sinh đọc sách.', a: 'đọc', o: ['sinh', 'đọc', 'sách'] },
+      { s: 'Chim hót trên cành.', a: 'hót', o: ['chim', 'hót', 'cành'] },
+      { s: 'Bố viết thư cho bà.', a: 'viết', o: ['bố', 'viết', 'thư'] },
+      { s: 'Bé ngủ rất say.', a: 'ngủ', o: ['bé', 'ngủ', 'say'] },
+      { s: 'Cô giáo dạy toán.', a: 'dạy', o: ['cô', 'dạy', 'toán'] },
+      { s: 'Anh ấy đá bóng giỏi.', a: 'đá', o: ['anh', 'đá', 'giỏi'] },
+      { s: 'Em hát bài ca quê hương.', a: 'hát', o: ['em', 'hát', 'quê'] }
+    ];
+
+    const DATA_DANHTU = [
+      { s: 'Em bé chạy trong sân.', a: 'sân', o: ['chạy', 'sân', 'trong'] },
+      { s: 'Mẹ nấu cơm ngon.', a: 'cơm', o: ['nấu', 'cơm', 'ngon'] },
+      { s: 'Con chó sủa to.', a: 'chó', o: ['chó', 'sủa', 'to'] },
+      { s: 'Học sinh đọc sách.', a: 'sách', o: ['đọc', 'sách', 'chăm'] },
+      { s: 'Chim hót trên cành.', a: 'chim', o: ['chim', 'hót', 'cao'] },
+      { s: 'Bố viết thư.', a: 'thư', o: ['viết', 'thư', 'nhanh'] },
+      { s: 'Hoa nở trong vườn.', a: 'hoa', o: ['hoa', 'nở', 'thơm'] },
+      { s: 'Cô giáo dạy học sinh.', a: 'cô', o: ['cô', 'dạy', 'giỏi'] },
+      { s: 'Anh đá bóng.', a: 'bóng', o: ['đá', 'bóng', 'nhanh'] },
+      { s: 'Em ăn cơm.', a: 'cơm', o: ['ăn', 'cơm', 'ngon'] }
+    ];
+
+    const DATA_TINHTU = [
+      { s: 'Bầu trời xanh ngắt.', a: 'xanh', o: ['trời', 'xanh', 'bầu'] },
+      { s: 'Cô bé rất xinh.', a: 'xinh', o: ['bé', 'rất', 'xinh'] },
+      { s: 'Trời nắng nóng bức.', a: 'nóng', o: ['trời', 'nóng', 'nắng'] },
+      { s: 'Cây cao to lớn.', a: 'cao', o: ['cây', 'cao', 'lớn'] },
+      { s: 'Nước mát lạnh.', a: 'lạnh', o: ['nước', 'lạnh', 'mát'] },
+      { s: 'Bé ngoan lắm.', a: 'ngoan', o: ['bé', 'ngoan', 'lắm'] },
+      { s: 'Con đường rộng thênh thang.', a: 'rộng', o: ['đường', 'rộng', 'con'] },
+      { s: 'Hoa hồng đỏ thắm.', a: 'đỏ', o: ['hoa', 'đỏ', 'hồng'] },
+      { s: 'Quả cam chín vàng.', a: 'vàng', o: ['cam', 'vàng', 'chín'] },
+      { s: 'Bài hát hay tuyệt.', a: 'hay', o: ['bài', 'hay', 'hát'] }
+    ];
+
+    const DATA_DONGNGHIA = [
+      { q: 'to', a: 'lớn', o: ['lớn', 'nhỏ', 'xanh', 'cao'] },
+      { q: 'đẹp', a: 'xinh', o: ['xinh', 'xấu', 'to', 'nhỏ'] },
+      { q: 'nhanh', a: 'lẹ', o: ['lẹ', 'chậm', 'cao', 'dài'] },
+      { q: 'buồn', a: 'sầu', o: ['sầu', 'vui', 'đau', 'vắng'] },
+      { q: 'vui', a: 'mừng', o: ['mừng', 'buồn', 'nhỏ', 'cao'] },
+      { q: 'chăm', a: 'siêng', o: ['siêng', 'lười', 'khôn', 'đẹp'] },
+      { q: 'giỏi', a: 'tài', o: ['tài', 'dở', 'ngu', 'to'] },
+      { q: 'chết', a: 'mất', o: ['mất', 'sống', 'ngủ', 'thức'] },
+      { q: 'ăn', a: 'xơi', o: ['xơi', 'uống', 'ngủ', 'chạy'] },
+      { q: 'nhìn', a: 'ngắm', o: ['ngắm', 'nghe', 'nếm', 'sờ'] }
+    ];
+
+    const DATA_TRAINGHIA = [
+      { q: 'cao', a: 'thấp', o: ['thấp', 'dài', 'to', 'rộng'] },
+      { q: 'dài', a: 'ngắn', o: ['ngắn', 'cao', 'to', 'nhỏ'] },
+      { q: 'to', a: 'nhỏ', o: ['nhỏ', 'lớn', 'dài', 'rộng'] },
+      { q: 'nóng', a: 'lạnh', o: ['lạnh', 'ấm', 'mát', 'khô'] },
+      { q: 'sáng', a: 'tối', o: ['tối', 'rực', 'mờ', 'đen'] },
+      { q: 'nhanh', a: 'chậm', o: ['chậm', 'lẹ', 'mau', 'vội'] },
+      { q: 'buồn', a: 'vui', o: ['vui', 'sầu', 'đau', 'khóc'] },
+      { q: 'đẹp', a: 'xấu', o: ['xấu', 'xinh', 'tốt', 'hay'] },
+      { q: 'cũ', a: 'mới', o: ['mới', 'xưa', 'lâu', 'cổ'] },
+      { q: 'giàu', a: 'nghèo', o: ['nghèo', 'có', 'dư', 'đầy'] },
+      { q: 'khỏe', a: 'yếu', o: ['yếu', 'mạnh', 'bệnh', 'mệt'] }
+    ];
+
+    const DATA_THANH = [
+      { w: 'ma', t: 'huyền', r: 'mà' },
+      { w: 'me', t: 'sắc', r: 'mé' },
+      { w: 'be', t: 'hỏi', r: 'bẻ' },
+      { w: 'nga', t: 'ngã', r: 'ngã' },
+      { w: 'cha', t: 'nặng', r: 'chạ' },
+      { w: 'ba', t: 'sắc', r: 'bá' },
+      { w: 'ta', t: 'huyền', r: 'tà' },
+      { w: 'co', t: 'hỏi', r: 'cỏ' },
+      { w: 'go', t: 'nặng', r: 'gọ' },
+      { w: 'va', t: 'ngã', r: 'vã' },
+      { w: 'lo', t: 'sắc', r: 'ló' },
+      { w: 'do', t: 'huyền', r: 'dò' }
+    ];
+
+    const DATA_CAMTU = [
+      { p: 'h + oa', a: 'hoa', o: ['hoa', 'hao', 'hôi', 'huê'] },
+      { p: 'tr + ường', a: 'trường', o: ['trường', 'triền', 'trong', 'truyền'] },
+      { p: 'ng + ôi', a: 'ngôi', o: ['ngôi', 'ngoi', 'ngài', 'ngui'] },
+      { p: 'b + iển', a: 'biển', o: ['biển', 'bền', 'biên', 'buồn'] },
+      { p: 'kh + ông', a: 'không', o: ['không', 'khôn', 'khoai', 'khi'] },
+      { p: 'ch + im', a: 'chim', o: ['chim', 'cham', 'chum', 'chơi'] },
+      { p: 'l + ửa', a: 'lửa', o: ['lửa', 'lừa', 'lúa', 'lừ'] },
+      { p: 'th + ầy', a: 'thầy', o: ['thầy', 'thấy', 'thày', 'tháy'] },
+      { p: 'gi + ấy', a: 'giấy', o: ['giấy', 'giày', 'giậy', 'giay'] },
+      { p: 'nh + à', a: 'nhà', o: ['nhà', 'nhả', 'nhạ', 'nha'] }
+    ];
+
+    const DATA_CHINHTA = [
+      { q: 'Người cha ___ải ra sông.', a: 'ch', o: ['ch', 'tr'] },
+      { q: 'Con ___âu cày ruộng.', a: 'tr', o: ['ch', 'tr'] },
+      { q: 'Cô ___áo vào lớp.', a: 'gi', o: ['d', 'gi'] },
+      { q: 'Em ăn quả ___âu.', a: 'd', o: ['d', 'gi'] },
+      { q: 'Bé đi học ___ớm.', a: 's', o: ['s', 'x'] },
+      { q: 'Con ___ẻ hót trên cây.', a: 's', o: ['s', 'x'] },
+      { q: 'Mẹ đi chợ ___a.', a: 'x', o: ['s', 'x'] },
+      { q: 'Trời mưa rất ___o.', a: 'to', o: ['to', 'tô'] },
+      { q: 'Cây ___úc trong vườn.', a: 'tr', o: ['ch', 'tr'] },
+      { q: 'Em bé ___ơi đùa.', a: 'ch', o: ['ch', 'tr'] },
+      { q: 'Bà ___à tóc bạc.', a: 'gi', o: ['d', 'gi'] },
+      { q: 'Cô ___áy viết bảng.', a: 'gi', o: ['d', 'gi'] }
+    ];
+
+    const DATA_THANHNGU = [
+      { q: 'Nhanh như ___', a: 'chớp', o: ['chớp', 'rùa', 'voi', 'kiến'] },
+      { q: 'Chậm như ___', a: 'rùa', o: ['rùa', 'chớp', 'sóc', 'chim'] },
+      { q: 'Đẹp như ___', a: 'tiên', o: ['tiên', 'quỷ', 'ma', 'gà'] },
+      { q: 'Khỏe như ___', a: 'voi', o: ['voi', 'kiến', 'sâu', 'cá'] },
+      { q: 'Hiền như ___', a: 'bụt', o: ['bụt', 'quỷ', 'cọp', 'hùm'] },
+      { q: 'Dữ như ___', a: 'cọp', o: ['cọp', 'bụt', 'thỏ', 'dê'] },
+      { q: 'Ngu như ___', a: 'bò', o: ['bò', 'cáo', 'khỉ', 'chó'] },
+      { q: 'Khôn như ___', a: 'cáo', o: ['cáo', 'bò', 'trâu', 'heo'] },
+      { q: 'Bẩn như ___', a: 'heo', o: ['heo', 'mèo', 'cò', 'én'] },
+      { q: 'Trắng như ___', a: 'tuyết', o: ['tuyết', 'than', 'mực', 'bùn'] },
+      { q: 'Đen như ___', a: 'mực', o: ['mực', 'tuyết', 'bạc', 'vàng'] },
+      { q: 'Cao như ___', a: 'núi', o: ['núi', 'hang', 'ao', 'giếng'] }
+    ];
+
+    // ============ UTILS ============
+    const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+    // ============ HUB ============
+    function Hub({ go }) {
+      const progress = loadProgress();
+      return (
+        <div style={{ padding: '30px 20px', maxWidth: 900, margin: '0 auto' }}>
+          <a href="../index.html" style={{ color: 'white', textDecoration: 'none', fontSize: 16, display: 'inline-block', marginBottom: 20 }}>← Về Trang Chính</a>
+          <h1 style={{ fontSize: 42, textAlign: 'center', marginBottom: 8 }}>🇻🇳 Tiếng Việt</h1>
+          <p style={{ textAlign: 'center', opacity: 0.85, marginBottom: 30 }}>10 trò chơi học ngữ pháp & từ vựng</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 15 }}>
+            {GAMES.map(g => (
+              <button key={g.id} onClick={() => go(g.id)} style={{ background: 'rgba(255,255,255,0.12)', border: '2px solid rgba(255,255,255,0.25)', borderRadius: 14, padding: 20, color: 'white', cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ fontSize: 36, marginBottom: 6 }}>{g.icon}</div>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>{g.title}</div>
+                <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{g.desc}</div>
+                {progress[g.id] != null && <div style={{ fontSize: 12, marginTop: 8, color: '#fbbf24' }}>🏆 Kỷ lục: {progress[g.id]}</div>}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ============ GAME FRAME ============
+    function GameFrame({ id, title, makeQ, renderQ, isCorrect }) {
+      const [q, setQ] = useState(null);
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(60);
+      const [over, setOver] = useState(false);
+      const [fb, setFb] = useState(null);
+
+      useEffect(() => { setQ(makeQ()); }, []);
+      useEffect(() => {
+        if (over) return;
+        const iv = setInterval(() => setTime(t => {
+          if (t <= 1) { clearInterval(iv); setOver(true); saveHigh(id, score); return 0; }
+          return t - 1;
+        }), 1000);
+        return () => clearInterval(iv);
+      }, [over, score]);
+
+      const answer = (choice) => {
+        if (fb) return;
+        const ok = isCorrect(q, choice);
+        setFb({ ok, choice });
+        if (ok) setScore(s => s + 1);
+        setTimeout(() => { setFb(null); setQ(makeQ()); }, 600);
+      };
+
+      const restart = () => { setScore(0); setTime(60); setOver(false); setQ(makeQ()); };
+
+      if (!q) return null;
+
+      const best = loadProgress()[id] || 0;
+
+      return (
+        <div style={{ padding: 20, maxWidth: 700, margin: '0 auto' }}>
+          <button onClick={() => { location.hash = ''; }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', marginBottom: 15 }}>← Menu</button>
+          <h2 style={{ textAlign: 'center', marginBottom: 15 }}>{title}</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-around', background: 'rgba(0,0,0,0.3)', padding: 12, borderRadius: 10, marginBottom: 20, fontSize: 18, fontWeight: 700 }}>
+            <span>⏱️ {time}s</span>
+            <span>⭐ {score}</span>
+            <span>🏆 {best}</span>
+          </div>
+          {over ? (
+            <div style={{ background: 'rgba(0,0,0,0.4)', padding: 30, borderRadius: 14, textAlign: 'center' }}>
+              <h2 style={{ marginBottom: 15 }}>Hết giờ!</h2>
+              <p style={{ fontSize: 48, margin: '15px 0' }}>⭐ {score}</p>
+              {score >= best && score > 0 && <p style={{ color: '#fbbf24', marginBottom: 15 }}>🎉 Kỷ lục mới!</p>}
+              <button onClick={restart} style={{ background: '#10b981', border: 'none', color: 'white', padding: '12px 28px', fontSize: 18, fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}>Chơi Lại</button>
+            </div>
+          ) : (
+            <div style={{ background: 'rgba(255,255,255,0.1)', padding: 20, borderRadius: 14 }}>
+              {renderQ(q, answer, fb)}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ============ GAMES ============
+    const gameConfigs = {
+      tuloai: {
+        title: '📚 Phân loại từ',
+        makeQ: () => pick(DATA_TULOAI),
+        renderQ: (q, answer, fb) => (
+          <div>
+            <p style={{ textAlign: 'center', fontSize: 16, marginBottom: 10 }}>Từ này thuộc loại nào?</p>
+            <p style={{ textAlign: 'center', fontSize: 44, fontWeight: 800, margin: '20px 0' }}>{q.w}</p>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {['danh từ', 'động từ', 'tính từ'].map(o => {
+                const ok = fb && o === q.t;
+                const wrong = fb && fb.choice === o && o !== q.t;
+                return <button key={o} onClick={() => answer(o)} style={{ background: ok ? '#10b981' : wrong ? '#ef4444' : '#3b82f6', border: 'none', color: 'white', padding: 14, fontSize: 18, fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}>{o}</button>;
+              })}
+            </div>
+          </div>
+        ),
+        isCorrect: (q, c) => c === q.t
+      },
+      dongtu: {
+        title: '🏃 Chọn động từ',
+        makeQ: () => { const q = pick(DATA_DONGTU); return { ...q, opts: shuffle(q.o) }; },
+        renderQ: (q, answer, fb) => (
+          <div>
+            <p style={{ textAlign: 'center', fontSize: 22, margin: '15px 0 25px' }}>"{q.s}"</p>
+            <p style={{ textAlign: 'center', marginBottom: 15 }}>Từ nào là động từ?</p>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {q.opts.map(o => {
+                const ok = fb && o === q.a;
+                const wrong = fb && fb.choice === o && o !== q.a;
+                return <button key={o} onClick={() => answer(o)} style={{ background: ok ? '#10b981' : wrong ? '#ef4444' : '#3b82f6', border: 'none', color: 'white', padding: 14, fontSize: 18, fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}>{o}</button>;
+              })}
+            </div>
+          </div>
+        ),
+        isCorrect: (q, c) => c === q.a
+      },
+      danhtu: {
+        title: '🎒 Chọn danh từ',
+        makeQ: () => { const q = pick(DATA_DANHTU); return { ...q, opts: shuffle(q.o) }; },
+        renderQ: (q, answer, fb) => (
+          <div>
+            <p style={{ textAlign: 'center', fontSize: 22, margin: '15px 0 25px' }}>"{q.s}"</p>
+            <p style={{ textAlign: 'center', marginBottom: 15 }}>Từ nào là danh từ?</p>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {q.opts.map(o => {
+                const ok = fb && o === q.a;
+                const wrong = fb && fb.choice === o && o !== q.a;
+                return <button key={o} onClick={() => answer(o)} style={{ background: ok ? '#10b981' : wrong ? '#ef4444' : '#3b82f6', border: 'none', color: 'white', padding: 14, fontSize: 18, fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}>{o}</button>;
+              })}
+            </div>
+          </div>
+        ),
+        isCorrect: (q, c) => c === q.a
+      },
+      tinhtu: {
+        title: '✨ Chọn tính từ',
+        makeQ: () => { const q = pick(DATA_TINHTU); return { ...q, opts: shuffle(q.o) }; },
+        renderQ: (q, answer, fb) => (
+          <div>
+            <p style={{ textAlign: 'center', fontSize: 22, margin: '15px 0 25px' }}>"{q.s}"</p>
+            <p style={{ textAlign: 'center', marginBottom: 15 }}>Từ nào là tính từ?</p>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {q.opts.map(o => {
+                const ok = fb && o === q.a;
+                const wrong = fb && fb.choice === o && o !== q.a;
+                return <button key={o} onClick={() => answer(o)} style={{ background: ok ? '#10b981' : wrong ? '#ef4444' : '#3b82f6', border: 'none', color: 'white', padding: 14, fontSize: 18, fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}>{o}</button>;
+              })}
+            </div>
+          </div>
+        ),
+        isCorrect: (q, c) => c === q.a
+      },
+      dongnghia: {
+        title: '🔁 Từ đồng nghĩa',
+        makeQ: () => { const q = pick(DATA_DONGNGHIA); return { ...q, opts: shuffle(q.o) }; },
+        renderQ: (q, answer, fb) => (
+          <div>
+            <p style={{ textAlign: 'center', marginBottom: 10 }}>Chọn từ đồng nghĩa với:</p>
+            <p style={{ textAlign: 'center', fontSize: 40, fontWeight: 800, margin: '15px 0' }}>{q.q}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {q.opts.map(o => {
+                const ok = fb && o === q.a;
+                const wrong = fb && fb.choice === o && o !== q.a;
+                return <button key={o} onClick={() => answer(o)} style={{ background: ok ? '#10b981' : wrong ? '#ef4444' : '#3b82f6', border: 'none', color: 'white', padding: 14, fontSize: 18, fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}>{o}</button>;
+              })}
+            </div>
+          </div>
+        ),
+        isCorrect: (q, c) => c === q.a
+      },
+      trainghia: {
+        title: '⚖️ Từ trái nghĩa',
+        makeQ: () => { const q = pick(DATA_TRAINGHIA); return { ...q, opts: shuffle(q.o) }; },
+        renderQ: (q, answer, fb) => (
+          <div>
+            <p style={{ textAlign: 'center', marginBottom: 10 }}>Chọn từ trái nghĩa với:</p>
+            <p style={{ textAlign: 'center', fontSize: 40, fontWeight: 800, margin: '15px 0' }}>{q.q}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {q.opts.map(o => {
+                const ok = fb && o === q.a;
+                const wrong = fb && fb.choice === o && o !== q.a;
+                return <button key={o} onClick={() => answer(o)} style={{ background: ok ? '#10b981' : wrong ? '#ef4444' : '#3b82f6', border: 'none', color: 'white', padding: 14, fontSize: 18, fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}>{o}</button>;
+              })}
+            </div>
+          </div>
+        ),
+        isCorrect: (q, c) => c === q.a
+      },
+      thanh: {
+        title: '🎵 Đánh dấu thanh',
+        makeQ: () => pick(DATA_THANH),
+        renderQ: (q, answer, fb) => (
+          <div>
+            <p style={{ textAlign: 'center', marginBottom: 10 }}>Đánh thanh <b>{q.t}</b> cho chữ:</p>
+            <p style={{ textAlign: 'center', fontSize: 44, fontWeight: 800, margin: '15px 0' }}>{q.w}</p>
+            <p style={{ textAlign: 'center', marginBottom: 15, fontSize: 14, opacity: 0.85 }}>Chọn dạng đúng:</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {shuffle([q.r, ...DATA_THANH.filter(d => d.w !== q.w).slice(0, 3).map(d => d.r)]).map(o => {
+                const ok = fb && o === q.r;
+                const wrong = fb && fb.choice === o && o !== q.r;
+                return <button key={o} onClick={() => answer(o)} style={{ background: ok ? '#10b981' : wrong ? '#ef4444' : '#3b82f6', border: 'none', color: 'white', padding: 14, fontSize: 22, fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}>{o}</button>;
+              })}
+            </div>
+          </div>
+        ),
+        isCorrect: (q, c) => c === q.r
+      },
+      camtu: {
+        title: '🔤 Ghép âm vần',
+        makeQ: () => { const q = pick(DATA_CAMTU); return { ...q, opts: shuffle(q.o) }; },
+        renderQ: (q, answer, fb) => (
+          <div>
+            <p style={{ textAlign: 'center', marginBottom: 10 }}>Ghép lại:</p>
+            <p style={{ textAlign: 'center', fontSize: 36, fontWeight: 800, margin: '15px 0' }}>{q.p}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {q.opts.map(o => {
+                const ok = fb && o === q.a;
+                const wrong = fb && fb.choice === o && o !== q.a;
+                return <button key={o} onClick={() => answer(o)} style={{ background: ok ? '#10b981' : wrong ? '#ef4444' : '#3b82f6', border: 'none', color: 'white', padding: 14, fontSize: 20, fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}>{o}</button>;
+              })}
+            </div>
+          </div>
+        ),
+        isCorrect: (q, c) => c === q.a
+      },
+      chinhta: {
+        title: '✏️ Chính tả',
+        makeQ: () => pick(DATA_CHINHTA),
+        renderQ: (q, answer, fb) => (
+          <div>
+            <p style={{ textAlign: 'center', marginBottom: 10 }}>Chọn cách viết đúng:</p>
+            <p style={{ textAlign: 'center', fontSize: 22, margin: '20px 0' }}>"{q.q}"</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {q.o.map(o => {
+                const ok = fb && o === q.a;
+                const wrong = fb && fb.choice === o && o !== q.a;
+                return <button key={o} onClick={() => answer(o)} style={{ background: ok ? '#10b981' : wrong ? '#ef4444' : '#3b82f6', border: 'none', color: 'white', padding: 16, fontSize: 22, fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}>{o}</button>;
+              })}
+            </div>
+          </div>
+        ),
+        isCorrect: (q, c) => c === q.a
+      },
+      thanhngu: {
+        title: '📜 Thành ngữ',
+        makeQ: () => { const q = pick(DATA_THANHNGU); return { ...q, opts: shuffle(q.o) }; },
+        renderQ: (q, answer, fb) => (
+          <div>
+            <p style={{ textAlign: 'center', marginBottom: 10 }}>Điền vào chỗ trống:</p>
+            <p style={{ textAlign: 'center', fontSize: 28, fontWeight: 700, margin: '20px 0' }}>{q.q}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {q.opts.map(o => {
+                const ok = fb && o === q.a;
+                const wrong = fb && fb.choice === o && o !== q.a;
+                return <button key={o} onClick={() => answer(o)} style={{ background: ok ? '#10b981' : wrong ? '#ef4444' : '#3b82f6', border: 'none', color: 'white', padding: 14, fontSize: 20, fontWeight: 700, borderRadius: 10, cursor: 'pointer' }}>{o}</button>;
+              })}
+            </div>
+          </div>
+        ),
+        isCorrect: (q, c) => c === q.a
+      }
+    };
+
+    // ============ APP ============
+    function App() {
+      const [hash, setHash] = useState(location.hash.slice(1));
+      useEffect(() => {
+        const h = () => setHash(location.hash.slice(1));
+        window.addEventListener('hashchange', h);
+        return () => window.removeEventListener('hashchange', h);
+      }, []);
+
+      const go = (id) => { location.hash = id; };
+
+      if (!hash || !gameConfigs[hash]) return <Hub go={go} />;
+      const cfg = gameConfigs[hash];
+      return <GameFrame id={hash} title={cfg.title} makeQ={cfg.makeQ} renderQ={cfg.renderQ} isCorrect={cfg.isCorrect} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

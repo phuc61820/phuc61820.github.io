@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔤 Tiếng Anh — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1e3a5f; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const STORAGE_KEY = 'eduEnglishProgress';
+
+    const loadScores = () => {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+      catch { return {}; }
+    };
+    const saveScore = (id, score) => {
+      const s = loadScores();
+      if (!s[id] || score > s[id]) { s[id] = score; localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+    };
+
+    const GAMES = [
+      { id: 'family',  emoji: '👪', title: 'Gia đình', desc: 'Từ vựng về gia đình', color: '#ef4444' },
+      { id: 'colors',  emoji: '🎨', title: 'Màu sắc', desc: 'Các màu cơ bản', color: '#f59e0b' },
+      { id: 'numbers', emoji: '🔢', title: 'Số đếm', desc: 'Đếm từ 1 đến 30', color: '#10b981' },
+      { id: 'food',    emoji: '🍔', title: 'Đồ ăn', desc: 'Từ vựng đồ ăn', color: '#f97316' },
+      { id: 'animals', emoji: '🐶', title: 'Động vật', desc: 'Con vật quen thuộc', color: '#8b5cf6' },
+      { id: 'body',    emoji: '👁️', title: 'Cơ thể', desc: 'Bộ phận cơ thể', color: '#ec4899' },
+      { id: 'school',  emoji: '✏️', title: 'Học tập', desc: 'Đồ dùng học tập', color: '#3b82f6' },
+      { id: 'weather', emoji: '☀️', title: 'Thời tiết', desc: 'Thời tiết & mùa', color: '#06b6d4' },
+      { id: 'verbs',   emoji: '🏃', title: 'Động từ', desc: 'Động từ thường dùng', color: '#14b8a6' },
+      { id: 'plural',  emoji: '👥', title: 'Số nhiều', desc: 'Chuyển sang số nhiều', color: '#a855f7' }
+    ];
+
+    // Vocabulary data - EN → VI
+    const VOCAB = {
+      family: [
+        ['mother','mẹ'],['father','bố'],['brother','anh trai'],['sister','chị gái'],
+        ['son','con trai'],['daughter','con gái'],['grandfather','ông'],['grandmother','bà'],
+        ['uncle','chú'],['aunt','cô'],['cousin','anh chị em họ'],['nephew','cháu trai'],
+        ['niece','cháu gái'],['husband','chồng'],['wife','vợ'],['baby','em bé'],
+        ['parent','phụ huynh'],['child','con'],['family','gia đình'],['twin','sinh đôi'],
+        ['stepmother','mẹ kế'],['stepfather','bố dượng'],['in-law','họ hàng bên vợ chồng'],
+        ['grandson','cháu trai'],['granddaughter','cháu gái'],['elder','người lớn tuổi'],
+        ['youngest','út'],['eldest','cả'],['relative','họ hàng'],['kid','đứa trẻ'],
+        ['mom','mẹ'],['dad','bố'],['sibling','anh chị em'],['spouse','vợ/chồng']
+      ],
+      colors: [
+        ['red','đỏ'],['blue','xanh dương'],['green','xanh lá'],['yellow','vàng'],
+        ['black','đen'],['white','trắng'],['pink','hồng'],['purple','tím'],
+        ['orange','cam'],['brown','nâu'],['grey','xám'],['gold','vàng kim'],
+        ['silver','bạc'],['violet','tím hoa cà'],['navy','xanh hải quân'],['maroon','đỏ nâu'],
+        ['beige','be'],['cyan','xanh lơ'],['turquoise','ngọc lam'],['indigo','chàm'],
+        ['magenta','đỏ tươi'],['coral','san hô'],['cream','kem'],['ivory','ngà'],
+        ['olive','ô liu'],['peach','đào'],['mint','bạc hà'],['lavender','oải hương'],
+        ['scarlet','đỏ thẫm'],['crimson','đỏ sậm'],['azure','xanh da trời']
+      ],
+      numbers: [
+        ['one','1'],['two','2'],['three','3'],['four','4'],['five','5'],
+        ['six','6'],['seven','7'],['eight','8'],['nine','9'],['ten','10'],
+        ['eleven','11'],['twelve','12'],['thirteen','13'],['fourteen','14'],['fifteen','15'],
+        ['sixteen','16'],['seventeen','17'],['eighteen','18'],['nineteen','19'],['twenty','20'],
+        ['thirty','30'],['forty','40'],['fifty','50'],['sixty','60'],['seventy','70'],
+        ['eighty','80'],['ninety','90'],['hundred','100'],['thousand','1000'],['million','1 triệu'],
+        ['zero','0'],['first','thứ nhất'],['second','thứ hai'],['third','thứ ba']
+      ],
+      food: [
+        ['bread','bánh mì'],['rice','cơm'],['fish','cá'],['meat','thịt'],
+        ['chicken','thịt gà'],['beef','thịt bò'],['pork','thịt heo'],['egg','trứng'],
+        ['milk','sữa'],['cheese','phô mai'],['butter','bơ'],['sugar','đường'],
+        ['salt','muối'],['water','nước'],['juice','nước ép'],['tea','trà'],
+        ['coffee','cà phê'],['apple','táo'],['banana','chuối'],['orange','cam'],
+        ['grape','nho'],['mango','xoài'],['tomato','cà chua'],['potato','khoai tây'],
+        ['carrot','cà rốt'],['onion','hành'],['cake','bánh ngọt'],['cookie','bánh quy'],
+        ['soup','súp'],['noodle','mì'],['pizza','bánh pizza'],['salad','xà lách trộn'],
+        ['sandwich','bánh kẹp'],['yogurt','sữa chua'],['honey','mật ong']
+      ],
+      animals: [
+        ['dog','chó'],['cat','mèo'],['cow','bò'],['pig','heo'],
+        ['horse','ngựa'],['sheep','cừu'],['goat','dê'],['duck','vịt'],
+        ['chicken','gà'],['rabbit','thỏ'],['mouse','chuột'],['bird','chim'],
+        ['fish','cá'],['lion','sư tử'],['tiger','hổ'],['elephant','voi'],
+        ['monkey','khỉ'],['bear','gấu'],['wolf','sói'],['fox','cáo'],
+        ['deer','hươu'],['snake','rắn'],['frog','ếch'],['turtle','rùa'],
+        ['butterfly','bướm'],['bee','ong'],['ant','kiến'],['spider','nhện'],
+        ['crab','cua'],['shark','cá mập'],['whale','cá voi'],['dolphin','cá heo'],
+        ['kangaroo','chuột túi'],['panda','gấu trúc'],['giraffe','hươu cao cổ']
+      ],
+      body: [
+        ['eye','mắt'],['ear','tai'],['nose','mũi'],['mouth','miệng'],
+        ['hair','tóc'],['head','đầu'],['face','khuôn mặt'],['neck','cổ'],
+        ['shoulder','vai'],['arm','cánh tay'],['hand','bàn tay'],['finger','ngón tay'],
+        ['elbow','khuỷu tay'],['chest','ngực'],['back','lưng'],['stomach','bụng'],
+        ['leg','chân'],['knee','đầu gối'],['foot','bàn chân'],['toe','ngón chân'],
+        ['tooth','răng'],['tongue','lưỡi'],['lip','môi'],['cheek','má'],
+        ['chin','cằm'],['forehead','trán'],['eyebrow','lông mày'],['eyelash','lông mi'],
+        ['skin','da'],['heart','tim'],['brain','não'],['bone','xương'],
+        ['blood','máu'],['muscle','cơ']
+      ],
+      school: [
+        ['pen','bút'],['pencil','bút chì'],['book','sách'],['bag','cặp'],
+        ['ruler','thước'],['eraser','cục tẩy'],['notebook','vở'],['chalk','phấn'],
+        ['board','bảng'],['desk','bàn học'],['chair','ghế'],['teacher','giáo viên'],
+        ['student','học sinh'],['class','lớp học'],['school','trường học'],['lesson','bài học'],
+        ['homework','bài tập về nhà'],['test','bài kiểm tra'],['paper','giấy'],['glue','keo'],
+        ['scissors','kéo'],['crayon','bút sáp'],['backpack','ba lô'],['library','thư viện'],
+        ['dictionary','từ điển'],['map','bản đồ'],['globe','quả địa cầu'],['uniform','đồng phục'],
+        ['playground','sân chơi'],['blackboard','bảng đen'],['marker','bút lông'],['folder','bìa hồ sơ']
+      ],
+      weather: [
+        ['sunny','nắng'],['rainy','mưa'],['cloudy','nhiều mây'],['windy','gió'],
+        ['snowy','tuyết'],['stormy','bão'],['foggy','sương mù'],['hot','nóng'],
+        ['cold','lạnh'],['warm','ấm'],['cool','mát'],['wet','ướt'],
+        ['dry','khô'],['sun','mặt trời'],['rain','mưa'],['cloud','mây'],
+        ['wind','gió'],['snow','tuyết'],['storm','bão'],['thunder','sấm'],
+        ['lightning','sét'],['rainbow','cầu vồng'],['sky','bầu trời'],['moon','mặt trăng'],
+        ['star','ngôi sao'],['spring','mùa xuân'],['summer','mùa hè'],['autumn','mùa thu'],
+        ['winter','mùa đông'],['season','mùa'],['temperature','nhiệt độ'],['ice','băng'],
+        ['flood','lũ lụt'],['drought','hạn hán']
+      ],
+      verbs: [
+        ['run','chạy'],['eat','ăn'],['sleep','ngủ'],['walk','đi bộ'],
+        ['read','đọc'],['write','viết'],['drink','uống'],['jump','nhảy'],
+        ['sing','hát'],['dance','nhảy múa'],['play','chơi'],['study','học'],
+        ['work','làm việc'],['cook','nấu ăn'],['drive','lái xe'],['fly','bay'],
+        ['swim','bơi'],['talk','nói chuyện'],['listen','nghe'],['watch','xem'],
+        ['buy','mua'],['sell','bán'],['give','cho'],['take','lấy'],
+        ['make','làm'],['do','làm'],['go','đi'],['come','đến'],
+        ['open','mở'],['close','đóng'],['sit','ngồi'],['stand','đứng'],
+        ['laugh','cười'],['cry','khóc'],['smile','mỉm cười']
+      ],
+      plural: [
+        ['cat','cats'],['dog','dogs'],['book','books'],['pen','pens'],
+        ['car','cars'],['apple','apples'],['boy','boys'],['girl','girls'],
+        ['house','houses'],['tree','trees'],['bus','buses'],['box','boxes'],
+        ['fox','foxes'],['class','classes'],['dish','dishes'],['watch','watches'],
+        ['baby','babies'],['lady','ladies'],['city','cities'],['story','stories'],
+        ['country','countries'],['family','families'],['leaf','leaves'],['knife','knives'],
+        ['wolf','wolves'],['life','lives'],['wife','wives'],['shelf','shelves'],
+        ['man','men'],['woman','women'],['child','children'],['foot','feet'],
+        ['tooth','teeth'],['mouse','mice'],['goose','geese'],['person','people'],
+        ['ox','oxen'],['bench','benches'],['day','days'],['key','keys']
+      ]
+    };
+
+    function Hub({ onPick }) {
+      const scores = loadScores();
+      return (
+        <div style={{ padding: '40px 20px', maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 30 }}>
+            <h1 style={{ fontSize: 44, marginBottom: 8 }}>🔤 Tiếng Anh</h1>
+            <p style={{ opacity: 0.85, fontSize: 17 }}>10 trò chơi học từ vựng tiếng Anh cho học sinh Việt Nam</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+            {GAMES.map(g => (
+              <button key={g.id} onClick={() => onPick(g.id)} style={{
+                background: g.color, border: 'none', color: 'white', borderRadius: 16,
+                padding: 22, textAlign: 'left', cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,0,0,0.25)'
+              }}>
+                <div style={{ fontSize: 42, marginBottom: 6 }}>{g.emoji}</div>
+                <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>{g.title}</div>
+                <div style={{ fontSize: 13, opacity: 0.9 }}>{g.desc}</div>
+                <div style={{ fontSize: 12, marginTop: 10, opacity: 0.85 }}>🏆 Điểm cao: {scores[g.id] || 0}</div>
+              </button>
+            ))}
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 28 }}>
+            <a href="../index.html" style={{
+              display: 'inline-block', padding: '12px 26px', background: 'rgba(255,255,255,0.15)',
+              color: 'white', textDecoration: 'none', borderRadius: 10, fontWeight: 600
+            }}>← Về trang chính</a>
+          </div>
+        </div>
+      );
+    }
+
+    function shuffle(a) {
+      const b = a.slice();
+      for (let i = b.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [b[i], b[j]] = [b[j], b[i]];
+      }
+      return b;
+    }
+
+    function Game({ id, onBack }) {
+      const game = GAMES.find(g => g.id === id);
+      const words = VOCAB[id];
+      const [phase, setPhase] = useState('intro'); // intro | play | over
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(60);
+      const [q, setQ] = useState(null);
+      const [input, setInput] = useState('');
+      const [feedback, setFeedback] = useState(null);
+      const [streak, setStreak] = useState(0);
+
+      const isPlural = id === 'plural';
+
+      useEffect(() => {
+        if (phase !== 'play') return;
+        const t = setInterval(() => {
+          setTime(x => {
+            if (x <= 1) { clearInterval(t); setPhase('over'); saveScore(id, score); return 0; }
+            return x - 1;
+          });
+        }, 1000);
+        return () => clearInterval(t);
+      }, [phase, score, id]);
+
+      const nextQuestion = () => {
+        const w = words[Math.floor(Math.random() * words.length)];
+        if (isPlural) {
+          // type-answer: given singular, type plural
+          setQ({ prompt: w[0], answer: w[1], type: 'type' });
+          setInput('');
+        } else {
+          // multiple choice: EN -> VI (random direction)
+          const dir = Math.random() < 0.5 ? 0 : 1;
+          const correct = w[1 - dir === 1 ? 0 : 1]; // pick opposite
+          // simpler: prompt = w[dir], answer = w[1-dir]
+          const prompt = w[dir];
+          const answer = w[1 - dir];
+          const wrongs = shuffle(words.filter(x => x[1 - dir] !== answer)).slice(0, 3).map(x => x[1 - dir]);
+          const options = shuffle([answer, ...wrongs]);
+          setQ({ prompt, answer, options, type: 'mc', dir });
+        }
+        setFeedback(null);
+      };
+
+      const start = () => {
+        setScore(0); setTime(60); setStreak(0); setPhase('play');
+        setTimeout(nextQuestion, 50);
+      };
+
+      const answer = (chosen) => {
+        if (feedback) return;
+        const correct = (chosen || '').trim().toLowerCase() === q.answer.toLowerCase();
+        if (correct) {
+          const bonus = 10 + streak * 2;
+          setScore(s => s + bonus);
+          setStreak(s => s + 1);
+          setFeedback({ ok: true, msg: `+${bonus} điểm! ${streak > 0 ? `🔥 Streak ${streak + 1}` : ''}` });
+        } else {
+          setStreak(0);
+          setFeedback({ ok: false, msg: `Đáp án: ${q.answer}` });
+        }
+        setTimeout(nextQuestion, 900);
+      };
+
+      const submitType = (e) => {
+        e.preventDefault();
+        if (!input.trim()) return;
+        answer(input);
+      };
+
+      if (phase === 'intro') {
+        return (
+          <div style={{ padding: 24, maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
+            <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', marginBottom: 20 }}>← Hub</button>
+            <div style={{ fontSize: 80, marginTop: 20 }}>{game.emoji}</div>
+            <h1 style={{ fontSize: 36, margin: '12px 0' }}>{game.title}</h1>
+            <p style={{ fontSize: 18, opacity: 0.85, marginBottom: 18 }}>{game.desc}</p>
+            <div style={{ background: 'rgba(255,255,255,0.1)', padding: 18, borderRadius: 12, marginBottom: 22, textAlign: 'left', fontSize: 15 }}>
+              <div style={{ marginBottom: 6 }}>⏱ Thời gian: 60 giây</div>
+              <div style={{ marginBottom: 6 }}>💡 Số từ vựng: {words.length}</div>
+              <div style={{ marginBottom: 6 }}>🎯 Thể loại: {isPlural ? 'Gõ dạng số nhiều đúng' : 'Trắc nghiệm 4 lựa chọn'}</div>
+              <div>🏆 Điểm cao: {loadScores()[id] || 0}</div>
+            </div>
+            <button onClick={start} style={{ background: game.color, border: 'none', color: 'white', padding: '16px 40px', borderRadius: 12, fontSize: 19, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>▶ Bắt đầu</button>
+          </div>
+        );
+      }
+
+      if (phase === 'over') {
+        const best = loadScores()[id] || 0;
+        const isNew = score >= best && score > 0;
+        return (
+          <div style={{ padding: 24, maxWidth: 500, margin: '0 auto', textAlign: 'center' }}>
+            <div style={{ fontSize: 80, marginTop: 40 }}>{score > 0 ? '🎉' : '⏱'}</div>
+            <h1 style={{ fontSize: 36, margin: '12px 0' }}>Kết thúc!</h1>
+            <div style={{ background: 'rgba(255,255,255,0.1)', padding: 22, borderRadius: 14, marginBottom: 20 }}>
+              <div style={{ fontSize: 17, opacity: 0.8 }}>Điểm của bạn</div>
+              <div style={{ fontSize: 58, fontWeight: 800, color: game.color }}>{score}</div>
+              {isNew && <div style={{ color: '#fbbf24', fontWeight: 700, marginTop: 8 }}>🏆 Kỷ lục mới!</div>}
+              <div style={{ fontSize: 14, opacity: 0.8, marginTop: 8 }}>Điểm cao: {Math.max(best, score)}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={start} style={{ background: game.color, border: 'none', color: 'white', padding: '14px 28px', borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>🔄 Chơi lại</button>
+              <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '14px 28px', borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>🏠 Hub</button>
+            </div>
+          </div>
+        );
+      }
+
+      // playing
+      return (
+        <div style={{ padding: 20, maxWidth: 700, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', padding: '8px 14px', borderRadius: 8, cursor: 'pointer' }}>← Hub</button>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>⏱ {time}s</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: game.color }}>🏆 {score}</div>
+          </div>
+
+          <div style={{ background: 'rgba(0,0,0,0.2)', height: 6, borderRadius: 3, marginBottom: 24, overflow: 'hidden' }}>
+            <div style={{ background: game.color, height: '100%', width: `${(time / 60) * 100}%`, transition: 'width 1s linear' }} />
+          </div>
+
+          {q && (
+            <div style={{ background: 'rgba(255,255,255,0.08)', padding: 26, borderRadius: 16, marginBottom: 18, textAlign: 'center' }}>
+              <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 10 }}>
+                {isPlural ? 'Chuyển sang SỐ NHIỀU:' : (q.dir === 0 ? 'Tiếng Anh → Tiếng Việt' : 'Tiếng Việt → Tiếng Anh')}
+              </div>
+              <div style={{ fontSize: 42, fontWeight: 800, marginBottom: 6, color: game.color }}>{q.prompt}</div>
+            </div>
+          )}
+
+          {q && q.type === 'mc' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {q.options.map((opt, i) => {
+                let bg = 'rgba(255,255,255,0.12)';
+                if (feedback) {
+                  if (opt === q.answer) bg = '#10b981';
+                  else bg = 'rgba(255,255,255,0.08)';
+                }
+                return (
+                  <button key={i} onClick={() => answer(opt)} disabled={!!feedback} style={{
+                    background: bg, border: '2px solid rgba(255,255,255,0.15)', color: 'white',
+                    padding: 18, borderRadius: 12, fontSize: 17, fontWeight: 600, cursor: feedback ? 'default' : 'pointer'
+                  }}>{opt}</button>
+                );
+              })}
+            </div>
+          )}
+
+          {q && q.type === 'type' && (
+            <form onSubmit={submitType} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <input
+                autoFocus
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                disabled={!!feedback}
+                placeholder="Nhập dạng số nhiều..."
+                style={{
+                  padding: 16, fontSize: 19, borderRadius: 12, border: '2px solid rgba(255,255,255,0.2)',
+                  background: 'rgba(255,255,255,0.1)', color: 'white', outline: 'none', textAlign: 'center'
+                }}
+              />
+              <button type="submit" disabled={!!feedback || !input.trim()} style={{
+                background: game.color, border: 'none', color: 'white', padding: 14,
+                borderRadius: 12, fontSize: 17, fontWeight: 700, cursor: 'pointer'
+              }}>Kiểm tra</button>
+            </form>
+          )}
+
+          {feedback && (
+            <div style={{
+              marginTop: 16, padding: 14, borderRadius: 10, textAlign: 'center', fontSize: 16, fontWeight: 700,
+              background: feedback.ok ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)',
+              color: feedback.ok ? '#6ee7b7' : '#fca5a5'
+            }}>{feedback.ok ? '✓ Đúng! ' : '✗ Sai! '}{feedback.msg}</div>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const [hash, setHash] = useState(window.location.hash.slice(1));
+      useEffect(() => {
+        const on = () => setHash(window.location.hash.slice(1));
+        window.addEventListener('hashchange', on);
+        return () => window.removeEventListener('hashchange', on);
+      }, []);
+
+      const pick = (id) => { window.location.hash = id; };
+      const back = () => { window.location.hash = ''; };
+
+      const valid = GAMES.some(g => g.id === hash);
+      if (!hash || !valid) return <Hub onPick={pick} />;
+      return <Game id={hash} onBack={back} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

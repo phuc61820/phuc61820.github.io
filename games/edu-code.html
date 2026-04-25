@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💻 Lập Trình — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const STORAGE_KEY = 'eduCodeProgress';
+    const loadProgress = () => {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+      catch(e) { return {}; }
+    };
+    const saveProgress = (id, score) => {
+      const p = loadProgress();
+      if (!p[id] || score > p[id]) { p[id] = score; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }
+    };
+
+    const GAMES = [
+      { id:'sequence',  icon:'🔄', title:'Thứ tự các bước',  desc:'Sắp xếp các bước đúng thứ tự', color:'#ef4444' },
+      { id:'loop',      icon:'🔁', title:'Vòng lặp',         desc:'Tính kết quả for/while', color:'#f97316' },
+      { id:'variable',  icon:'📦', title:'Biến số',          desc:'Giá trị biến sau phép gán', color:'#eab308' },
+      { id:'condition', icon:'❓', title:'If / Else',        desc:'Dự đoán nhánh rẽ', color:'#22c55e' },
+      { id:'function',  icon:'🛠️', title:'Hàm f(x)',         desc:'Tính output của hàm', color:'#14b8a6' },
+      { id:'debug',     icon:'🐛', title:'Tìm lỗi',          desc:'Tìm dòng sai trong code', color:'#3b82f6' },
+      { id:'output',    icon:'📤', title:'console.log',      desc:'Đoán output in ra', color:'#8b5cf6' },
+      { id:'operator',  icon:'➕', title:'Toán tử',          desc:'++, +=, ==, &&', color:'#ec4899' },
+      { id:'array',     icon:'📋', title:'Mảng',             desc:'push, pop, length', color:'#06b6d4' },
+      { id:'logic',     icon:'🧠', title:'Logic AND/OR/NOT', desc:'Bảng chân trị', color:'#a855f7' },
+    ];
+
+    const rnd = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+    const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+    const shuffle = arr => [...arr].sort(()=>Math.random()-0.5);
+    const uniq = arr => arr.filter((v,i,a)=>a.indexOf(v)===i);
+    const fillOpts = (correct, wrongs, n=4) => {
+      let o = uniq([correct, ...wrongs]);
+      let tries = 0;
+      while (o.length<n && tries<20) { o.push(String(Number(correct)+rnd(10,30)+tries)); o=uniq(o); tries++; }
+      return shuffle(o.slice(0,n));
+    };
+
+    // ========= Question generators =========
+    function genSequence() {
+      const scenes = [
+        { title:'Làm bánh mì', steps:['Mua bột','Trộn bột','Nướng bánh','Ăn bánh'] },
+        { title:'Pha trà', steps:['Đun nước','Cho trà vào','Rót nước sôi','Uống trà'] },
+        { title:'Gửi email', steps:['Mở ứng dụng','Viết nội dung','Nhập địa chỉ','Nhấn Gửi'] },
+        { title:'Rửa tay', steps:['Mở vòi nước','Xoa xà phòng','Rửa sạch','Lau khô'] },
+        { title:'Đi học', steps:['Thức dậy','Ăn sáng','Đến trường','Vào lớp'] },
+        { title:'Chụp ảnh', steps:['Mở camera','Chọn góc','Nhấn chụp','Lưu ảnh'] },
+      ];
+      const s = pick(scenes);
+      const pos = rnd(0, s.steps.length-1);
+      return { q: `"${s.title}" — Bước thứ ${pos+1} đúng là?`, opts: shuffle(s.steps), ans: s.steps[pos] };
+    }
+
+    function genLoop() {
+      const type = pick(['sum','count','mul','nested']);
+      let code, ans;
+      if (type==='sum') {
+        const n = rnd(3,8);
+        code = `s = 0\nfor i = 1 to ${n}:\n  s = s + i\nprint(s)`;
+        ans = String(n*(n+1)/2);
+      } else if (type==='count') {
+        const a = rnd(2,5), b = rnd(6,12);
+        code = `c = 0\nfor i = ${a} to ${b}:\n  c = c + 1\nprint(c)`;
+        ans = String(b-a+1);
+      } else if (type==='mul') {
+        const n = rnd(2,5);
+        code = `p = 1\nfor i = 1 to ${n}:\n  p = p * 2\nprint(p)`;
+        ans = String(Math.pow(2,n));
+      } else {
+        const n = rnd(2,4), m = rnd(2,4);
+        code = `c = 0\nfor i = 1 to ${n}:\n  for j = 1 to ${m}:\n    c = c + 1\nprint(c)`;
+        ans = String(n*m);
+      }
+      const v = Number(ans);
+      return { q: code, opts: fillOpts(ans, [String(v+1), String(Math.max(0,v-1)), String(v+rnd(2,5))]), ans, isCode:true };
+    }
+
+    function genVariable() {
+      const a = rnd(1,10), b = rnd(1,10), c = rnd(1,10);
+      const type = pick(['chain','swap','inc','compound']);
+      let code, ans;
+      if (type==='chain') {
+        code = `x = ${a}\nx = x + ${b}\nx = x * 2\nprint(x)`;
+        ans = String((a+b)*2);
+      } else if (type==='swap') {
+        code = `a = ${a}\nb = ${b}\nt = a\na = b\nb = t\nprint(a)`;
+        ans = String(b);
+      } else if (type==='inc') {
+        code = `x = ${a}\nx = x + 1\nx = x + 1\nx = x + 1\nprint(x)`;
+        ans = String(a+3);
+      } else {
+        code = `x = ${a}\ny = ${b}\nz = x + y\nprint(z)`;
+        ans = String(a+b);
+      }
+      const v = Number(ans);
+      return { q: code, opts: fillOpts(ans, [String(v+1), String(Math.max(0,v-1)), String(v+rnd(2,6))]), ans, isCode:true };
+    }
+
+    function genCondition() {
+      const x = rnd(1,20), t = rnd(5,15);
+      const op = pick(['>','<','==','>=']);
+      let cond, branch;
+      if (op==='>') branch = x>t ? 'A' : 'B';
+      else if (op==='<') branch = x<t ? 'A' : 'B';
+      else if (op==='==') branch = x===t ? 'A' : 'B';
+      else branch = x>=t ? 'A' : 'B';
+      const code = `x = ${x}\nif x ${op} ${t}:\n  print("A")\nelse:\n  print("B")`;
+      return { q: code, opts:['A','B'], ans: branch, isCode:true };
+    }
+
+    function genFunction() {
+      const x = rnd(1,10);
+      const type = pick(['linear','square','double_plus','minus']);
+      let body, ans;
+      if (type==='linear') {
+        const a=rnd(2,5), b=rnd(1,10);
+        body = `def f(x):\n  return ${a}*x + ${b}\nprint(f(${x}))`;
+        ans = String(a*x+b);
+      } else if (type==='square') {
+        body = `def f(x):\n  return x*x\nprint(f(${x}))`;
+        ans = String(x*x);
+      } else if (type==='double_plus') {
+        const b=rnd(1,10);
+        body = `def f(x):\n  return 2*x + ${b}\nprint(f(${x}))`;
+        ans = String(2*x+b);
+      } else {
+        const b=rnd(1,5);
+        body = `def f(x):\n  return x - ${b}\nprint(f(${x}))`;
+        ans = String(x-b);
+      }
+      const v = Number(ans);
+      return { q: body, opts: fillOpts(ans, [String(v+1), String(Math.max(0,v-1)), String(v+rnd(2,5))]), ans, isCode:true };
+    }
+
+    function genDebug() {
+      const bugs = [
+        { code:['x = 5','if x = 10:','  print("ok")'], bad:2, hint:'= thay vì ==' },
+        { code:['for i in range(10)','  print(i)','end'], bad:1, hint:'thiếu dấu :' },
+        { code:['arr = [1,2,3]','print(arr[3])','# end'], bad:2, hint:'chỉ số vượt mảng' },
+        { code:['x = "5"','y = 3','print(x + y)'], bad:3, hint:'cộng chuỗi + số' },
+        { code:['def f(x):','return x*2','print(f(5))'], bad:2, hint:'thiếu thụt lề' },
+        { code:['x = 10','while x > 0','  x = x - 1'], bad:2, hint:'thiếu dấu :' },
+        { code:['print("Hello)','x = 5','print(x)'], bad:1, hint:'thiếu dấu "' },
+        { code:['a = [1,2,3]','b = a.length','print(b)'], bad:2, hint:'dùng len(a)' },
+      ];
+      const b = pick(bugs);
+      const code = b.code.map((l,i)=>`${i+1}: ${l}`).join('\n');
+      return { q: code, opts:['1','2','3'], ans: String(b.bad), isCode:true, hint:b.hint };
+    }
+
+    function genOutput() {
+      const type = pick(['str','concat','math','fstring','bool']);
+      let code, ans;
+      if (type==='str') {
+        const s = pick(['Hello','Xin chào','Code','Học']);
+        code = `print("${s}")`;
+        ans = s;
+      } else if (type==='concat') {
+        const a = pick(['Hi','OK','Yes']);
+        const b = pick(['!','?','.']);
+        code = `print("${a}" + "${b}")`;
+        ans = a+b;
+      } else if (type==='math') {
+        const a = rnd(1,20), b = rnd(1,20);
+        code = `print(${a} + ${b})`;
+        ans = String(a+b);
+      } else if (type==='fstring') {
+        const n = rnd(1,10);
+        code = `x = ${n}\nprint(x * 3)`;
+        ans = String(n*3);
+      } else {
+        const a = rnd(1,10), b = rnd(1,10);
+        code = `print(${a} > ${b})`;
+        ans = a>b ? 'True' : 'False';
+      }
+      const opts = type==='bool' ? ['True','False']
+        : type==='str' || type==='concat' ? shuffle(uniq([ans, pick(['Hello','Xin chào','Code','Học','Hi!','OK?','Yes.','Error'])]).slice(0,4).concat(['???','undefined']).slice(0,4))
+        : fillOpts(ans, [String(Number(ans)+1), String(Math.max(0,Number(ans)-1)), String(Number(ans)+rnd(2,6))]);
+      while (opts.length<(type==='bool'?2:4)) opts.push('???');
+      return { q: code, opts: shuffle(opts), ans, isCode:true };
+    }
+
+    function genOperator() {
+      const type = pick(['inc','plus_eq','eq','and','or','mod']);
+      let code, ans;
+      if (type==='inc') {
+        const a = rnd(1,15);
+        code = `x = ${a}\nx++\nx++\nprint(x)`;
+        ans = String(a+2);
+      } else if (type==='plus_eq') {
+        const a = rnd(1,10), b = rnd(2,8);
+        code = `x = ${a}\nx += ${b}\nprint(x)`;
+        ans = String(a+b);
+      } else if (type==='eq') {
+        const a = rnd(1,10), b = rnd(1,10);
+        code = `print(${a} == ${b})`;
+        ans = a===b ? 'true' : 'false';
+      } else if (type==='and') {
+        const a = pick([true,false]), b = pick([true,false]);
+        code = `print(${a} && ${b})`;
+        ans = (a&&b) ? 'true' : 'false';
+      } else if (type==='or') {
+        const a = pick([true,false]), b = pick([true,false]);
+        code = `print(${a} || ${b})`;
+        ans = (a||b) ? 'true' : 'false';
+      } else {
+        const a = rnd(10,30), b = rnd(2,7);
+        code = `print(${a} % ${b})`;
+        ans = String(a%b);
+      }
+      const isBool = ['eq','and','or'].includes(type);
+      const opts = isBool ? ['true','false']
+        : fillOpts(ans, [String(Number(ans)+1), String(Math.max(0,Number(ans)-1)), String(Number(ans)+rnd(2,4))]);
+      return { q: code, opts, ans, isCode:true };
+    }
+
+    function genArray() {
+      const type = pick(['push','pop','length','index','reverse']);
+      const base = [rnd(1,9), rnd(1,9), rnd(1,9)];
+      let code, ans;
+      if (type==='push') {
+        const v = rnd(1,9);
+        code = `a = [${base.join(',')}]\na.push(${v})\nprint(a.length)`;
+        ans = '4';
+      } else if (type==='pop') {
+        code = `a = [${base.join(',')}]\na.pop()\nprint(a.length)`;
+        ans = '2';
+      } else if (type==='length') {
+        const arr = [rnd(1,9), rnd(1,9), rnd(1,9), rnd(1,9), rnd(1,9)];
+        code = `a = [${arr.join(',')}]\nprint(a.length)`;
+        ans = '5';
+      } else if (type==='index') {
+        const i = rnd(0, base.length-1);
+        code = `a = [${base.join(',')}]\nprint(a[${i}])`;
+        ans = String(base[i]);
+      } else {
+        code = `a = [${base.join(',')}]\na.reverse()\nprint(a[0])`;
+        ans = String(base[base.length-1]);
+      }
+      const v = Number(ans);
+      return { q: code, opts: fillOpts(ans, [String(v+1), String(Math.max(0,v-1)), String(v+2)]), ans, isCode:true };
+    }
+
+    function genLogic() {
+      const type = pick(['and','or','not','xor','mix']);
+      const a = pick([true,false]), b = pick([true,false]);
+      let q, ans;
+      if (type==='and') { q = `${a} AND ${b} = ?`; ans = (a&&b)?'True':'False'; }
+      else if (type==='or') { q = `${a} OR ${b} = ?`; ans = (a||b)?'True':'False'; }
+      else if (type==='not') { q = `NOT ${a} = ?`; ans = (!a)?'True':'False'; }
+      else if (type==='xor') { q = `${a} XOR ${b} = ?`; ans = (a!==b)?'True':'False'; }
+      else {
+        const c = pick([true,false]);
+        q = `(${a} AND ${b}) OR ${c} = ?`;
+        ans = ((a&&b)||c)?'True':'False';
+      }
+      return { q, opts:['True','False'], ans };
+    }
+
+    const GEN = {
+      sequence:genSequence, loop:genLoop, variable:genVariable, condition:genCondition,
+      function:genFunction, debug:genDebug, output:genOutput, operator:genOperator,
+      array:genArray, logic:genLogic
+    };
+
+    // ========= Shared Game Component =========
+    function Game({ id }) {
+      const meta = GAMES.find(g=>g.id===id);
+      const [q, setQ] = useState(GEN[id]());
+      const [score, setScore] = useState(0);
+      const [streak, setStreak] = useState(0);
+      const [correct, setCorrect] = useState(0);
+      const [qNum, setQNum] = useState(1);
+      const TOTAL = 12;
+      const [over, setOver] = useState(false);
+      const [flash, setFlash] = useState(null);
+      const high = loadProgress()[id] || 0;
+
+      const answer = (opt) => {
+        if (over) return;
+        let newScore = score, newStreak = streak, newCorrect = correct;
+        if (opt===q.ans) {
+          const gain = 10 + streak*2;
+          newScore = score+gain; newStreak = streak+1; newCorrect = correct+1;
+          setScore(newScore); setStreak(newStreak); setCorrect(newCorrect);
+          setFlash('ok');
+        } else {
+          newStreak = 0;
+          setStreak(0); setFlash('bad');
+        }
+        setTimeout(()=>{
+          setFlash(null);
+          if (qNum>=TOTAL) {
+            setOver(true);
+            saveProgress(id, newScore);
+          } else {
+            setQNum(n=>n+1);
+            setQ(GEN[id]());
+          }
+        }, 400);
+      };
+
+      const restart = () => {
+        setScore(0); setStreak(0); setCorrect(0); setQNum(1); setOver(false); setQ(GEN[id]());
+      };
+
+      return (
+        <div style={{ maxWidth:680, margin:'0 auto', padding:20 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+            <button onClick={()=>{ location.hash=''; }} style={{ padding:'8px 14px', background:'rgba(255,255,255,0.15)', color:'white', border:'none', borderRadius:8, cursor:'pointer', fontSize:14 }}>← Hub</button>
+            <div style={{ fontSize:14, color:'#cbd5e1' }}>Kỷ lục: <b style={{ color:'#fbbf24' }}>{high}</b></div>
+          </div>
+
+          <div style={{ background:'rgba(255,255,255,0.08)', border:`2px solid ${meta.color}`, borderRadius:16, padding:24, textAlign:'center' }}>
+            <div style={{ fontSize:40, marginBottom:8 }}>{meta.icon}</div>
+            <h2 style={{ fontSize:22, marginBottom:16 }}>{meta.title}</h2>
+
+            <div style={{ display:'flex', justifyContent:'space-around', marginBottom:20, fontSize:14 }}>
+              <div>📝 <b>{qNum}/{TOTAL}</b></div>
+              <div>⭐ <b>{score}</b></div>
+              <div>🔥 <b>{streak}</b></div>
+              <div>✅ <b>{correct}</b></div>
+            </div>
+
+            {!over ? (
+              <>
+                <div style={{
+                  background: flash==='ok' ? 'rgba(34,197,94,0.25)' : flash==='bad' ? 'rgba(239,68,68,0.25)' : 'rgba(0,0,0,0.35)',
+                  padding:20, borderRadius:12, marginBottom:20,
+                  fontSize: q.isCode ? 16 : 22, fontWeight:600, minHeight:80,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontFamily: q.isCode ? 'Menlo, Monaco, Consolas, monospace' : 'inherit',
+                  whiteSpace: 'pre-wrap', textAlign: q.isCode ? 'left' : 'center',
+                  color: q.isCode ? '#e2e8f0' : 'white'
+                }}>
+                  {q.q}
+                </div>
+
+                {q.hint && flash==='bad' && (
+                  <div style={{ fontSize:13, color:'#fbbf24', marginBottom:12 }}>💡 Gợi ý: {q.hint}</div>
+                )}
+
+                <div style={{ display:'grid', gridTemplateColumns: q.opts.length<=2 ? '1fr 1fr' : '1fr 1fr', gap:10 }}>
+                  {q.opts.map((opt,i)=>(
+                    <button key={i} onClick={()=>answer(opt)} style={{
+                      padding:'14px 10px', fontSize:16, fontWeight:600,
+                      background:meta.color, color:'white', border:'none', borderRadius:10, cursor:'pointer',
+                      fontFamily: 'Menlo, Monaco, Consolas, monospace',
+                      wordBreak:'break-word'
+                    }}>{opt}</button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div>
+                <div style={{ fontSize:48, marginBottom:8 }}>🏁</div>
+                <h3 style={{ fontSize:22, marginBottom:12 }}>Hoàn thành!</h3>
+                <div style={{ fontSize:18, marginBottom:8 }}>Điểm: <b style={{ color:'#fbbf24' }}>{score}</b></div>
+                <div style={{ fontSize:14, color:'#cbd5e1', marginBottom:20 }}>Trả lời đúng: {correct}/{TOTAL}</div>
+                {score>high && <div style={{ color:'#22c55e', marginBottom:16, fontWeight:600 }}>🎉 Kỷ lục mới!</div>}
+                <button onClick={restart} style={{ padding:'10px 24px', fontSize:16, background:meta.color, color:'white', border:'none', borderRadius:10, cursor:'pointer', marginRight:8 }}>Chơi lại</button>
+                <button onClick={()=>{ location.hash=''; }} style={{ padding:'10px 24px', fontSize:16, background:'rgba(255,255,255,0.15)', color:'white', border:'none', borderRadius:10, cursor:'pointer' }}>Về Hub</button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ========= Hub =========
+    function Hub() {
+      const progress = loadProgress();
+      return (
+        <div style={{ maxWidth:960, margin:'0 auto', padding:20 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+            <a href="../index.html" style={{ color:'#cbd5e1', textDecoration:'none', fontSize:14 }}>← Trang chính</a>
+          </div>
+          <div style={{ textAlign:'center', marginBottom:30 }}>
+            <h1 style={{ fontSize:36, marginBottom:6 }}>💻 Lập Trình</h1>
+            <p style={{ color:'#cbd5e1' }}>10 trò chơi học coding — mỗi ván 12 câu</p>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:14 }}>
+            {GAMES.map(g=>(
+              <button key={g.id} onClick={()=>{ location.hash=g.id; }} style={{
+                padding:20, background:`linear-gradient(135deg, ${g.color}, ${g.color}cc)`,
+                border:'none', borderRadius:14, cursor:'pointer', color:'white', textAlign:'left'
+              }}>
+                <div style={{ fontSize:32, marginBottom:6 }}>{g.icon}</div>
+                <div style={{ fontSize:16, fontWeight:700, marginBottom:4 }}>{g.title}</div>
+                <div style={{ fontSize:12, opacity:0.9, marginBottom:8 }}>{g.desc}</div>
+                <div style={{ fontSize:12, background:'rgba(0,0,0,0.25)', padding:'4px 8px', borderRadius:6, display:'inline-block' }}>
+                  Kỷ lục: <b>{progress[g.id] || 0}</b>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ========= App (hash router) =========
+    function App() {
+      const [hash, setHash] = useState(location.hash.replace('#',''));
+      useEffect(() => {
+        const onHash = () => setHash(location.hash.replace('#',''));
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+      const valid = GAMES.find(g=>g.id===hash);
+      return valid ? <Game key={hash} id={hash} /> : <Hub />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

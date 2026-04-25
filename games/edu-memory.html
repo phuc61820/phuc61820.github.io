@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧠 Luyện Trí Nhớ — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #4c1d95; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ============= SHARED =============
+    const GAMES = [
+      { id: 'digits', emoji: '🔢', name: 'Nhớ Dãy Số', desc: 'Ghi nhớ dãy số xuất hiện' },
+      { id: 'colors', emoji: '🎨', name: 'Simon Màu', desc: 'Nhớ thứ tự màu sáng lên' },
+      { id: 'shapes', emoji: '🔺', name: 'Nhớ Hình', desc: 'Nhớ vị trí hình trong lưới' },
+      { id: 'positions', emoji: '📍', name: 'Ô Sáng', desc: 'Nhớ vị trí ô sáng' },
+      { id: 'faces', emoji: '👥', name: 'Tên & Mặt', desc: 'Nhớ khuôn mặt và tên' },
+      { id: 'words', emoji: '📝', name: 'Nhớ Từ', desc: 'Nhớ danh sách từ' },
+      { id: 'order', emoji: '⏱️', name: 'Thứ Tự', desc: 'Nhớ thứ tự vật xuất hiện' },
+      { id: 'audio', emoji: '🔊', name: 'Nốt Nhạc', desc: 'Nhớ chuỗi nốt nhạc' },
+      { id: 'visual', emoji: '👁️', name: 'Flash Nhớ', desc: 'Nhìn 2s rồi chọn lại' },
+      { id: 'mix', emoji: '🎲', name: 'Tổng Hợp', desc: 'Kết hợp nhiều loại' },
+    ];
+
+    const loadProgress = () => {
+      try { return JSON.parse(localStorage.getItem('eduMemoryProgress') || '{}'); }
+      catch { return {}; }
+    };
+    const saveBest = (id, level) => {
+      const p = loadProgress();
+      if (!p[id] || level > p[id]) { p[id] = level; localStorage.setItem('eduMemoryProgress', JSON.stringify(p)); }
+    };
+
+    const playTone = (freq, dur = 300) => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = freq; o.type = 'sine';
+        g.gain.setValueAtTime(0.3, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur / 1000);
+        o.start(); o.stop(ctx.currentTime + dur / 1000);
+      } catch {}
+    };
+
+    const rand = (n) => Math.floor(Math.random() * n);
+    const shuffle = (a) => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = rand(i + 1); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+
+    // ============= HUB =============
+    const Hub = () => {
+      const progress = loadProgress();
+      return (
+        <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 30 }}>
+            <h1 style={{ fontSize: 42, marginBottom: 10 }}>🧠 Luyện Trí Nhớ</h1>
+            <p style={{ opacity: 0.85 }}>10 mini-game rèn luyện trí nhớ dành cho học sinh</p>
+            <a href="../index.html" style={{ display: 'inline-block', marginTop: 15, padding: '8px 16px', background: 'rgba(255,255,255,0.2)', color: 'white', borderRadius: 8, textDecoration: 'none' }}>← Về trang chính</a>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 15 }}>
+            {GAMES.map(g => (
+              <a key={g.id} href={`#${g.id}`} style={{ background: 'rgba(255,255,255,0.15)', padding: 20, borderRadius: 14, textDecoration: 'none', color: 'white', border: '2px solid rgba(255,255,255,0.2)' }}>
+                <div style={{ fontSize: 44, textAlign: 'center' }}>{g.emoji}</div>
+                <div style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginTop: 8 }}>{g.name}</div>
+                <div style={{ fontSize: 13, opacity: 0.8, textAlign: 'center', marginTop: 4 }}>{g.desc}</div>
+                <div style={{ fontSize: 12, textAlign: 'center', marginTop: 6, color: '#fbbf24' }}>🏆 Level {progress[g.id] || 0}</div>
+              </a>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ============= GAME SHELL =============
+    const GameShell = ({ title, emoji, gameId, children, level, best }) => (
+      <div style={{ padding: 20, maxWidth: 700, margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <a href="#" style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.2)', color: 'white', borderRadius: 8, textDecoration: 'none' }}>← Hub</a>
+          <div style={{ fontSize: 14, opacity: 0.9 }}>Level {level} | 🏆 Best {best}</div>
+        </div>
+        <h2 style={{ textAlign: 'center', fontSize: 28, marginBottom: 20 }}>{emoji} {title}</h2>
+        {children}
+      </div>
+    );
+
+    // ============= 1. DIGITS =============
+    const GameDigits = () => {
+      const [level, setLevel] = useState(1);
+      const [phase, setPhase] = useState('idle'); // idle, show, input, result
+      const [seq, setSeq] = useState([]);
+      const [input, setInput] = useState('');
+      const [msg, setMsg] = useState('');
+      const progress = loadProgress();
+      const best = progress.digits || 0;
+
+      const start = () => {
+        const len = 2 + level;
+        const s = Array.from({ length: len }, () => rand(10));
+        setSeq(s); setInput(''); setMsg(''); setPhase('show');
+        setTimeout(() => setPhase('input'), 1500 + len * 500);
+      };
+
+      const submit = () => {
+        if (input === seq.join('')) {
+          setMsg('✅ Chính xác!'); saveBest('digits', level); setLevel(l => l + 1);
+        } else { setMsg(`❌ Sai! Đáp án: ${seq.join('')}`); }
+        setPhase('result');
+      };
+
+      return (
+        <GameShell title="Nhớ Dãy Số" emoji="🔢" gameId="digits" level={level} best={best}>
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: 30, borderRadius: 16, textAlign: 'center', minHeight: 200 }}>
+            {phase === 'idle' && <button onClick={start} style={{ padding: '14px 28px', fontSize: 18, background: '#10b981', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer' }}>▶️ Bắt đầu</button>}
+            {phase === 'show' && <div style={{ fontSize: 56, letterSpacing: 10, fontWeight: 'bold' }}>{seq.join(' ')}</div>}
+            {phase === 'input' && (
+              <div>
+                <p style={{ marginBottom: 15 }}>Nhập lại dãy số:</p>
+                <input value={input} onChange={e => setInput(e.target.value.replace(/\D/g, ''))} style={{ padding: 12, fontSize: 28, width: 250, textAlign: 'center', borderRadius: 8, border: 'none', letterSpacing: 6 }} autoFocus />
+                <br />
+                <button onClick={submit} style={{ marginTop: 15, padding: '12px 24px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>Kiểm tra</button>
+              </div>
+            )}
+            {phase === 'result' && (
+              <div>
+                <div style={{ fontSize: 24, marginBottom: 15 }}>{msg}</div>
+                <button onClick={start} style={{ padding: '12px 24px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>Tiếp tục</button>
+              </div>
+            )}
+          </div>
+        </GameShell>
+      );
+    };
+
+    // ============= 2. COLORS (Simon) =============
+    const GameColors = () => {
+      const [level, setLevel] = useState(1);
+      const [seq, setSeq] = useState([]);
+      const [userIdx, setUserIdx] = useState(0);
+      const [phase, setPhase] = useState('idle');
+      const [flashing, setFlashing] = useState(-1);
+      const [msg, setMsg] = useState('');
+      const progress = loadProgress();
+      const best = progress.colors || 0;
+      const COLORS = ['#ef4444', '#3b82f6', '#10b981', '#eab308'];
+      const TONES = [330, 440, 550, 660];
+
+      const start = () => {
+        const len = 2 + level;
+        const s = Array.from({ length: len }, () => rand(4));
+        setSeq(s); setUserIdx(0); setMsg(''); setPhase('show');
+        s.forEach((c, i) => {
+          setTimeout(() => { setFlashing(c); playTone(TONES[c], 300); }, i * 700 + 500);
+          setTimeout(() => setFlashing(-1), i * 700 + 800);
+        });
+        setTimeout(() => setPhase('input'), s.length * 700 + 1000);
+      };
+
+      const click = (c) => {
+        if (phase !== 'input') return;
+        setFlashing(c); playTone(TONES[c], 200);
+        setTimeout(() => setFlashing(-1), 200);
+        if (seq[userIdx] === c) {
+          if (userIdx + 1 === seq.length) { setMsg('✅ Đúng!'); saveBest('colors', level); setLevel(l => l + 1); setPhase('result'); }
+          else setUserIdx(userIdx + 1);
+        } else { setMsg('❌ Sai rồi!'); setPhase('result'); }
+      };
+
+      return (
+        <GameShell title="Simon Màu" emoji="🎨" gameId="colors" level={level} best={best}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, maxWidth: 320, margin: '0 auto' }}>
+              {COLORS.map((c, i) => (
+                <button key={i} onClick={() => click(i)} disabled={phase !== 'input'} style={{ width: 150, height: 150, background: c, opacity: flashing === i ? 1 : 0.5, border: flashing === i ? '4px solid white' : '4px solid transparent', borderRadius: 16, cursor: phase === 'input' ? 'pointer' : 'default' }} />
+              ))}
+            </div>
+            <div style={{ marginTop: 20, fontSize: 18 }}>{msg}</div>
+            {(phase === 'idle' || phase === 'result') && <button onClick={start} style={{ marginTop: 15, padding: '12px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>{phase === 'idle' ? '▶️ Bắt đầu' : 'Tiếp tục'}</button>}
+          </div>
+        </GameShell>
+      );
+    };
+
+    // ============= 3. SHAPES =============
+    const GameShapes = () => {
+      const [level, setLevel] = useState(1);
+      const [phase, setPhase] = useState('idle');
+      const [grid, setGrid] = useState([]);
+      const [user, setUser] = useState([]);
+      const [msg, setMsg] = useState('');
+      const progress = loadProgress();
+      const best = progress.shapes || 0;
+      const SHAPES = ['🔴', '🔺', '🟦', '⭐', '💜'];
+      const size = 4;
+
+      const start = () => {
+        const count = 2 + level;
+        const cells = shuffle(Array.from({ length: size * size }, (_, i) => i)).slice(0, count);
+        const g = Array(size * size).fill(null);
+        cells.forEach(c => { g[c] = SHAPES[rand(SHAPES.length)]; });
+        setGrid(g); setUser(Array(size * size).fill(null)); setMsg(''); setPhase('show');
+        setTimeout(() => setPhase('input'), 2000 + count * 400);
+      };
+
+      const click = (i) => {
+        if (phase !== 'input') return;
+        const cur = user[i];
+        const idx = cur ? (SHAPES.indexOf(cur) + 1) % (SHAPES.length + 1) : 0;
+        const next = idx < SHAPES.length ? SHAPES[idx] : null;
+        const u = [...user]; u[i] = next; setUser(u);
+      };
+
+      const submit = () => {
+        const ok = grid.every((g, i) => g === user[i]);
+        if (ok) { setMsg('✅ Hoàn hảo!'); saveBest('shapes', level); setLevel(l => l + 1); }
+        else setMsg('❌ Chưa đúng');
+        setPhase('result');
+      };
+
+      return (
+        <GameShell title="Nhớ Hình" emoji="🔺" gameId="shapes" level={level} best={best}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'inline-grid', gridTemplateColumns: `repeat(${size}, 60px)`, gap: 6, background: 'rgba(0,0,0,0.3)', padding: 10, borderRadius: 12 }}>
+              {(phase === 'show' ? grid : phase === 'result' ? grid : user).map((c, i) => (
+                <button key={i} onClick={() => click(i)} disabled={phase !== 'input'} style={{ width: 60, height: 60, fontSize: 30, background: 'rgba(255,255,255,0.2)', border: '2px solid rgba(255,255,255,0.3)', borderRadius: 8, cursor: phase === 'input' ? 'pointer' : 'default' }}>
+                  {c || ''}
+                </button>
+              ))}
+            </div>
+            <div style={{ marginTop: 15 }}>{msg}</div>
+            {phase === 'idle' && <button onClick={start} style={{ marginTop: 10, padding: '12px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>▶️ Bắt đầu</button>}
+            {phase === 'input' && <button onClick={submit} style={{ marginTop: 10, padding: '12px 24px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>Kiểm tra</button>}
+            {phase === 'result' && <button onClick={start} style={{ marginTop: 10, padding: '12px 24px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>Tiếp tục</button>}
+            {phase === 'input' && <p style={{ marginTop: 10, fontSize: 13, opacity: 0.8 }}>Chạm ô để chọn hình</p>}
+          </div>
+        </GameShell>
+      );
+    };
+
+    // ============= 4. POSITIONS =============
+    const GamePositions = () => {
+      const [level, setLevel] = useState(1);
+      const [phase, setPhase] = useState('idle');
+      const [lit, setLit] = useState([]);
+      const [show, setShow] = useState([]);
+      const [user, setUser] = useState([]);
+      const [msg, setMsg] = useState('');
+      const progress = loadProgress();
+      const best = progress.positions || 0;
+      const size = 4;
+
+      const start = () => {
+        const count = 2 + level;
+        const cells = shuffle(Array.from({ length: size * size }, (_, i) => i)).slice(0, count);
+        setLit(cells); setShow(cells); setUser([]); setMsg(''); setPhase('show');
+        setTimeout(() => { setShow([]); setPhase('input'); }, 1500 + count * 300);
+      };
+
+      const click = (i) => {
+        if (phase !== 'input') return;
+        if (user.includes(i)) return;
+        const u = [...user, i]; setUser(u);
+        if (u.length === lit.length) {
+          const ok = lit.every(c => u.includes(c));
+          if (ok) { setMsg('✅ Chính xác!'); saveBest('positions', level); setLevel(l => l + 1); }
+          else setMsg('❌ Chưa đúng');
+          setShow(lit); setPhase('result');
+        }
+      };
+
+      return (
+        <GameShell title="Ô Sáng" emoji="📍" gameId="positions" level={level} best={best}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'inline-grid', gridTemplateColumns: `repeat(${size}, 60px)`, gap: 6, background: 'rgba(0,0,0,0.3)', padding: 10, borderRadius: 12 }}>
+              {Array.from({ length: size * size }, (_, i) => {
+                const isLit = show.includes(i);
+                const isWrong = phase === 'result' && user.includes(i) && !lit.includes(i);
+                const bg = isLit ? '#fbbf24' : isWrong ? '#ef4444' : user.includes(i) ? '#3b82f6' : 'rgba(255,255,255,0.2)';
+                return <button key={i} onClick={() => click(i)} disabled={phase !== 'input'} style={{ width: 60, height: 60, background: bg, border: '2px solid rgba(255,255,255,0.3)', borderRadius: 8, cursor: phase === 'input' ? 'pointer' : 'default' }} />;
+              })}
+            </div>
+            <div style={{ marginTop: 15 }}>{msg}</div>
+            {(phase === 'idle' || phase === 'result') && <button onClick={start} style={{ marginTop: 10, padding: '12px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>{phase === 'idle' ? '▶️ Bắt đầu' : 'Tiếp tục'}</button>}
+          </div>
+        </GameShell>
+      );
+    };
+
+    // ============= 5. FACES =============
+    const GameFaces = () => {
+      const [level, setLevel] = useState(1);
+      const [phase, setPhase] = useState('idle');
+      const [pairs, setPairs] = useState([]);
+      const [question, setQuestion] = useState(null);
+      const [msg, setMsg] = useState('');
+      const progress = loadProgress();
+      const best = progress.faces || 0;
+      const FACES = ['👨', '👩', '👴', '👵', '👦', '👧', '🧑', '👱', '🧔', '👸', '🤴', '👲'];
+      const NAMES = ['An', 'Bình', 'Cường', 'Dũng', 'Em', 'Phú', 'Giang', 'Hà', 'Kim', 'Lan', 'Minh', 'Nam'];
+
+      const start = () => {
+        const count = 2 + level;
+        const f = shuffle(FACES).slice(0, count);
+        const n = shuffle(NAMES).slice(0, count);
+        const p = f.map((fc, i) => ({ face: fc, name: n[i] }));
+        setPairs(p); setMsg(''); setPhase('show');
+        setTimeout(() => {
+          const q = p[rand(p.length)];
+          setQuestion(q); setPhase('input');
+        }, 2000 + count * 600);
+      };
+
+      const answer = (name) => {
+        if (name === question.name) { setMsg('✅ Đúng!'); saveBest('faces', level); setLevel(l => l + 1); }
+        else setMsg(`❌ Sai! Đáp án: ${question.name}`);
+        setPhase('result');
+      };
+
+      return (
+        <GameShell title="Tên & Mặt" emoji="👥" gameId="faces" level={level} best={best}>
+          <div style={{ textAlign: 'center' }}>
+            {phase === 'show' && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+                {pairs.map((p, i) => (
+                  <div key={i} style={{ background: 'rgba(255,255,255,0.15)', padding: 15, borderRadius: 12 }}>
+                    <div style={{ fontSize: 50 }}>{p.face}</div>
+                    <div style={{ marginTop: 5, fontWeight: 'bold' }}>{p.name}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {phase === 'input' && question && (
+              <div>
+                <div style={{ fontSize: 80 }}>{question.face}</div>
+                <p style={{ margin: '10px 0' }}>Người này tên gì?</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxWidth: 400, margin: '0 auto' }}>
+                  {shuffle(pairs.map(p => p.name)).map(n => (
+                    <button key={n} onClick={() => answer(n)} style={{ padding: '10px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 15 }}>{n}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {phase === 'result' && <div><div style={{ fontSize: 22, marginTop: 20 }}>{msg}</div></div>}
+            {(phase === 'idle' || phase === 'result') && <button onClick={start} style={{ marginTop: 15, padding: '12px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>{phase === 'idle' ? '▶️ Bắt đầu' : 'Tiếp tục'}</button>}
+          </div>
+        </GameShell>
+      );
+    };
+
+    // ============= 6. WORDS =============
+    const GameWords = () => {
+      const [level, setLevel] = useState(1);
+      const [phase, setPhase] = useState('idle');
+      const [words, setWords] = useState([]);
+      const [selected, setSelected] = useState([]);
+      const [options, setOptions] = useState([]);
+      const [msg, setMsg] = useState('');
+      const progress = loadProgress();
+      const best = progress.words || 0;
+      const BANK = ['mèo', 'chó', 'nhà', 'xe', 'cây', 'hoa', 'sách', 'bàn', 'ghế', 'đèn', 'cửa', 'trời', 'đất', 'biển', 'núi', 'sông', 'chim', 'cá', 'bánh', 'kẹo', 'áo', 'quần', 'giày', 'mũ'];
+
+      const start = () => {
+        const count = 3 + level;
+        const w = shuffle(BANK).slice(0, count);
+        const extras = shuffle(BANK.filter(x => !w.includes(x))).slice(0, Math.min(5, count));
+        setWords(w); setOptions(shuffle([...w, ...extras])); setSelected([]); setMsg(''); setPhase('show');
+        setTimeout(() => setPhase('input'), 2000 + count * 500);
+      };
+
+      const toggle = (w) => {
+        if (phase !== 'input') return;
+        setSelected(s => s.includes(w) ? s.filter(x => x !== w) : [...s, w]);
+      };
+
+      const submit = () => {
+        const ok = words.every(w => selected.includes(w)) && selected.every(s => words.includes(s));
+        if (ok) { setMsg('✅ Nhớ đủ!'); saveBest('words', level); setLevel(l => l + 1); }
+        else setMsg(`❌ Sai. Đúng: ${words.join(', ')}`);
+        setPhase('result');
+      };
+
+      return (
+        <GameShell title="Nhớ Từ" emoji="📝" gameId="words" level={level} best={best}>
+          <div style={{ textAlign: 'center' }}>
+            {phase === 'show' && (
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: 20, borderRadius: 12 }}>
+                <p style={{ marginBottom: 10 }}>Ghi nhớ các từ sau:</p>
+                <div style={{ fontSize: 24, fontWeight: 'bold', lineHeight: 1.8 }}>{words.join(' • ')}</div>
+              </div>
+            )}
+            {phase === 'input' && (
+              <div>
+                <p style={{ marginBottom: 15 }}>Chọn các từ đã xuất hiện:</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                  {options.map(o => (
+                    <button key={o} onClick={() => toggle(o)} style={{ padding: '10px 14px', background: selected.includes(o) ? '#10b981' : 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>{o}</button>
+                  ))}
+                </div>
+                <button onClick={submit} style={{ marginTop: 15, padding: '12px 24px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>Kiểm tra</button>
+              </div>
+            )}
+            {phase === 'result' && <div><div style={{ fontSize: 18, marginTop: 10 }}>{msg}</div></div>}
+            {(phase === 'idle' || phase === 'result') && <button onClick={start} style={{ marginTop: 15, padding: '12px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>{phase === 'idle' ? '▶️ Bắt đầu' : 'Tiếp tục'}</button>}
+          </div>
+        </GameShell>
+      );
+    };
+
+    // ============= 7. ORDER =============
+    const GameOrder = () => {
+      const [level, setLevel] = useState(1);
+      const [phase, setPhase] = useState('idle');
+      const [seq, setSeq] = useState([]);
+      const [currentShow, setCurrentShow] = useState(null);
+      const [user, setUser] = useState([]);
+      const [msg, setMsg] = useState('');
+      const progress = loadProgress();
+      const best = progress.order || 0;
+      const ITEMS = ['🍎', '🍌', '🍇', '🍓', '🍊', '🥝', '🍑', '🍒', '🥭'];
+
+      const start = () => {
+        const count = 3 + level;
+        const s = Array.from({ length: count }, () => ITEMS[rand(ITEMS.length)]);
+        setSeq(s); setUser([]); setMsg(''); setPhase('show');
+        s.forEach((it, i) => {
+          setTimeout(() => setCurrentShow(it), i * 800 + 300);
+          setTimeout(() => setCurrentShow(null), i * 800 + 900);
+        });
+        setTimeout(() => setPhase('input'), s.length * 800 + 1200);
+      };
+
+      const click = (it) => {
+        if (phase !== 'input') return;
+        const u = [...user, it]; setUser(u);
+        if (u.length === seq.length) {
+          const ok = u.every((x, i) => x === seq[i]);
+          if (ok) { setMsg('✅ Đúng thứ tự!'); saveBest('order', level); setLevel(l => l + 1); }
+          else setMsg(`❌ Sai. Đúng: ${seq.join(' ')}`);
+          setPhase('result');
+        }
+      };
+
+      return (
+        <GameShell title="Thứ Tự" emoji="⏱️" gameId="order" level={level} best={best}>
+          <div style={{ textAlign: 'center' }}>
+            {phase === 'show' && <div style={{ fontSize: 100, minHeight: 120 }}>{currentShow || ''}</div>}
+            {phase === 'input' && (
+              <div>
+                <p style={{ marginBottom: 15 }}>Chạm theo đúng thứ tự đã hiện:</p>
+                <div style={{ fontSize: 20, marginBottom: 15 }}>Đã chọn: {user.join(' ')} ({user.length}/{seq.length})</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+                  {ITEMS.map(it => (
+                    <button key={it} onClick={() => click(it)} style={{ fontSize: 36, padding: 10, background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 10, cursor: 'pointer' }}>{it}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {phase === 'result' && <div><div style={{ fontSize: 20, marginTop: 10 }}>{msg}</div></div>}
+            {(phase === 'idle' || phase === 'result') && <button onClick={start} style={{ marginTop: 15, padding: '12px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>{phase === 'idle' ? '▶️ Bắt đầu' : 'Tiếp tục'}</button>}
+          </div>
+        </GameShell>
+      );
+    };
+
+    // ============= 8. AUDIO =============
+    const GameAudio = () => {
+      const [level, setLevel] = useState(1);
+      const [phase, setPhase] = useState('idle');
+      const [seq, setSeq] = useState([]);
+      const [userIdx, setUserIdx] = useState(0);
+      const [active, setActive] = useState(-1);
+      const [msg, setMsg] = useState('');
+      const progress = loadProgress();
+      const best = progress.audio || 0;
+      const NOTES = [
+        { name: 'Đô', freq: 262, color: '#ef4444' },
+        { name: 'Rê', freq: 294, color: '#f97316' },
+        { name: 'Mi', freq: 330, color: '#eab308' },
+        { name: 'Fa', freq: 349, color: '#10b981' },
+        { name: 'Sol', freq: 392, color: '#3b82f6' },
+        { name: 'La', freq: 440, color: '#8b5cf6' },
+      ];
+
+      const start = () => {
+        const count = 2 + level;
+        const s = Array.from({ length: count }, () => rand(NOTES.length));
+        setSeq(s); setUserIdx(0); setMsg(''); setPhase('show');
+        s.forEach((n, i) => {
+          setTimeout(() => { setActive(n); playTone(NOTES[n].freq, 400); }, i * 600 + 400);
+          setTimeout(() => setActive(-1), i * 600 + 800);
+        });
+        setTimeout(() => setPhase('input'), s.length * 600 + 1200);
+      };
+
+      const click = (i) => {
+        if (phase !== 'input') return;
+        setActive(i); playTone(NOTES[i].freq, 300);
+        setTimeout(() => setActive(-1), 300);
+        if (seq[userIdx] === i) {
+          if (userIdx + 1 === seq.length) { setMsg('✅ Đúng nhạc!'); saveBest('audio', level); setLevel(l => l + 1); setPhase('result'); }
+          else setUserIdx(userIdx + 1);
+        } else { setMsg('❌ Sai nốt!'); setPhase('result'); }
+      };
+
+      return (
+        <GameShell title="Nốt Nhạc" emoji="🔊" gameId="audio" level={level} best={best}>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ marginBottom: 15, opacity: 0.9 }}>Nghe kỹ và bấm lại đúng thứ tự</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+              {NOTES.map((n, i) => (
+                <button key={i} onClick={() => click(i)} disabled={phase !== 'input'} style={{ width: 80, height: 100, background: n.color, opacity: active === i ? 1 : 0.6, border: active === i ? '4px solid white' : '4px solid transparent', borderRadius: 12, cursor: phase === 'input' ? 'pointer' : 'default', color: 'white', fontSize: 18, fontWeight: 'bold' }}>{n.name}</button>
+              ))}
+            </div>
+            <div style={{ marginTop: 15 }}>{msg}</div>
+            {(phase === 'idle' || phase === 'result') && <button onClick={start} style={{ marginTop: 10, padding: '12px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>{phase === 'idle' ? '▶️ Bắt đầu' : 'Tiếp tục'}</button>}
+          </div>
+        </GameShell>
+      );
+    };
+
+    // ============= 9. VISUAL FLASH =============
+    const GameVisual = () => {
+      const [level, setLevel] = useState(1);
+      const [phase, setPhase] = useState('idle');
+      const [flash, setFlash] = useState([]);
+      const [options, setOptions] = useState([]);
+      const [selected, setSelected] = useState([]);
+      const [msg, setMsg] = useState('');
+      const progress = loadProgress();
+      const best = progress.visual || 0;
+      const EMOJI = ['🐶', '🐱', '🦁', '🐵', '🐸', '🦉', '🐧', '🐢', '🦄', '🐝', '🦋', '🐠', '🦀', '🐙', '🦖', '🐉'];
+
+      const start = () => {
+        const count = 3 + level;
+        const f = shuffle(EMOJI).slice(0, count);
+        const decoy = shuffle(EMOJI.filter(e => !f.includes(e))).slice(0, Math.min(4, count));
+        setFlash(f); setOptions(shuffle([...f, ...decoy])); setSelected([]); setMsg(''); setPhase('show');
+        setTimeout(() => setPhase('input'), 2000);
+      };
+
+      const toggle = (e) => {
+        if (phase !== 'input') return;
+        setSelected(s => s.includes(e) ? s.filter(x => x !== e) : [...s, e]);
+      };
+
+      const submit = () => {
+        const ok = flash.every(f => selected.includes(f)) && selected.every(s => flash.includes(s));
+        if (ok) { setMsg('✅ Nhớ hết!'); saveBest('visual', level); setLevel(l => l + 1); }
+        else setMsg(`❌ Đúng: ${flash.join(' ')}`);
+        setPhase('result');
+      };
+
+      return (
+        <GameShell title="Flash Nhớ" emoji="👁️" gameId="visual" level={level} best={best}>
+          <div style={{ textAlign: 'center' }}>
+            {phase === 'show' && (
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: 20, borderRadius: 12 }}>
+                <p style={{ marginBottom: 10 }}>Nhìn kỹ (2 giây):</p>
+                <div style={{ fontSize: 48 }}>{flash.join(' ')}</div>
+              </div>
+            )}
+            {phase === 'input' && (
+              <div>
+                <p style={{ marginBottom: 15 }}>Chọn các biểu tượng đã thấy:</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxWidth: 500, margin: '0 auto' }}>
+                  {options.map(o => (
+                    <button key={o} onClick={() => toggle(o)} style={{ fontSize: 36, padding: 10, background: selected.includes(o) ? '#10b981' : 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 10, cursor: 'pointer' }}>{o}</button>
+                  ))}
+                </div>
+                <button onClick={submit} style={{ marginTop: 15, padding: '12px 24px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>Kiểm tra</button>
+              </div>
+            )}
+            {phase === 'result' && <div><div style={{ fontSize: 20, marginTop: 10 }}>{msg}</div></div>}
+            {(phase === 'idle' || phase === 'result') && <button onClick={start} style={{ marginTop: 15, padding: '12px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>{phase === 'idle' ? '▶️ Bắt đầu' : 'Tiếp tục'}</button>}
+          </div>
+        </GameShell>
+      );
+    };
+
+    // ============= 10. MIX =============
+    const GameMix = () => {
+      const [level, setLevel] = useState(1);
+      const [phase, setPhase] = useState('idle');
+      const [data, setData] = useState(null);
+      const [input, setInput] = useState({});
+      const [msg, setMsg] = useState('');
+      const progress = loadProgress();
+      const best = progress.mix || 0;
+
+      const start = () => {
+        // generate: number + color + emoji + word
+        const num = Array.from({ length: 2 + Math.min(level, 4) }, () => rand(10)).join('');
+        const COLORS = ['Đỏ', 'Xanh', 'Vàng', 'Tím'];
+        const color = COLORS[rand(COLORS.length)];
+        const emojiBank = ['🌸', '🌻', '🌹', '🌷', '🍀', '🌵'];
+        const emoji = emojiBank[rand(emojiBank.length)];
+        const wordBank = ['gió', 'nắng', 'mưa', 'mây', 'sao', 'trăng'];
+        const word = wordBank[rand(wordBank.length)];
+        setData({ num, color, emoji, word, COLORS, emojiBank, wordBank });
+        setInput({}); setMsg(''); setPhase('show');
+        setTimeout(() => setPhase('input'), 3000 + level * 500);
+      };
+
+      const submit = () => {
+        if (!data) return;
+        const ok = input.num === data.num && input.color === data.color && input.emoji === data.emoji && input.word === data.word;
+        if (ok) { setMsg('✅ Nhớ hết!'); saveBest('mix', level); setLevel(l => l + 1); }
+        else setMsg(`❌ Đúng: ${data.num} / ${data.color} / ${data.emoji} / ${data.word}`);
+        setPhase('result');
+      };
+
+      return (
+        <GameShell title="Tổng Hợp" emoji="🎲" gameId="mix" level={level} best={best}>
+          <div style={{ textAlign: 'center' }}>
+            {phase === 'show' && data && (
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: 25, borderRadius: 12 }}>
+                <p style={{ marginBottom: 10, opacity: 0.9 }}>Ghi nhớ 4 điều sau:</p>
+                <div style={{ fontSize: 28, lineHeight: 1.8 }}>
+                  <div>🔢 Số: <b>{data.num}</b></div>
+                  <div>🎨 Màu: <b>{data.color}</b></div>
+                  <div>✨ Hình: <b style={{ fontSize: 40 }}>{data.emoji}</b></div>
+                  <div>📝 Từ: <b>{data.word}</b></div>
+                </div>
+              </div>
+            )}
+            {phase === 'input' && data && (
+              <div style={{ textAlign: 'left', maxWidth: 400, margin: '0 auto' }}>
+                <div style={{ marginBottom: 12 }}>
+                  <label>Số: </label>
+                  <input value={input.num || ''} onChange={e => setInput({ ...input, num: e.target.value.replace(/\D/g, '') })} style={{ padding: 8, fontSize: 18, borderRadius: 6, border: 'none', width: 150 }} />
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <div>Màu:</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {data.COLORS.map(c => <button key={c} onClick={() => setInput({ ...input, color: c })} style={{ padding: '6px 12px', background: input.color === c ? '#10b981' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: 6, cursor: 'pointer' }}>{c}</button>)}
+                  </div>
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <div>Hình:</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {data.emojiBank.map(e => <button key={e} onClick={() => setInput({ ...input, emoji: e })} style={{ padding: 6, fontSize: 24, background: input.emoji === e ? '#10b981' : 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6, cursor: 'pointer' }}>{e}</button>)}
+                  </div>
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <div>Từ:</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {data.wordBank.map(w => <button key={w} onClick={() => setInput({ ...input, word: w })} style={{ padding: '6px 12px', background: input.word === w ? '#10b981' : 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: 6, cursor: 'pointer' }}>{w}</button>)}
+                  </div>
+                </div>
+                <button onClick={submit} style={{ padding: '12px 24px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer', width: '100%' }}>Kiểm tra</button>
+              </div>
+            )}
+            {phase === 'result' && <div><div style={{ fontSize: 18, marginTop: 10 }}>{msg}</div></div>}
+            {(phase === 'idle' || phase === 'result') && <button onClick={start} style={{ marginTop: 15, padding: '12px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, cursor: 'pointer' }}>{phase === 'idle' ? '▶️ Bắt đầu' : 'Tiếp tục'}</button>}
+          </div>
+        </GameShell>
+      );
+    };
+
+    // ============= ROUTER =============
+    const App = () => {
+      const [route, setRoute] = useState(window.location.hash.slice(1));
+      useEffect(() => {
+        const h = () => setRoute(window.location.hash.slice(1));
+        window.addEventListener('hashchange', h);
+        return () => window.removeEventListener('hashchange', h);
+      }, []);
+      const map = {
+        digits: GameDigits, colors: GameColors, shapes: GameShapes, positions: GamePositions,
+        faces: GameFaces, words: GameWords, order: GameOrder, audio: GameAudio,
+        visual: GameVisual, mix: GameMix,
+      };
+      const C = map[route];
+      return C ? <C /> : <Hub />;
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

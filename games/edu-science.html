@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔬 Khoa Học — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #064e3b; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const GAMES = [
+      { id: 'body', icon: '🫀', name: 'Cơ Thể Người', desc: 'Cơ quan và chức năng', color: '#ef4444' },
+      { id: 'plant', icon: '🌱', name: 'Bộ Phận Cây', desc: 'Rễ, thân, lá, hoa, quả', color: '#22c55e' },
+      { id: 'animal', icon: '🐾', name: 'Phân Loại Động Vật', desc: 'Có vú, bò sát, chim, cá', color: '#f59e0b' },
+      { id: 'weather', icon: '🌦️', name: 'Thời Tiết', desc: 'Hiện tượng khí quyển', color: '#06b6d4' },
+      { id: 'planet', icon: '🪐', name: 'Hệ Mặt Trời', desc: 'Các hành tinh', color: '#8b5cf6' },
+      { id: 'chemistry', icon: '⚗️', name: 'Trạng Thái Vật Chất', desc: 'Rắn, lỏng, khí', color: '#ec4899' },
+      { id: 'physics', icon: '⚡', name: 'Lực & Chuyển Động', desc: 'Vật lý cơ bản', color: '#f97316' },
+      { id: 'electric', icon: '💡', name: 'Điện Học', desc: 'Mạch điện, dòng điện', color: '#eab308' },
+      { id: 'ecosystem', icon: '🌳', name: 'Hệ Sinh Thái', desc: 'Chuỗi thức ăn', color: '#10b981' },
+      { id: 'human', icon: '🧑', name: 'Giác Quan', desc: 'Các giác quan', color: '#3b82f6' },
+    ];
+
+    const STORAGE_KEY = 'eduScienceProgress';
+    const loadProgress = () => {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+      catch { return {}; }
+    };
+    const saveHigh = (id, score) => {
+      const p = loadProgress();
+      if (!p[id] || score > p[id]) { p[id] = score; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); return true; }
+      return false;
+    };
+
+    const shuffle = arr => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+    // Question banks
+    const QUESTIONS = {
+      body: [
+        { q: 'Cơ quan nào bơm máu đi khắp cơ thể?', a: 'Tim', opts: ['Tim', 'Phổi', 'Gan', 'Thận'] },
+        { q: 'Phổi có chức năng chính là gì?', a: 'Hô hấp (trao đổi khí)', opts: ['Hô hấp (trao đổi khí)', 'Tiêu hóa', 'Bài tiết', 'Bơm máu'] },
+        { q: 'Dạ dày thuộc hệ cơ quan nào?', a: 'Tiêu hóa', opts: ['Tiêu hóa', 'Hô hấp', 'Tuần hoàn', 'Thần kinh'] },
+        { q: 'Não nằm ở đâu?', a: 'Trong hộp sọ', opts: ['Trong hộp sọ', 'Trong ngực', 'Trong bụng', 'Trong lưng'] },
+        { q: 'Cơ quan lọc máu và tạo nước tiểu là?', a: 'Thận', opts: ['Thận', 'Tim', 'Phổi', 'Gan'] },
+        { q: 'Xương người trưởng thành có khoảng bao nhiêu chiếc?', a: '206', opts: ['206', '100', '300', '500'] },
+        { q: 'Máu được vận chuyển trong?', a: 'Mạch máu', opts: ['Mạch máu', 'Dây thần kinh', 'Xương', 'Da'] },
+        { q: 'Gan có nhiệm vụ gì?', a: 'Lọc độc và tiết mật', opts: ['Lọc độc và tiết mật', 'Bơm máu', 'Hô hấp', 'Suy nghĩ'] },
+        { q: 'Ruột non có chức năng gì?', a: 'Hấp thụ chất dinh dưỡng', opts: ['Hấp thụ chất dinh dưỡng', 'Hô hấp', 'Bơm máu', 'Lọc máu'] },
+        { q: 'Cơ quan nào điều khiển các hoạt động của cơ thể?', a: 'Não', opts: ['Não', 'Tim', 'Gan', 'Dạ dày'] },
+        { q: 'Hệ cơ có chức năng?', a: 'Vận động', opts: ['Vận động', 'Hô hấp', 'Tiêu hóa', 'Lọc máu'] },
+        { q: 'Lớp bao phủ ngoài cơ thể là?', a: 'Da', opts: ['Da', 'Xương', 'Cơ', 'Tóc'] },
+      ],
+      plant: [
+        { q: 'Bộ phận nào hút nước và chất dinh dưỡng?', a: 'Rễ', opts: ['Rễ', 'Lá', 'Hoa', 'Quả'] },
+        { q: 'Bộ phận nào giúp cây quang hợp?', a: 'Lá', opts: ['Lá', 'Rễ', 'Thân', 'Hạt'] },
+        { q: 'Bộ phận nào giữ cây đứng vững?', a: 'Thân', opts: ['Thân', 'Lá', 'Hoa', 'Quả'] },
+        { q: 'Bộ phận nào tạo ra hạt?', a: 'Hoa', opts: ['Hoa', 'Rễ', 'Lá', 'Thân'] },
+        { q: 'Quang hợp cần gì?', a: 'Ánh sáng, nước, CO2', opts: ['Ánh sáng, nước, CO2', 'Đất và đá', 'Bóng tối', 'Oxy'] },
+        { q: 'Cây thải ra khí gì trong quang hợp?', a: 'Oxy', opts: ['Oxy', 'CO2', 'Nitơ', 'Hơi nước'] },
+        { q: 'Hạt nảy mầm cần gì?', a: 'Nước, không khí, nhiệt độ', opts: ['Nước, không khí, nhiệt độ', 'Bóng tối hoàn toàn', 'Muối', 'Băng'] },
+        { q: 'Cây xương rồng sống ở đâu?', a: 'Sa mạc', opts: ['Sa mạc', 'Biển', 'Tuyết', 'Hang động'] },
+        { q: 'Quả dùng để?', a: 'Bảo vệ và phát tán hạt', opts: ['Bảo vệ và phát tán hạt', 'Hút nước', 'Quang hợp', 'Giữ cây đứng'] },
+        { q: 'Mạch gỗ vận chuyển?', a: 'Nước từ rễ lên lá', opts: ['Nước từ rễ lên lá', 'Không khí', 'Chất dinh dưỡng xuống rễ', 'Ánh sáng'] },
+        { q: 'Cây cần gì để sống?', a: 'Nước, ánh sáng, không khí, đất', opts: ['Nước, ánh sáng, không khí, đất', 'Chỉ có nước', 'Chỉ có ánh sáng', 'Chỉ có đất'] },
+        { q: 'Màu xanh của lá do chất gì?', a: 'Diệp lục', opts: ['Diệp lục', 'Nước', 'Máu', 'Đường'] },
+      ],
+      animal: [
+        { q: 'Động vật nào là động vật có vú?', a: 'Chó', opts: ['Chó', 'Rắn', 'Chim bồ câu', 'Cá chép'] },
+        { q: 'Động vật nào là bò sát?', a: 'Rắn', opts: ['Rắn', 'Mèo', 'Vẹt', 'Ếch'] },
+        { q: 'Động vật nào là chim?', a: 'Chim sẻ', opts: ['Chim sẻ', 'Cá vàng', 'Tắc kè', 'Dơi'] },
+        { q: 'Cá thở bằng?', a: 'Mang', opts: ['Mang', 'Phổi', 'Da', 'Mũi'] },
+        { q: 'Động vật có vú nuôi con bằng gì?', a: 'Sữa mẹ', opts: ['Sữa mẹ', 'Hạt', 'Côn trùng', 'Lá'] },
+        { q: 'Ếch thuộc lớp nào?', a: 'Lưỡng cư', opts: ['Lưỡng cư', 'Bò sát', 'Chim', 'Cá'] },
+        { q: 'Loài nào đẻ trứng?', a: 'Gà', opts: ['Gà', 'Bò', 'Heo', 'Cừu'] },
+        { q: 'Côn trùng có mấy chân?', a: '6', opts: ['6', '4', '8', '10'] },
+        { q: 'Nhện có mấy chân?', a: '8', opts: ['8', '6', '4', '10'] },
+        { q: 'Dơi là loài?', a: 'Động vật có vú', opts: ['Động vật có vú', 'Chim', 'Bò sát', 'Côn trùng'] },
+        { q: 'Cá heo thuộc loài?', a: 'Động vật có vú', opts: ['Động vật có vú', 'Cá', 'Bò sát', 'Lưỡng cư'] },
+        { q: 'Rùa thuộc lớp?', a: 'Bò sát', opts: ['Bò sát', 'Lưỡng cư', 'Cá', 'Chim'] },
+      ],
+      weather: [
+        { q: 'Nước trong mây ngưng tụ tạo thành?', a: 'Mưa', opts: ['Mưa', 'Gió', 'Nắng', 'Bão cát'] },
+        { q: 'Hiện tượng không khí chuyển động là?', a: 'Gió', opts: ['Gió', 'Mưa', 'Sấm', 'Cầu vồng'] },
+        { q: 'Tuyết rơi khi nhiệt độ?', a: 'Dưới 0°C', opts: ['Dưới 0°C', 'Trên 30°C', 'Khoảng 20°C', '100°C'] },
+        { q: 'Sấm là âm thanh của?', a: 'Sét đánh', opts: ['Sét đánh', 'Gió thổi', 'Mưa rơi', 'Núi lửa'] },
+        { q: 'Cầu vồng xuất hiện do?', a: 'Ánh sáng mặt trời qua hạt mưa', opts: ['Ánh sáng mặt trời qua hạt mưa', 'Gió mạnh', 'Sét đánh', 'Tuyết tan'] },
+        { q: 'Bão hình thành ở đâu?', a: 'Trên biển nhiệt đới', opts: ['Trên biển nhiệt đới', 'Trong hang động', 'Sa mạc lạnh', 'Núi cao'] },
+        { q: 'Sương mù là?', a: 'Hơi nước ngưng tụ sát mặt đất', opts: ['Hơi nước ngưng tụ sát mặt đất', 'Khói bụi', 'Mây tích điện', 'Gió mạnh'] },
+        { q: 'Mùa nào thường có nhiều mưa nhất ở Việt Nam?', a: 'Mùa hè', opts: ['Mùa hè', 'Mùa đông', 'Mùa xuân', 'Mùa thu'] },
+        { q: 'Thiết bị đo nhiệt độ là?', a: 'Nhiệt kế', opts: ['Nhiệt kế', 'Cân', 'Thước', 'Đồng hồ'] },
+        { q: 'Nước bốc hơi thành?', a: 'Hơi nước', opts: ['Hơi nước', 'Đá', 'Tuyết', 'Băng'] },
+        { q: 'Lốc xoáy khác bão ở điểm?', a: 'Phạm vi nhỏ và xoáy mạnh', opts: ['Phạm vi nhỏ và xoáy mạnh', 'Chỉ có ở biển', 'Không có gió', 'Không có mưa'] },
+        { q: 'Trời nắng to nhất vào?', a: 'Buổi trưa', opts: ['Buổi trưa', 'Nửa đêm', 'Sáng sớm', 'Chiều tối'] },
+      ],
+      planet: [
+        { q: 'Hành tinh gần Mặt Trời nhất?', a: 'Sao Thủy', opts: ['Sao Thủy', 'Sao Kim', 'Trái Đất', 'Sao Hỏa'] },
+        { q: 'Hành tinh nào gọi là "hành tinh đỏ"?', a: 'Sao Hỏa', opts: ['Sao Hỏa', 'Sao Kim', 'Sao Mộc', 'Sao Thủy'] },
+        { q: 'Hành tinh lớn nhất hệ Mặt Trời?', a: 'Sao Mộc', opts: ['Sao Mộc', 'Sao Thổ', 'Trái Đất', 'Sao Hải Vương'] },
+        { q: 'Hành tinh có vành đai nổi bật?', a: 'Sao Thổ', opts: ['Sao Thổ', 'Sao Mộc', 'Sao Kim', 'Sao Hỏa'] },
+        { q: 'Hành tinh chúng ta đang sống?', a: 'Trái Đất', opts: ['Trái Đất', 'Sao Kim', 'Sao Hỏa', 'Sao Mộc'] },
+        { q: 'Mặt Trăng là?', a: 'Vệ tinh của Trái Đất', opts: ['Vệ tinh của Trái Đất', 'Ngôi sao', 'Hành tinh', 'Thiên thạch'] },
+        { q: 'Mặt Trời là?', a: 'Ngôi sao', opts: ['Ngôi sao', 'Hành tinh', 'Vệ tinh', 'Thiên thạch'] },
+        { q: 'Hệ Mặt Trời có bao nhiêu hành tinh?', a: '8', opts: ['8', '9', '7', '10'] },
+        { q: 'Trái Đất quay quanh cái gì?', a: 'Mặt Trời', opts: ['Mặt Trời', 'Mặt Trăng', 'Sao Thủy', 'Sao chổi'] },
+        { q: 'Một năm Trái Đất bằng?', a: '365 ngày', opts: ['365 ngày', '100 ngày', '500 ngày', '30 ngày'] },
+        { q: 'Thứ tự các hành tinh từ gần Mặt Trời nhất là?', a: 'Thủy, Kim, Đất, Hỏa', opts: ['Thủy, Kim, Đất, Hỏa', 'Đất, Kim, Thủy, Hỏa', 'Hỏa, Đất, Kim, Thủy', 'Mộc, Thổ, Kim, Thủy'] },
+        { q: 'Ban ngày có do?', a: 'Trái Đất tự quay', opts: ['Trái Đất tự quay', 'Mặt Trời mọc lên bầu trời', 'Mây tan', 'Mặt Trăng biến mất'] },
+      ],
+      chemistry: [
+        { q: 'Nước ở nhiệt độ phòng là trạng thái?', a: 'Lỏng', opts: ['Lỏng', 'Rắn', 'Khí', 'Plasma'] },
+        { q: 'Nước đá là trạng thái?', a: 'Rắn', opts: ['Rắn', 'Lỏng', 'Khí', 'Hỗn hợp'] },
+        { q: 'Hơi nước là trạng thái?', a: 'Khí', opts: ['Khí', 'Lỏng', 'Rắn', 'Đông đặc'] },
+        { q: 'Nước sôi ở nhiệt độ?', a: '100°C', opts: ['100°C', '0°C', '50°C', '200°C'] },
+        { q: 'Nước đóng băng ở nhiệt độ?', a: '0°C', opts: ['0°C', '100°C', '-50°C', '10°C'] },
+        { q: 'Chất nào là chất rắn?', a: 'Đá', opts: ['Đá', 'Nước', 'Không khí', 'Dầu ăn'] },
+        { q: 'Chất nào là chất khí?', a: 'Oxy', opts: ['Oxy', 'Nước', 'Đá', 'Dầu'] },
+        { q: 'Khi đun nước, nước chuyển từ?', a: 'Lỏng sang khí', opts: ['Lỏng sang khí', 'Rắn sang lỏng', 'Khí sang lỏng', 'Lỏng sang rắn'] },
+        { q: 'Khi nước đông lạnh chuyển từ?', a: 'Lỏng sang rắn', opts: ['Lỏng sang rắn', 'Khí sang lỏng', 'Rắn sang khí', 'Lỏng sang khí'] },
+        { q: 'Sương mù là hơi nước ở dạng?', a: 'Lỏng (giọt nhỏ)', opts: ['Lỏng (giọt nhỏ)', 'Rắn', 'Khí', 'Plasma'] },
+        { q: 'Chất rắn có đặc điểm?', a: 'Hình dạng và thể tích xác định', opts: ['Hình dạng và thể tích xác định', 'Không có hình dạng', 'Dễ nén', 'Bay hơi nhanh'] },
+        { q: 'Chất khí có thể?', a: 'Nén được và lan rộng', opts: ['Nén được và lan rộng', 'Giữ hình dạng cố định', 'Không thể di chuyển', 'Có thể tích cố định'] },
+      ],
+      physics: [
+        { q: 'Trọng lực kéo vật về?', a: 'Mặt đất', opts: ['Mặt đất', 'Bầu trời', 'Mặt Trăng', 'Mặt Trời'] },
+        { q: 'Lực ma sát xảy ra khi?', a: 'Hai vật tiếp xúc và chuyển động', opts: ['Hai vật tiếp xúc và chuyển động', 'Vật đứng yên trong không khí', 'Vật bay trong chân không', 'Vật chìm trong nước'] },
+        { q: 'Muốn đẩy xe đi cần?', a: 'Dùng lực', opts: ['Dùng lực', 'Nhìn chăm chú', 'Nói to', 'Hít thở'] },
+        { q: 'Vận tốc là gì?', a: 'Quãng đường đi trong 1 đơn vị thời gian', opts: ['Quãng đường đi trong 1 đơn vị thời gian', 'Kích thước vật', 'Khối lượng', 'Thể tích'] },
+        { q: 'Đơn vị lực là?', a: 'Newton (N)', opts: ['Newton (N)', 'Mét (m)', 'Kilogam (kg)', 'Giây (s)'] },
+        { q: 'Khi bạn đứng yên, bạn có chịu lực không?', a: 'Có, trọng lực', opts: ['Có, trọng lực', 'Không có lực nào', 'Chỉ có lực ma sát', 'Chỉ có lực điện'] },
+        { q: 'Nam châm hút được?', a: 'Sắt', opts: ['Sắt', 'Gỗ', 'Giấy', 'Nhựa'] },
+        { q: 'Vật rơi xuống là do?', a: 'Trọng lực', opts: ['Trọng lực', 'Gió', 'Áp suất', 'Ma sát'] },
+        { q: 'Thả bóng từ cao xuống thì nó?', a: 'Rơi xuống đất', opts: ['Rơi xuống đất', 'Bay lên', 'Đứng yên', 'Biến mất'] },
+        { q: 'Lực nào giúp xe đạp dừng lại?', a: 'Ma sát của phanh', opts: ['Ma sát của phanh', 'Trọng lực', 'Lực điện', 'Lực từ'] },
+        { q: 'Đơn vị khối lượng là?', a: 'Kilogam', opts: ['Kilogam', 'Mét', 'Giây', 'Newton'] },
+        { q: 'Vật càng nặng thì?', a: 'Trọng lực càng lớn', opts: ['Trọng lực càng lớn', 'Trọng lực càng nhỏ', 'Không có trọng lực', 'Bay lên được'] },
+      ],
+      electric: [
+        { q: 'Dòng điện chạy trong?', a: 'Dây dẫn kín', opts: ['Dây dẫn kín', 'Dây hở', 'Không khí thường', 'Gỗ khô'] },
+        { q: 'Pin cung cấp gì?', a: 'Dòng điện', opts: ['Dòng điện', 'Ánh sáng mặt trời', 'Gió', 'Nhiệt độ'] },
+        { q: 'Chất dẫn điện tốt là?', a: 'Đồng', opts: ['Đồng', 'Nhựa', 'Gỗ', 'Cao su'] },
+        { q: 'Chất cách điện là?', a: 'Nhựa', opts: ['Nhựa', 'Đồng', 'Sắt', 'Nhôm'] },
+        { q: 'Bóng đèn sáng được nhờ?', a: 'Dòng điện chạy qua', opts: ['Dòng điện chạy qua', 'Nước chảy qua', 'Nhiệt độ lạnh', 'Bóng tối'] },
+        { q: 'Công tắc dùng để?', a: 'Đóng/ngắt mạch điện', opts: ['Đóng/ngắt mạch điện', 'Làm sáng đèn', 'Đo nhiệt độ', 'Tạo ra điện'] },
+        { q: 'Nguy hiểm nào khi dùng điện?', a: 'Điện giật', opts: ['Điện giật', 'Bị ướt', 'Bị lạnh', 'Bị đói'] },
+        { q: 'Mạch điện đơn giản gồm?', a: 'Nguồn, dây dẫn, bóng đèn', opts: ['Nguồn, dây dẫn, bóng đèn', 'Chỉ có dây', 'Chỉ có pin', 'Chỉ có đèn'] },
+        { q: 'Đơn vị cường độ dòng điện?', a: 'Ampe (A)', opts: ['Ampe (A)', 'Vôn (V)', 'Oát (W)', 'Ôm (Ω)'] },
+        { q: 'Đơn vị hiệu điện thế?', a: 'Vôn (V)', opts: ['Vôn (V)', 'Ampe (A)', 'Oát (W)', 'Newton'] },
+        { q: 'Không được làm gì với ổ điện?', a: 'Chọc vật kim loại vào', opts: ['Chọc vật kim loại vào', 'Cắm phích cắm đúng cách', 'Rút phích cẩn thận', 'Lau khô tay trước'] },
+        { q: 'Nguồn điện trong nhà từ đâu?', a: 'Nhà máy điện', opts: ['Nhà máy điện', 'Mặt trăng', 'Gió tự nhiên trong nhà', 'Tự sinh'] },
+      ],
+      ecosystem: [
+        { q: 'Sinh vật tạo ra thức ăn từ quang hợp là?', a: 'Cây xanh', opts: ['Cây xanh', 'Hổ', 'Chim', 'Cá'] },
+        { q: 'Chuỗi thức ăn bắt đầu từ?', a: 'Thực vật', opts: ['Thực vật', 'Động vật ăn thịt', 'Vi khuẩn', 'Nấm'] },
+        { q: 'Động vật ăn cỏ là?', a: 'Bò', opts: ['Bò', 'Hổ', 'Sư tử', 'Đại bàng'] },
+        { q: 'Động vật ăn thịt là?', a: 'Hổ', opts: ['Hổ', 'Thỏ', 'Bò', 'Dê'] },
+        { q: 'Vai trò của phân hủy?', a: 'Trả chất dinh dưỡng về đất', opts: ['Trả chất dinh dưỡng về đất', 'Tạo ra ánh sáng', 'Làm hại cây', 'Sinh ra nước'] },
+        { q: 'Sinh vật phân hủy gồm?', a: 'Nấm, vi khuẩn', opts: ['Nấm, vi khuẩn', 'Hổ, báo', 'Cá, tôm', 'Chim, bướm'] },
+        { q: 'Ví dụ chuỗi thức ăn đúng?', a: 'Cỏ → Thỏ → Cáo', opts: ['Cỏ → Thỏ → Cáo', 'Cáo → Thỏ → Cỏ', 'Thỏ → Cỏ → Cáo', 'Cáo → Cỏ → Thỏ'] },
+        { q: 'Hệ sinh thái rừng có?', a: 'Cây, động vật, đất, nước', opts: ['Cây, động vật, đất, nước', 'Chỉ có cây', 'Chỉ có động vật', 'Chỉ có đá'] },
+        { q: 'Rừng có vai trò?', a: 'Cho oxy, giữ nước, chắn gió', opts: ['Cho oxy, giữ nước, chắn gió', 'Gây ô nhiễm', 'Tạo bão', 'Hủy sinh thái'] },
+        { q: 'Sinh vật nào là sinh vật tiêu thụ bậc 1?', a: 'Động vật ăn thực vật', opts: ['Động vật ăn thực vật', 'Cây xanh', 'Động vật ăn thịt', 'Vi khuẩn'] },
+        { q: 'Môi trường sống của cá là?', a: 'Nước', opts: ['Nước', 'Sa mạc', 'Trên cạn', 'Trong lửa'] },
+        { q: 'Ô nhiễm môi trường gây ra bởi?', a: 'Rác thải và khí thải', opts: ['Rác thải và khí thải', 'Cây xanh', 'Mưa', 'Nắng'] },
+      ],
+      human: [
+        { q: 'Mắt giúp ta?', a: 'Nhìn', opts: ['Nhìn', 'Nghe', 'Ngửi', 'Nếm'] },
+        { q: 'Tai giúp ta?', a: 'Nghe', opts: ['Nghe', 'Nhìn', 'Ngửi', 'Sờ'] },
+        { q: 'Mũi giúp ta?', a: 'Ngửi', opts: ['Ngửi', 'Nghe', 'Nhìn', 'Nếm'] },
+        { q: 'Lưỡi giúp ta?', a: 'Nếm vị', opts: ['Nếm vị', 'Nhìn', 'Nghe', 'Ngửi'] },
+        { q: 'Da giúp ta?', a: 'Xúc giác (cảm nhận)', opts: ['Xúc giác (cảm nhận)', 'Nhìn', 'Nghe', 'Nếm'] },
+        { q: 'Có bao nhiêu giác quan chính?', a: '5', opts: ['5', '3', '7', '10'] },
+        { q: 'Vị nào sau đây là vị cơ bản?', a: 'Ngọt', opts: ['Ngọt', 'Xanh', 'Tròn', 'Nặng'] },
+        { q: 'Khi bị cận thị, ta cần?', a: 'Đeo kính', opts: ['Đeo kính', 'Bịt mắt', 'Đi chân', 'Đeo tai nghe'] },
+        { q: 'Khi bị điếc, ta khó?', a: 'Nghe âm thanh', opts: ['Nghe âm thanh', 'Nhìn', 'Ngửi', 'Nếm'] },
+        { q: 'Mùi thơm được cảm nhận bởi?', a: 'Mũi', opts: ['Mũi', 'Mắt', 'Tai', 'Lưỡi'] },
+        { q: 'Giác quan nào giúp phân biệt nóng, lạnh?', a: 'Xúc giác (da)', opts: ['Xúc giác (da)', 'Thị giác', 'Thính giác', 'Khứu giác'] },
+        { q: 'Để bảo vệ mắt, ta nên?', a: 'Không nhìn trực tiếp vào mặt trời', opts: ['Không nhìn trực tiếp vào mặt trời', 'Nhìn lâu vào đèn sáng', 'Đọc trong bóng tối', 'Dụi mắt bẩn'] },
+      ],
+    };
+
+    function parseHash() {
+      const h = window.location.hash.replace('#', '');
+      return h && GAMES.find(g => g.id === h) ? h : '';
+    }
+
+    function App() {
+      const [route, setRoute] = useState(parseHash());
+      useEffect(() => {
+        const onHash = () => setRoute(parseHash());
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+      if (!route) return <Hub />;
+      return <Quiz gameId={route} />;
+    }
+
+    function Hub() {
+      const progress = loadProgress();
+      return (
+        <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto' }}>
+          <a href="../index.html" style={{ color: '#a7f3d0', textDecoration: 'none', fontSize: '16px' }}>← Trang chủ</a>
+          <h1 style={{ fontSize: 'clamp(28px,5vw,42px)', textAlign: 'center', marginTop: '10px', marginBottom: '8px' }}>🔬 Khoa Học</h1>
+          <p style={{ textAlign: 'center', color: '#a7f3d0', marginBottom: '30px', fontSize: '16px' }}>10 trò chơi học khoa học vui cho bé</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px' }}>
+            {GAMES.map(g => (
+              <a key={g.id} href={`#${g.id}`} style={{ textDecoration: 'none' }}>
+                <div style={{ background: g.color, borderRadius: '16px', padding: '18px', cursor: 'pointer', color: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', minHeight: '160px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '42px', marginBottom: '6px' }}>{g.icon}</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{g.name}</div>
+                    <div style={{ fontSize: '13px', opacity: 0.9, marginTop: '4px' }}>{g.desc}</div>
+                  </div>
+                  {progress[g.id] != null && (
+                    <div style={{ fontSize: '13px', marginTop: '8px', background: 'rgba(0,0,0,0.25)', padding: '4px 8px', borderRadius: '8px', display: 'inline-block', alignSelf: 'flex-start' }}>🏆 {progress[g.id]}</div>
+                  )}
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function buildRound(gameId) {
+      const bank = QUESTIONS[gameId] || [];
+      const count = Math.min(bank.length, 12);
+      return shuffle(bank).slice(0, count).map(item => ({
+        q: item.q,
+        a: item.a,
+        opts: shuffle(item.opts),
+      }));
+    }
+
+    function Quiz({ gameId }) {
+      const game = GAMES.find(g => g.id === gameId);
+      const [questions, setQuestions] = useState(() => buildRound(gameId));
+      const [idx, setIdx] = useState(0);
+      const [score, setScore] = useState(0);
+      const [sel, setSel] = useState(null);
+      const [done, setDone] = useState(false);
+      const [newHigh, setNewHigh] = useState(false);
+
+      const current = questions[idx];
+      const progress = loadProgress();
+      const high = progress[gameId] || 0;
+
+      const choose = (opt) => {
+        if (sel !== null) return;
+        setSel(opt);
+        const correct = opt === current.a;
+        const next = score + (correct ? 1 : 0);
+        if (correct) setScore(next);
+        setTimeout(() => {
+          if (idx + 1 >= questions.length) {
+            setDone(true);
+            const isNew = saveHigh(gameId, next);
+            setNewHigh(isNew);
+          } else {
+            setIdx(idx + 1);
+            setSel(null);
+          }
+        }, 900);
+      };
+
+      const restart = () => {
+        setQuestions(buildRound(gameId));
+        setIdx(0); setScore(0); setSel(null); setDone(false); setNewHigh(false);
+      };
+
+      if (done) {
+        const total = questions.length;
+        const pct = Math.round(score / total * 100);
+        return (
+          <div style={{ padding: '20px', maxWidth: '520px', margin: '0 auto', textAlign: 'center' }}>
+            <a href="#" onClick={() => { window.location.hash=''; }} style={{ color: '#a7f3d0', textDecoration: 'none', float: 'left' }}>← Hub</a>
+            <div style={{ clear: 'both', height: '20px' }} />
+            <div style={{ fontSize: '80px' }}>{game.icon}</div>
+            <h2 style={{ fontSize: '28px', marginBottom: '10px' }}>{game.name}</h2>
+            <div style={{ background: game.color, borderRadius: '20px', padding: '30px', marginTop: '20px', boxShadow: '0 6px 20px rgba(0,0,0,0.3)' }}>
+              <div style={{ fontSize: '20px', marginBottom: '10px' }}>Kết quả</div>
+              <div style={{ fontSize: '52px', fontWeight: 'bold' }}>{score}/{total}</div>
+              <div style={{ fontSize: '18px', marginTop: '6px' }}>{pct}% chính xác</div>
+              {newHigh && <div style={{ marginTop: '12px', fontSize: '18px', fontWeight: 'bold' }}>🎉 Kỷ lục mới!</div>}
+              <div style={{ marginTop: '10px', fontSize: '14px', opacity: 0.9 }}>Kỷ lục cao: {Math.max(high, score)}</div>
+            </div>
+            <button onClick={restart} style={{ marginTop: '20px', background: 'white', color: game.color, border: 'none', padding: '14px 30px', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>🔄 Chơi lại</button>
+            <br />
+            <button onClick={() => { window.location.hash=''; }} style={{ marginTop: '12px', background: 'rgba(255,255,255,0.2)', color: 'white', border: '2px solid white', padding: '10px 24px', borderRadius: '12px', fontSize: '16px', cursor: 'pointer' }}>🏠 Về Hub</button>
+          </div>
+        );
+      }
+
+      if (!current) {
+        return <div style={{ padding: '30px', textAlign: 'center' }}>Đang tải...</div>;
+      }
+
+      return (
+        <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <a href="#" onClick={() => { window.location.hash=''; }} style={{ color: '#a7f3d0', textDecoration: 'none' }}>← Hub</a>
+            <div style={{ fontSize: '14px', color: '#a7f3d0' }}>🏆 Kỷ lục: {high}</div>
+          </div>
+          <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+            <div style={{ fontSize: '48px' }}>{game.icon}</div>
+            <h2 style={{ fontSize: '22px', marginTop: '4px' }}>{game.name}</h2>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '10px', color: '#d1fae5' }}>
+            <div>Câu {idx + 1}/{questions.length}</div>
+            <div>Điểm: {score}</div>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.1)', height: '8px', borderRadius: '4px', overflow: 'hidden', marginBottom: '20px' }}>
+            <div style={{ background: game.color, height: '100%', width: `${(idx / questions.length) * 100}%`, transition: 'width 0.3s' }} />
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '16px', padding: '24px', marginBottom: '20px', minHeight: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ fontSize: '20px', textAlign: 'center', lineHeight: 1.4 }}>{current.q}</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
+            {current.opts.map((opt, i) => {
+              let bg = 'rgba(255,255,255,0.15)';
+              let border = '2px solid rgba(255,255,255,0.3)';
+              if (sel !== null) {
+                if (opt === current.a) { bg = '#10b981'; border = '2px solid #10b981'; }
+                else if (opt === sel) { bg = '#ef4444'; border = '2px solid #ef4444'; }
+              }
+              return (
+                <button key={i} onClick={() => choose(opt)} disabled={sel !== null} style={{ background: bg, color: 'white', border: border, padding: '14px 16px', borderRadius: '12px', fontSize: '16px', cursor: sel === null ? 'pointer' : 'default', textAlign: 'left' }}>
+                  {String.fromCharCode(65 + i)}. {opt}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

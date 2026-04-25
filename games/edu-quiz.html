@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>❓ Đố Vui — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1e3a8a; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const GAMES = [
+      { id: 'general',  icon: '🎓', name: 'Kiến Thức Chung',  desc: 'Câu đố tổng quát',         color: '#3b82f6' },
+      { id: 'sports',   icon: '⚽', name: 'Thể Thao',          desc: 'Môn thể thao thế giới',   color: '#22c55e' },
+      { id: 'music',    icon: '🎵', name: 'Âm Nhạc',            desc: 'Nhạc cụ & nhịp điệu',     color: '#a855f7' },
+      { id: 'movies',   icon: '🎬', name: 'Điện Ảnh',           desc: 'Kỹ thuật làm phim',       color: '#ef4444' },
+      { id: 'food',     icon: '🍜', name: 'Ẩm Thực',            desc: 'Món ăn thế giới',         color: '#f59e0b' },
+      { id: 'tech',     icon: '💻', name: 'Công Nghệ',          desc: 'Phát minh & máy tính',    color: '#06b6d4' },
+      { id: 'art',      icon: '🎨', name: 'Nghệ Thuật',         desc: 'Họa sĩ nổi tiếng',        color: '#ec4899' },
+      { id: 'nature',   icon: '🌿', name: 'Thiên Nhiên',        desc: 'Sinh thái & môi trường',  color: '#10b981' },
+      { id: 'mixed',    icon: '🎲', name: 'Tổng Hợp',            desc: 'Mọi chủ đề trộn lẫn',     color: '#8b5cf6' },
+      { id: 'trivia',   icon: '🎯', name: 'Fun Facts',           desc: 'Câu hỏi kỳ thú',          color: '#dc2626' },
+    ];
+
+    const loadProgress = () => {
+      try { return JSON.parse(localStorage.getItem('eduQuizProgress') || '{}'); }
+      catch { return {}; }
+    };
+    const saveHigh = (id, score) => {
+      const p = loadProgress();
+      if (!p[id] || score > p[id]) { p[id] = score; localStorage.setItem('eduQuizProgress', JSON.stringify(p)); return true; }
+      return false;
+    };
+
+    const shuffle = arr => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+    // ==================== QUESTION BANKS ====================
+    const Q_GENERAL = [
+      { q: 'Hành tinh nào lớn nhất Hệ Mặt Trời?', a: ['Sao Mộc','Sao Thổ','Trái Đất','Sao Hỏa'], c: 0 },
+      { q: 'Có bao nhiêu châu lục trên Trái Đất?', a: ['5','6','7','8'], c: 2 },
+      { q: 'Nước nào có diện tích lớn nhất thế giới?', a: ['Trung Quốc','Mỹ','Nga','Canada'], c: 2 },
+      { q: 'Đại dương lớn nhất là?', a: ['Đại Tây Dương','Thái Bình Dương','Ấn Độ Dương','Bắc Băng Dương'], c: 1 },
+      { q: 'Ngôn ngữ nào được nói nhiều nhất?', a: ['Tiếng Anh','Tiếng Tây Ban Nha','Tiếng Trung','Tiếng Hindi'], c: 2 },
+      { q: 'Sa mạc lớn nhất thế giới là?', a: ['Sahara','Gobi','Kalahari','Nam Cực'], c: 3 },
+      { q: 'Một năm có bao nhiêu ngày (năm thường)?', a: ['364','365','366','360'], c: 1 },
+      { q: 'Ngọn núi cao nhất thế giới là?', a: ['K2','Everest','Kilimanjaro','Alps'], c: 1 },
+      { q: 'Dòng sông dài nhất thế giới?', a: ['Amazon','Nile','Yangtze','Mississippi'], c: 1 },
+      { q: 'Nước có dân số đông nhất (2023)?', a: ['Trung Quốc','Ấn Độ','Mỹ','Indonesia'], c: 1 },
+      { q: 'Thủ đô nước Pháp là?', a: ['London','Berlin','Paris','Rome'], c: 2 },
+      { q: 'Màu cơ bản gồm?', a: ['Đỏ, xanh dương, vàng','Đỏ, xanh lá, xanh dương','Trắng, đen, xám','Vàng, cam, tím'], c: 0 },
+    ];
+
+    const Q_SPORTS = [
+      { q: 'Trận bóng đá có bao nhiêu cầu thủ trên sân mỗi đội?', a: ['9','10','11','12'], c: 2 },
+      { q: 'Môn thể thao nào dùng vợt và quả lông cầu?', a: ['Tennis','Cầu lông','Bóng bàn','Squash'], c: 1 },
+      { q: 'Một ván tennis có thể kết thúc ở tỉ số nào?', a: ['6-0','10-5','21-19','3-1'], c: 0 },
+      { q: 'Olympic được tổ chức bao nhiêu năm một lần?', a: ['2','3','4','5'], c: 2 },
+      { q: 'Môn thể thao vua trên thế giới là gì?', a: ['Bóng rổ','Bóng chày','Bóng đá','Golf'], c: 2 },
+      { q: 'Vòng đua Tour de France thuộc môn gì?', a: ['Chạy bộ','Đạp xe','Bơi','Ngựa'], c: 1 },
+      { q: 'Một đội bóng rổ trên sân có bao nhiêu người?', a: ['4','5','6','7'], c: 1 },
+      { q: 'Môn võ judo có nguồn gốc từ nước nào?', a: ['Trung Quốc','Hàn Quốc','Nhật Bản','Thái Lan'], c: 2 },
+      { q: 'Trong cờ vua, quân nào đi chéo?', a: ['Xe','Mã','Tượng','Tốt'], c: 2 },
+      { q: 'Bộ môn marathon có độ dài chuẩn là?', a: ['21 km','42,195 km','50 km','100 km'], c: 1 },
+      { q: 'Môn nào dùng ván và sóng biển?', a: ['Lướt sóng','Chèo thuyền','Lặn','Bơi'], c: 0 },
+      { q: 'Một set bóng chuyền thường kết thúc ở?', a: ['15 điểm','21 điểm','25 điểm','30 điểm'], c: 2 },
+    ];
+
+    const Q_MUSIC = [
+      { q: 'Nhạc cụ nào có 88 phím?', a: ['Đàn tranh','Piano','Guitar','Violin'], c: 1 },
+      { q: 'Violin thường có bao nhiêu dây?', a: ['3','4','5','6'], c: 1 },
+      { q: 'Trống là nhạc cụ thuộc họ nào?', a: ['Dây','Hơi','Gõ','Điện'], c: 2 },
+      { q: 'Nốt nhạc cơ bản gồm bao nhiêu nốt?', a: ['5','6','7','8'], c: 2 },
+      { q: 'Nhạc cụ nào chơi bằng cách thổi?', a: ['Guitar','Sáo','Piano','Trống'], c: 1 },
+      { q: 'Một nhịp 4/4 có bao nhiêu phách?', a: ['2','3','4','6'], c: 2 },
+      { q: 'Sáo trúc thường được làm từ?', a: ['Gỗ','Nhựa','Tre','Kim loại'], c: 2 },
+      { q: 'Ký hiệu khoá Sol dùng cho giọng nào?', a: ['Cao','Trung','Trầm','Nam'], c: 0 },
+      { q: 'Nhạc jazz xuất phát từ nước nào?', a: ['Anh','Pháp','Mỹ','Đức'], c: 2 },
+      { q: 'Đàn harp có điểm đặc trưng gì?', a: ['Nhiều dây đứng','Có phím','Dùng que','Có pedal gỗ'], c: 0 },
+      { q: 'Ba loại chính của dàn nhạc giao hưởng là?', a: ['Dây, hơi, gõ','Piano, guitar, trống','Nhạc dân tộc','Điện tử'], c: 0 },
+      { q: 'Tempo "Allegro" nghĩa là?', a: ['Chậm','Vừa','Nhanh','Rất chậm'], c: 2 },
+    ];
+
+    const Q_MOVIES = [
+      { q: 'Phim không có lời thoại gọi là phim gì?', a: ['Phim câm','Phim ngắn','Phim tài liệu','Phim 3D'], c: 0 },
+      { q: 'Oscar là giải thưởng của ngành nào?', a: ['Âm nhạc','Điện ảnh','Văn học','Thể thao'], c: 1 },
+      { q: 'Thể loại phim có yếu tố siêu nhiên gọi là?', a: ['Hành động','Kinh dị','Viễn tưởng','Hài'], c: 2 },
+      { q: 'Bộ phận làm hiệu ứng hình ảnh gọi tắt là?', a: ['VFX','BGM','VO','CGI'], c: 0 },
+      { q: 'Phim hoạt hình 2D là phim?', a: ['Vẽ tay 2 chiều','Quay thật','3 chiều','Tài liệu'], c: 0 },
+      { q: 'Máy quay phim còn gọi là?', a: ['Projector','Camera','Microphone','Tripod'], c: 1 },
+      { q: 'Người chỉ đạo diễn xuất gọi là?', a: ['Đạo diễn','Biên kịch','Nhà sản xuất','Quay phim'], c: 0 },
+      { q: 'Kịch bản phim tiếng Anh là?', a: ['Script','Script-book','Poster','Trailer'], c: 0 },
+      { q: 'Phim chiếu rạp dài thường bao nhiêu phút?', a: ['30-45','60-70','90-120','200-250'], c: 2 },
+      { q: 'Âm thanh nền trong phim gọi là?', a: ['Soundtrack','Trailer','Subtitle','Credits'], c: 0 },
+      { q: 'Danh sách diễn viên cuối phim gọi là?', a: ['Credits','Preview','Teaser','Scene'], c: 0 },
+      { q: 'Cảnh quay tiếng Anh gọi là?', a: ['Scene','Page','Track','Angle'], c: 0 },
+    ];
+
+    const Q_FOOD = [
+      { q: 'Sushi là món ăn truyền thống của nước nào?', a: ['Trung Quốc','Hàn Quốc','Nhật Bản','Thái Lan'], c: 2 },
+      { q: 'Pizza nổi tiếng có nguồn gốc từ?', a: ['Pháp','Ý','Hy Lạp','Tây Ban Nha'], c: 1 },
+      { q: 'Phở là món ăn nổi tiếng của?', a: ['Việt Nam','Thái Lan','Lào','Campuchia'], c: 0 },
+      { q: 'Kim chi là món ăn của?', a: ['Nhật Bản','Hàn Quốc','Trung Quốc','Mông Cổ'], c: 1 },
+      { q: 'Cà phê được trồng nhiều nhất ở?', a: ['Brazil','Việt Nam','Colombia','Ethiopia'], c: 0 },
+      { q: 'Bánh croissant có nguồn gốc từ nước nào?', a: ['Pháp','Áo','Ý','Đức'], c: 1 },
+      { q: 'Trà xanh nổi tiếng ở?', a: ['Nhật Bản','Trung Quốc','Cả hai','Ấn Độ'], c: 2 },
+      { q: 'Món taco xuất phát từ?', a: ['Tây Ban Nha','Mexico','Peru','Cuba'], c: 1 },
+      { q: 'Nguyên liệu chính của chocolate là?', a: ['Đường','Cacao','Sữa','Bột mì'], c: 1 },
+      { q: 'Hamburger nổi tiếng ở quốc gia nào?', a: ['Mỹ','Đức','Anh','Pháp'], c: 0 },
+      { q: 'Cà ri có nguồn gốc từ?', a: ['Thái Lan','Ấn Độ','Trung Quốc','Nhật Bản'], c: 1 },
+      { q: 'Bánh mì baguette là của?', a: ['Pháp','Ý','Bỉ','Thụy Sĩ'], c: 0 },
+    ];
+
+    const Q_TECH = [
+      { q: 'Bộ não của máy tính gọi là?', a: ['RAM','CPU','GPU','HDD'], c: 1 },
+      { q: 'WWW viết tắt của?', a: ['World Wide Web','World War Web','Wide World Wire','Web World Wire'], c: 0 },
+      { q: 'Ai là người phát minh bóng đèn điện?', a: ['Tesla','Einstein','Edison','Newton'], c: 2 },
+      { q: 'Hệ điều hành Android của công ty nào?', a: ['Apple','Microsoft','Google','Samsung'], c: 2 },
+      { q: 'Đơn vị đo lường của bộ nhớ nhỏ nhất là?', a: ['Byte','Bit','KB','MB'], c: 1 },
+      { q: 'HTML dùng để làm gì?', a: ['Lập trình game','Xây dựng web','Quản lý data','Đồ hoạ 3D'], c: 1 },
+      { q: 'iPhone được ra mắt lần đầu năm?', a: ['2005','2007','2010','2003'], c: 1 },
+      { q: 'Máy tính cá nhân viết tắt là?', a: ['MC','PC','CC','PM'], c: 1 },
+      { q: 'Internet phát triển mạnh từ thập niên nào?', a: ['1970','1980','1990','2000'], c: 2 },
+      { q: 'Bitcoin là loại?', a: ['Tiền giấy','Tiền điện tử','Kim loại quý','Cổ phiếu'], c: 1 },
+      { q: 'Điện thoại thông minh đầu tiên do ai tạo ra?', a: ['IBM','Nokia','Apple','Samsung'], c: 0 },
+      { q: 'Máy in 3D dùng để?', a: ['In giấy','Tạo vật thể 3D','Quét ảnh','Chụp hình'], c: 1 },
+    ];
+
+    const Q_ART = [
+      { q: 'Mona Lisa là tác phẩm của?', a: ['Van Gogh','Da Vinci','Picasso','Monet'], c: 1 },
+      { q: 'Bức "Đêm Đầy Sao" do ai vẽ?', a: ['Van Gogh','Rembrandt','Michelangelo','Dali'], c: 0 },
+      { q: 'Picasso là họa sĩ nước nào?', a: ['Ý','Pháp','Tây Ban Nha','Mexico'], c: 2 },
+      { q: 'Tượng David tạc bởi?', a: ['Michelangelo','Rodin','Bernini','Donatello'], c: 0 },
+      { q: 'Trường phái Ấn tượng (Impressionism) nổi lên ở?', a: ['Anh','Pháp','Ý','Đức'], c: 1 },
+      { q: 'Màu tạo ra khi trộn đỏ + vàng?', a: ['Cam','Tím','Xanh','Nâu'], c: 0 },
+      { q: 'Nghệ thuật vẽ tranh tường cổ gọi là?', a: ['Fresco','Sketch','Collage','Sculpt'], c: 0 },
+      { q: 'Bức tranh nào nổi tiếng của Van Gogh có hoa?', a: ['Hoa hướng dương','Hoa sen','Hoa hồng','Hoa đào'], c: 0 },
+      { q: 'Bảo tàng Louvre nằm ở?', a: ['London','New York','Paris','Rome'], c: 2 },
+      { q: 'Andy Warhol nổi tiếng với phong cách?', a: ['Pop Art','Cubism','Realism','Gothic'], c: 0 },
+      { q: 'Nghệ thuật gấp giấy gọi là?', a: ['Origami','Ikebana','Bonsai','Kintsugi'], c: 0 },
+      { q: 'Tranh "The Scream" do ai vẽ?', a: ['Munch','Monet','Manet','Mondrian'], c: 0 },
+    ];
+
+    const Q_NATURE = [
+      { q: 'Lá cây có màu xanh là do chất gì?', a: ['Chlorophyll','Melanin','Carotene','Hemoglobin'], c: 0 },
+      { q: 'Loài vật to nhất đại dương là?', a: ['Cá mập','Cá voi xanh','Cá heo','Bạch tuộc'], c: 1 },
+      { q: 'Chim cánh cụt sống chủ yếu ở?', a: ['Bắc Cực','Nam Cực','Châu Phi','Úc'], c: 1 },
+      { q: 'Cây nào cho ta quả dừa?', a: ['Cây cau','Cây dừa','Cây cọ','Cây sồi'], c: 1 },
+      { q: 'Hiện tượng mưa do?', a: ['Không khí khô','Hơi nước ngưng tụ','Gió mạnh','Sương mù'], c: 1 },
+      { q: 'Rừng Amazon nằm chủ yếu ở?', a: ['Châu Phi','Nam Mỹ','Đông Nam Á','Châu Âu'], c: 1 },
+      { q: 'Loài côn trùng thụ phấn phổ biến?', a: ['Kiến','Ong','Ruồi','Muỗi'], c: 1 },
+      { q: 'Cây xanh hấp thu khí gì trong quang hợp?', a: ['Oxy','CO2','Nitơ','Hydro'], c: 1 },
+      { q: 'Động vật nào là biểu tượng cho hòa bình?', a: ['Đại bàng','Bồ câu','Sư tử','Cá voi'], c: 1 },
+      { q: 'Loài vật chạy nhanh nhất trên cạn?', a: ['Báo đốm','Báo gepa (cheetah)','Sư tử','Linh dương'], c: 1 },
+      { q: 'Khí quyển Trái Đất chủ yếu là?', a: ['Oxy','Hydro','Nitơ','CO2'], c: 2 },
+      { q: 'Lớp bảo vệ Trái Đất khỏi tia UV là?', a: ['Ozon','Mây','Nước','Đất'], c: 0 },
+    ];
+
+    const Q_MIXED = [
+      { q: 'Đỉnh Everest cao bao nhiêu mét?', a: ['7.000','8.848','9.500','10.000'], c: 1 },
+      { q: 'Môn thể thao nào dùng bóng oval?', a: ['Bóng đá','Bóng bầu dục','Bóng rổ','Bóng chuyền'], c: 1 },
+      { q: 'Món sushi dùng nguyên liệu nào chính?', a: ['Gạo và cá','Mì','Thịt bò','Khoai'], c: 0 },
+      { q: 'Piano có bao nhiêu phím trắng?', a: ['36','52','60','88'], c: 1 },
+      { q: 'CPU trong máy tính viết tắt của?', a: ['Central Processing Unit','Computer Personal Unit','Core Program Unit','Code Process Unit'], c: 0 },
+      { q: 'Leonardo da Vinci là người nước?', a: ['Pháp','Ý','Hà Lan','Tây Ban Nha'], c: 1 },
+      { q: 'Động vật nào đẻ trứng to nhất?', a: ['Gà','Đà điểu','Vịt','Chim cánh cụt'], c: 1 },
+      { q: 'Điện thoại di động đầu tiên ra đời năm?', a: ['1973','1983','1993','2003'], c: 0 },
+      { q: 'Nước nào ăn cà ri nhiều nhất?', a: ['Thái Lan','Ấn Độ','Nhật','Trung Quốc'], c: 1 },
+      { q: 'Trái Đất quay một vòng mất?', a: ['12 giờ','24 giờ','48 giờ','1 tuần'], c: 1 },
+      { q: 'Tranh Mona Lisa ở bảo tàng nào?', a: ['Louvre','MoMA','Uffizi','Prado'], c: 0 },
+      { q: 'Giải Nobel trao lần đầu năm?', a: ['1901','1920','1950','1801'], c: 0 },
+    ];
+
+    const Q_TRIVIA = [
+      { q: 'Loài vật nào ngủ đứng?', a: ['Mèo','Ngựa','Sư tử','Voi'], c: 1 },
+      { q: 'Tim bạch tuộc có bao nhiêu?', a: ['1','2','3','4'], c: 2 },
+      { q: 'Chuối thực ra là loại?', a: ['Trái cây','Quả hạch','Quả mọng (berry)','Rau'], c: 2 },
+      { q: 'Mật ong có thể để bao lâu?', a: ['1 năm','10 năm','100 năm','Vô hạn'], c: 3 },
+      { q: 'Kiến có thể nâng vật nặng bao nhiêu lần trọng lượng?', a: ['2 lần','10 lần','50 lần','500 lần'], c: 2 },
+      { q: 'Vân tay con người có điểm gì đặc biệt?', a: ['Giống nhau','Mất đi theo tuổi','Độc nhất với mỗi người','Đổi màu'], c: 2 },
+      { q: 'Nước nóng đóng băng nhanh hơn nước lạnh là hiện tượng?', a: ['Mpemba','Bernoulli','Doppler','Coriolis'], c: 0 },
+      { q: 'Loài nào có thể sống mà không cần nước uống?', a: ['Lạc đà','Chuột kangaroo','Voi','Hươu'], c: 1 },
+      { q: 'Tháp Eiffel cao hơn vào mùa nào?', a: ['Đông','Hè','Xuân','Thu'], c: 1 },
+      { q: 'Cá mập có xương không?', a: ['Có','Không, chỉ có sụn','Một phần','Chỉ ở đầu'], c: 1 },
+      { q: 'Ngôn ngữ nào có nhiều chữ cái nhất?', a: ['Tiếng Anh','Khmer','Trung','Nhật'], c: 1 },
+      { q: 'Loài nào có thể tái tạo cơ thể?', a: ['Sao biển','Sư tử','Chim','Cá voi'], c: 0 },
+    ];
+
+    const BANKS = {
+      general: Q_GENERAL, sports: Q_SPORTS, music: Q_MUSIC, movies: Q_MOVIES,
+      food: Q_FOOD, tech: Q_TECH, art: Q_ART, nature: Q_NATURE,
+      mixed: Q_MIXED, trivia: Q_TRIVIA,
+    };
+
+    // ==================== QUIZ COMPONENT ====================
+    const QuizGame = ({ id, meta, onBack }) => {
+      const bank = BANKS[id];
+      const [questions, setQuestions] = useState([]);
+      const [idx, setIdx] = useState(0);
+      const [score, setScore] = useState(0);
+      const [selected, setSelected] = useState(null);
+      const [done, setDone] = useState(false);
+      const [isNewHigh, setIsNewHigh] = useState(false);
+      const high = loadProgress()[id] || 0;
+
+      useEffect(() => {
+        const qs = shuffle(bank).slice(0, Math.min(10, bank.length)).map(q => {
+          const correctAnswer = q.a[q.c];
+          const shuffledAnswers = shuffle(q.a);
+          return { q: q.q, a: shuffledAnswers, c: shuffledAnswers.indexOf(correctAnswer) };
+        });
+        setQuestions(qs);
+      }, []);
+
+      const pick = (i) => {
+        if (selected !== null) return;
+        setSelected(i);
+        const correct = i === questions[idx].c;
+        const newScore = correct ? score + 1 : score;
+        if (correct) setScore(newScore);
+        setTimeout(() => {
+          if (idx + 1 >= questions.length) {
+            const nh = saveHigh(id, newScore);
+            setIsNewHigh(nh);
+            setDone(true);
+          } else {
+            setIdx(idx + 1);
+            setSelected(null);
+          }
+        }, 900);
+      };
+
+      const restart = () => {
+        const qs = shuffle(bank).slice(0, Math.min(10, bank.length)).map(q => {
+          const correctAnswer = q.a[q.c];
+          const shuffledAnswers = shuffle(q.a);
+          return { q: q.q, a: shuffledAnswers, c: shuffledAnswers.indexOf(correctAnswer) };
+        });
+        setQuestions(qs);
+        setIdx(0); setScore(0); setSelected(null); setDone(false); setIsNewHigh(false);
+      };
+
+      if (!questions.length) return <div style={{ padding: 40, textAlign: 'center' }}>Đang tải...</div>;
+
+      if (done) {
+        return (
+          <div style={{ maxWidth: 700, margin: '0 auto', padding: 24, textAlign: 'center' }}>
+            <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', padding: '10px 18px', borderRadius: 10, cursor: 'pointer', fontSize: 15, marginBottom: 20 }}>← Hub</button>
+            <div style={{ fontSize: 80, marginBottom: 16 }}>{meta.icon}</div>
+            <h1 style={{ fontSize: 32, marginBottom: 12 }}>Hoàn thành!</h1>
+            <div style={{ fontSize: 54, fontWeight: 'bold', color: meta.color, margin: '20px 0' }}>{score}/{questions.length}</div>
+            {isNewHigh && <div style={{ fontSize: 20, color: '#fde047', marginBottom: 12 }}>🏆 Kỷ lục mới!</div>}
+            <div style={{ fontSize: 16, opacity: 0.8, marginBottom: 28 }}>Cao nhất: {Math.max(high, score)}/{questions.length}</div>
+            <button onClick={restart} style={{ background: meta.color, border: 'none', color: 'white', padding: '14px 30px', borderRadius: 12, cursor: 'pointer', fontSize: 17, fontWeight: 600, marginRight: 10 }}>Chơi lại</button>
+            <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '14px 30px', borderRadius: 12, cursor: 'pointer', fontSize: 17, fontWeight: 600 }}>Về hub</button>
+          </div>
+        );
+      }
+
+      const Q = questions[idx];
+      return (
+        <div style={{ maxWidth: 750, margin: '0 auto', padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', padding: '10px 18px', borderRadius: 10, cursor: 'pointer', fontSize: 15 }}>← Hub</button>
+            <div style={{ fontSize: 15, opacity: 0.85 }}>Câu {idx + 1}/{questions.length} · Điểm: {score}</div>
+          </div>
+
+          <div style={{ height: 6, background: 'rgba(255,255,255,0.15)', borderRadius: 10, overflow: 'hidden', marginBottom: 22 }}>
+            <div style={{ height: '100%', width: `${(idx / questions.length) * 100}%`, background: meta.color, transition: 'width 0.3s' }}></div>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 18, padding: 28, marginBottom: 18 }}>
+            <div style={{ fontSize: 42, textAlign: 'center', marginBottom: 14 }}>{meta.icon}</div>
+            <div style={{ fontSize: 22, textAlign: 'center', lineHeight: 1.5, fontWeight: 500 }}>{Q.q}</div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {Q.a.map((ans, i) => {
+              let bg = 'rgba(255,255,255,0.12)';
+              if (selected !== null) {
+                if (i === Q.c) bg = '#22c55e';
+                else if (i === selected) bg = '#ef4444';
+                else bg = 'rgba(255,255,255,0.06)';
+              }
+              return (
+                <button key={i} onClick={() => pick(i)} disabled={selected !== null} style={{ background: bg, border: 'none', color: 'white', padding: '18px 14px', borderRadius: 12, cursor: selected === null ? 'pointer' : 'default', fontSize: 16, fontWeight: 500, minHeight: 60, lineHeight: 1.4 }}>{ans}</button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+
+    // ==================== HUB ====================
+    const Hub = ({ onPick }) => {
+      const progress = loadProgress();
+      return (
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+            <a href="../index.html" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', padding: '10px 18px', borderRadius: 10, textDecoration: 'none', fontSize: 15 }}>← Về trang chính</a>
+            <h1 style={{ fontSize: 30, textAlign: 'center', flex: 1, minWidth: 200 }}>❓ Đố Vui Hub</h1>
+            <div style={{ width: 120 }}></div>
+          </div>
+          <p style={{ textAlign: 'center', opacity: 0.8, marginBottom: 26, fontSize: 15 }}>10 trò chơi đố vui — kiến thức tổng hợp</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+            {GAMES.map(g => (
+              <button key={g.id} onClick={() => onPick(g.id)} style={{ background: g.color, border: 'none', color: 'white', padding: 20, borderRadius: 16, cursor: 'pointer', textAlign: 'left', minHeight: 170, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ fontSize: 42 }}>{g.icon}</div>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>{g.name}</div>
+                <div style={{ fontSize: 13, opacity: 0.92, flex: 1 }}>{g.desc}</div>
+                {progress[g.id] !== undefined && (
+                  <div style={{ fontSize: 12, background: 'rgba(0,0,0,0.25)', padding: '4px 8px', borderRadius: 8, alignSelf: 'flex-start' }}>🏆 Cao nhất: {progress[g.id]}</div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    const App = () => {
+      const [route, setRoute] = useState(window.location.hash.slice(1));
+      useEffect(() => {
+        const onHash = () => setRoute(window.location.hash.slice(1));
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+      const pick = (id) => { window.location.hash = id; };
+      const back = () => { window.location.hash = ''; };
+      const meta = GAMES.find(g => g.id === route);
+      if (!meta) return <Hub onPick={pick} />;
+      return <QuizGame id={route} meta={meta} onBack={back} />;
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
