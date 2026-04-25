@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧠 Luyện Não Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a2e3e; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const GAMES = [
+      { id: 'tictactoe', icon: '⭕', title: 'Cờ Ca-rô', desc: '3x3 vs AI', color: '#ef4444' },
+      { id: 'reaction', icon: '⚡', title: 'Phản Xạ', desc: 'Click khi xanh', color: '#f59e0b' },
+      { id: 'riddle', icon: '💭', title: 'Câu Đố Logic', desc: 'Trắc nghiệm', color: '#a855f7' },
+      { id: 'spot', icon: '🔍', title: 'Tìm Khác Biệt', desc: 'Tìm ô khác màu', color: '#06b6d4' },
+      { id: 'word', icon: '📝', title: 'Điền Từ', desc: 'Tiếng Việt', color: '#10b981' },
+      { id: 'anagram', icon: '🔄', title: 'Đảo Chữ', desc: 'Sắp xếp chữ cái', color: '#ec4899' },
+      { id: 'nback', icon: '🎯', title: 'N-Back', desc: 'Trí nhớ ngắn hạn', color: '#8b5cf6' },
+      { id: 'minesweeper', icon: '💣', title: 'Dò Mìn', desc: '8x8', color: '#64748b' },
+      { id: '2048', icon: '🔢', title: '2048', desc: 'Gộp số', color: '#f97316' },
+      { id: 'tetris', icon: '🧱', title: 'Tetris', desc: 'Xếp khối', color: '#22d3ee' },
+    ];
+
+    const PROGRESS_KEY = 'brainProgress';
+    const loadProgress = () => { try { return JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {}; } catch { return {}; } };
+    const saveScore = (id, score) => {
+      const p = loadProgress();
+      if (!p[id] || score > p[id]) { p[id] = score; localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); }
+    };
+    const getHigh = (id) => loadProgress()[id] || 0;
+
+    // ================== HUB ==================
+    const Hub = ({ go }) => {
+      const p = loadProgress();
+      return (
+        <div style={{ padding: '40px 20px', maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <h1 style={{ fontSize: 42, marginBottom: 8 }}>🧠 Luyện Não Hub</h1>
+            <p style={{ color: '#94a3b8', fontSize: 16 }}>10 trò chơi rèn luyện trí tuệ</p>
+            <a href="../index.html" style={{ display: 'inline-block', marginTop: 16, padding: '8px 18px', background: 'rgba(255,255,255,0.1)', color: 'white', textDecoration: 'none', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)' }}>← Trang chủ</a>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: 16 }}>
+            {GAMES.map(g => (
+              <button key={g.id} onClick={() => go(g.id)} style={{ padding: 20, background: g.color, border: 'none', borderRadius: 14, color: 'white', cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ fontSize: 38 }}>{g.icon}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{g.title}</div>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>{g.desc}</div>
+                <div style={{ fontSize: 11, marginTop: 8, padding: '3px 8px', background: 'rgba(0,0,0,0.25)', borderRadius: 8, display: 'inline-block' }}>🏆 {p[g.id] || 0}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    const BackBar = ({ back, title, score }) => (
+      <div style={{ padding: 14, background: '#0f1f2e', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <button onClick={back} style={{ padding: '8px 14px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, cursor: 'pointer' }}>← Hub</button>
+        <strong style={{ fontSize: 18 }}>{title}</strong>
+        <span style={{ fontSize: 14, color: '#fbbf24' }}>🏆 {score}</span>
+      </div>
+    );
+
+    // ============ 1. TIC TAC TOE ============
+    const TicTacToe = ({ back }) => {
+      const [board, setBoard] = useState(Array(9).fill(''));
+      const [turn, setTurn] = useState('X');
+      const [msg, setMsg] = useState('Lượt của bạn (X)');
+      const [wins, setWins] = useState(getHigh('tictactoe'));
+
+      const checkWin = (b) => {
+        const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+        for (const [a,b2,c] of lines) if (b[a] && b[a]===b[b2] && b[a]===b[c]) return b[a];
+        if (b.every(x=>x)) return 'D';
+        return null;
+      };
+
+      const aiMove = (b) => {
+        // Try win, then block, else random
+        const tryMove = (sym) => {
+          for (let i=0;i<9;i++) if (!b[i]) { const c=[...b]; c[i]=sym; if (checkWin(c)===sym) return i; }
+          return -1;
+        };
+        let m = tryMove('O'); if (m<0) m = tryMove('X');
+        if (m<0 && !b[4]) m = 4;
+        if (m<0) { const empty = b.map((v,i)=>v?-1:i).filter(i=>i>=0); m = empty[Math.floor(Math.random()*empty.length)]; }
+        return m;
+      };
+
+      const click = (i) => {
+        if (board[i] || turn !== 'X' || checkWin(board)) return;
+        const nb = [...board]; nb[i] = 'X';
+        setBoard(nb); setTurn('O');
+        const w = checkWin(nb);
+        if (w) { finish(w, nb); return; }
+        setTimeout(() => {
+          const m = aiMove(nb);
+          if (m >= 0) {
+            const nb2 = [...nb]; nb2[m] = 'O';
+            setBoard(nb2); setTurn('X');
+            const w2 = checkWin(nb2);
+            if (w2) finish(w2, nb2); else setMsg('Lượt của bạn (X)');
+          }
+        }, 400);
+      };
+
+      const finish = (w, b) => {
+        if (w === 'X') { setMsg('🎉 Bạn thắng!'); const n=wins+1; setWins(n); saveScore('tictactoe', n); }
+        else if (w === 'O') setMsg('😢 AI thắng');
+        else setMsg('🤝 Hòa');
+      };
+
+      const reset = () => { setBoard(Array(9).fill('')); setTurn('X'); setMsg('Lượt của bạn (X)'); };
+
+      return (
+        <div>
+          <BackBar back={back} title="⭕ Cờ Ca-rô" score={wins} />
+          <div style={{ padding: 30, textAlign: 'center' }}>
+            <p style={{ marginBottom: 20, fontSize: 18 }}>{msg}</p>
+            <div style={{ display: 'inline-grid', gridTemplateColumns: 'repeat(3,80px)', gap: 6 }}>
+              {board.map((c,i) => (
+                <button key={i} onClick={() => click(i)} style={{ width: 80, height: 80, fontSize: 38, fontWeight: 'bold', background: c==='X'?'#3b82f6':c==='O'?'#ef4444':'#334155', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>{c}</button>
+              ))}
+            </div>
+            <div style={{ marginTop: 20 }}>
+              <button onClick={reset} style={{ padding: '10px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 16 }}>Chơi lại</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 2. REACTION ============
+    const Reaction = ({ back }) => {
+      const [state, setState] = useState('idle'); // idle, waiting, go, done
+      const [start, setStart] = useState(0);
+      const [time, setTime] = useState(0);
+      const [best, setBest] = useState(getHigh('reaction'));
+      const t = useRef(null);
+
+      const begin = () => {
+        setState('waiting');
+        const delay = 1000 + Math.random() * 3000;
+        t.current = setTimeout(() => {
+          setStart(Date.now());
+          setState('go');
+        }, delay);
+      };
+
+      const click = () => {
+        if (state === 'waiting') {
+          clearTimeout(t.current);
+          setState('idle');
+          setTime(-1);
+        } else if (state === 'go') {
+          const ms = Date.now() - start;
+          setTime(ms);
+          setState('done');
+          // score = max(0, 1000 - ms) — faster is more
+          const score = Math.max(0, 1000 - ms);
+          if (score > best) { setBest(score); saveScore('reaction', score); }
+        }
+      };
+
+      const bg = state === 'waiting' ? '#dc2626' : state === 'go' ? '#16a34a' : '#475569';
+      const txt = state === 'idle' ? 'Bấm để bắt đầu' : state === 'waiting' ? 'Chờ... (đừng click sớm!)' : state === 'go' ? 'CLICK NGAY!' : `${time === -1 ? 'Click sớm!' : time + 'ms'} — Click để chơi lại`;
+
+      return (
+        <div>
+          <BackBar back={back} title="⚡ Phản Xạ" score={best} />
+          <div style={{ padding: 30, textAlign: 'center' }}>
+            <p style={{ marginBottom: 20, color: '#94a3b8' }}>Click khi nền chuyển XANH. Nhanh nhất thắng!</p>
+            <div onClick={state === 'idle' || state === 'done' ? begin : click} style={{ height: 320, background: bg, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 28, fontWeight: 'bold', userSelect: 'none' }}>{txt}</div>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 3. RIDDLE ============
+    const RIDDLES = [
+      { q: 'Càng kéo càng ngắn là gì?', a: ['Điếu thuốc', 'Sợi dây', 'Cái áo', 'Cái thước'], c: 0 },
+      { q: 'Cái gì có 4 chân buổi sáng, 2 chân buổi trưa, 3 chân buổi tối?', a: ['Con mèo', 'Cái ghế', 'Con người', 'Con chó'], c: 2 },
+      { q: '1 + 1 trong toán nhị phân = ?', a: ['2', '10', '11', '0'], c: 1 },
+      { q: 'Số nào tiếp theo: 2, 4, 8, 16, ?', a: ['24', '32', '20', '18'], c: 1 },
+      { q: 'Cái gì đi mãi mà không bao giờ tới?', a: ['Mặt trời', 'Thời gian', 'Mưa', 'Gió'], c: 1 },
+      { q: 'Có bao nhiêu tháng có 28 ngày?', a: ['1', '12', '4', '2'], c: 1 },
+      { q: 'Anh em sinh đôi nhưng không cùng ngày sinh — có thể không?', a: ['Không', 'Có (qua nửa đêm)', 'Có (khác nước)', 'B và C'], c: 3 },
+      { q: 'Số nào không có giá trị?', a: ['0', '-1', 'π', 'i'], c: 0 },
+      { q: 'Hình nào có vô số trục đối xứng?', a: ['Tam giác', 'Vuông', 'Tròn', 'Lục giác'], c: 2 },
+      { q: 'Chữ cái nào xuất hiện nhiều nhất trong "MISSISSIPPI"?', a: ['M', 'I', 'S', 'P'], c: 1 },
+      { q: 'Một con vịt + một con vịt = ?', a: ['Hai vịt', 'Bầy vịt', 'Một đàn', 'Ăn được'], c: 0 },
+      { q: 'Logic: Nếu A>B và B>C thì?', a: ['A<C', 'A=C', 'A>C', 'Không xác định'], c: 2 },
+    ];
+
+    const Riddle = ({ back }) => {
+      const [i, setI] = useState(() => Math.floor(Math.random()*RIDDLES.length));
+      const [picked, setPicked] = useState(-1);
+      const [score, setScore] = useState(0);
+      const [best, setBest] = useState(getHigh('riddle'));
+      const r = RIDDLES[i];
+
+      const pick = (n) => {
+        if (picked >= 0) return;
+        setPicked(n);
+        if (n === r.c) {
+          const ns = score + 1;
+          setScore(ns);
+          if (ns > best) { setBest(ns); saveScore('riddle', ns); }
+        }
+      };
+      const next = () => { setI(Math.floor(Math.random()*RIDDLES.length)); setPicked(-1); };
+      const restart = () => { setI(Math.floor(Math.random()*RIDDLES.length)); setPicked(-1); setScore(0); };
+
+      return (
+        <div>
+          <BackBar back={back} title="💭 Câu Đố Logic" score={best} />
+          <div style={{ padding: 30, maxWidth: 600, margin: '0 auto' }}>
+            <div style={{ marginBottom: 16, fontSize: 14, color: '#94a3b8' }}>Điểm: {score}</div>
+            <div style={{ background: '#0f1f2e', padding: 24, borderRadius: 14, marginBottom: 20 }}>
+              <p style={{ fontSize: 20, fontWeight: 600 }}>{r.q}</p>
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {r.a.map((opt, n) => {
+                let bg = '#334155';
+                if (picked >= 0) {
+                  if (n === r.c) bg = '#16a34a';
+                  else if (n === picked) bg = '#dc2626';
+                }
+                return <button key={n} onClick={() => pick(n)} disabled={picked>=0} style={{ padding: 14, background: bg, color: 'white', border: 'none', borderRadius: 10, cursor: picked<0?'pointer':'default', fontSize: 16, textAlign: 'left' }}>{String.fromCharCode(65+n)}. {opt}</button>;
+              })}
+            </div>
+            {picked >= 0 && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <button onClick={next} style={{ flex: 1, padding: 12, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 16 }}>Câu khác →</button>
+                <button onClick={restart} style={{ padding: 12, background: '#64748b', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 16 }}>↻ Làm lại</button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 4. SPOT THE DIFFERENCE (find the odd-color tile) ============
+    const Spot = ({ back }) => {
+      const [level, setLevel] = useState(1);
+      const [grid, setGrid] = useState([]);
+      const [odd, setOdd] = useState(0);
+      const [best, setBest] = useState(getHigh('spot'));
+      const [msg, setMsg] = useState('');
+
+      const gen = (lv) => {
+        const size = Math.min(3 + Math.floor(lv/2), 8);
+        const total = size*size;
+        const odd_idx = Math.floor(Math.random()*total);
+        // Color base
+        const h = Math.floor(Math.random()*360);
+        const s = 70;
+        const l1 = 50;
+        const diff = Math.max(2, 18 - lv); // smaller diff = harder
+        const l2 = 50 + diff;
+        const arr = Array(total).fill(`hsl(${h},${s}%,${l1}%)`);
+        arr[odd_idx] = `hsl(${h},${s}%,${l2}%)`;
+        setGrid({ size, arr });
+        setOdd(odd_idx);
+        setMsg('');
+      };
+
+      useEffect(() => { gen(level); }, [level]);
+
+      const click = (i) => {
+        if (i === odd) {
+          const nl = level + 1;
+          setLevel(nl);
+          if (nl-1 > best) { setBest(nl-1); saveScore('spot', nl-1); }
+        } else {
+          setMsg('Sai rồi! Bắt đầu lại từ cấp 1.');
+          setTimeout(() => setLevel(1), 900);
+        }
+      };
+
+      const size = grid.size || 3;
+      const arr = grid.arr || [];
+      return (
+        <div>
+          <BackBar back={back} title="🔍 Tìm Khác Biệt" score={best} />
+          <div style={{ padding: 30, textAlign: 'center' }}>
+            <p style={{ marginBottom: 14, fontSize: 18 }}>Cấp: {level} — Tìm ô khác màu</p>
+            {msg && <p style={{ color: '#fca5a5', marginBottom: 10 }}>{msg}</p>}
+            <div style={{ display: 'inline-grid', gridTemplateColumns: `repeat(${size}, 60px)`, gap: 4 }}>
+              {arr.map((c,i) => (
+                <button key={i} onClick={() => click(i)} style={{ width: 60, height: 60, background: c, border: 'none', borderRadius: 6, cursor: 'pointer' }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 5. WORD FILL ============
+    const WORDS = [
+      { s: 'Học, học nữa, học ___', a: 'mãi', o: ['mãi','hoài','luôn','nhanh'] },
+      { s: 'Có công mài sắt, có ngày nên ___', a: 'kim', o: ['kim','vàng','dao','búa'] },
+      { s: 'Ăn quả nhớ kẻ trồng ___', a: 'cây', o: ['cây','hoa','ruộng','đất'] },
+      { s: 'Một cây làm chẳng nên ___', a: 'non', o: ['non','rừng','cao','gì'] },
+      { s: 'Đi một ngày đàng học một sàng ___', a: 'khôn', o: ['khôn','chữ','người','chuyện'] },
+      { s: 'Tốt gỗ hơn tốt nước ___', a: 'sơn', o: ['sơn','da','màu','gỗ'] },
+      { s: 'Lời nói chẳng mất tiền ___', a: 'mua', o: ['mua','bán','của','xài'] },
+      { s: 'Chậm mà ___', a: 'chắc', o: ['chắc','tốt','đều','vững'] },
+      { s: 'Trăm hay không bằng tay ___', a: 'quen', o: ['quen','hay','nhanh','khỏe'] },
+      { s: 'Thua keo này ta bày keo ___', a: 'khác', o: ['khác','mới','sau','nữa'] },
+    ];
+
+    const WordFill = ({ back }) => {
+      const [i, setI] = useState(() => Math.floor(Math.random()*WORDS.length));
+      const [picked, setPicked] = useState('');
+      const [score, setScore] = useState(0);
+      const [best, setBest] = useState(getHigh('word'));
+      const w = WORDS[i];
+
+      const pick = (o) => {
+        if (picked) return;
+        setPicked(o);
+        if (o === w.a) {
+          const ns = score+1;
+          setScore(ns);
+          if (ns > best) { setBest(ns); saveScore('word', ns); }
+        }
+      };
+      const next = () => { setI(Math.floor(Math.random()*WORDS.length)); setPicked(''); };
+
+      return (
+        <div>
+          <BackBar back={back} title="📝 Điền Từ" score={best} />
+          <div style={{ padding: 30, maxWidth: 600, margin: '0 auto' }}>
+            <p style={{ color: '#94a3b8', marginBottom: 12 }}>Điểm: {score}</p>
+            <div style={{ background: '#0f1f2e', padding: 24, borderRadius: 14, marginBottom: 20, fontSize: 22, fontWeight: 600 }}>{w.s}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {w.o.map(o => {
+                let bg = '#334155';
+                if (picked) {
+                  if (o === w.a) bg = '#16a34a';
+                  else if (o === picked) bg = '#dc2626';
+                }
+                return <button key={o} onClick={() => pick(o)} disabled={!!picked} style={{ padding: 14, background: bg, color: 'white', border: 'none', borderRadius: 10, cursor: picked?'default':'pointer', fontSize: 18 }}>{o}</button>;
+              })}
+            </div>
+            {picked && <button onClick={next} style={{ width: '100%', marginTop: 16, padding: 14, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 16 }}>Câu kế →</button>}
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 6. ANAGRAM ============
+    const ANAGRAMS = ['MEO','CHO','HOA','SACH','BUT','HOC','VIET','BANG','DEN','TRO','LOP','CO','BAN','MAY','TAY','MAT','MUI','TAI','CHAN','GIO','TRA','SUA','GAO','CAM','DAU','XOAI','KHE','MAN','LE','BO'];
+
+    const Anagram = ({ back }) => {
+      const [word, setWord] = useState('');
+      const [scrambled, setScrambled] = useState([]);
+      const [picked, setPicked] = useState([]);
+      const [score, setScore] = useState(0);
+      const [best, setBest] = useState(getHigh('anagram'));
+      const [msg, setMsg] = useState('');
+
+      const newWord = () => {
+        const w = ANAGRAMS[Math.floor(Math.random()*ANAGRAMS.length)];
+        const arr = w.split('');
+        for (let i = arr.length-1; i>0; i--) { const j = Math.floor(Math.random()*(i+1)); [arr[i],arr[j]] = [arr[j],arr[i]]; }
+        if (arr.join('') === w) [arr[0],arr[1]] = [arr[1],arr[0]]; // ensure scrambled
+        setWord(w);
+        setScrambled(arr.map((ch,idx) => ({ ch, id: idx, used: false })));
+        setPicked([]);
+        setMsg('');
+      };
+
+      useEffect(newWord, []);
+
+      const tap = (id) => {
+        const item = scrambled.find(x => x.id === id);
+        if (!item || item.used) return;
+        setScrambled(scrambled.map(x => x.id===id ? {...x, used: true} : x));
+        const np = [...picked, item];
+        setPicked(np);
+        if (np.length === word.length) {
+          if (np.map(x=>x.ch).join('') === word) {
+            const ns = score+1;
+            setScore(ns);
+            if (ns > best) { setBest(ns); saveScore('anagram', ns); }
+            setMsg('✅ Đúng! +1');
+            setTimeout(newWord, 800);
+          } else {
+            setMsg('❌ Sai, thử lại');
+            setTimeout(() => { setPicked([]); setScrambled(scrambled.map(x=>({...x, used:false}))); setMsg(''); }, 800);
+          }
+        }
+      };
+
+      const undo = () => {
+        if (!picked.length) return;
+        const last = picked[picked.length-1];
+        setPicked(picked.slice(0,-1));
+        setScrambled(scrambled.map(x => x.id===last.id ? {...x, used: false} : x));
+      };
+
+      return (
+        <div>
+          <BackBar back={back} title="🔄 Đảo Chữ" score={best} />
+          <div style={{ padding: 30, textAlign: 'center', maxWidth: 600, margin: '0 auto' }}>
+            <p style={{ color: '#94a3b8', marginBottom: 12 }}>Điểm: {score} — Sắp xếp thành từ tiếng Việt (không dấu)</p>
+            <div style={{ minHeight: 60, padding: 12, background: '#0f1f2e', borderRadius: 10, marginBottom: 12, display: 'flex', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+              {picked.map((p,i) => <span key={i} style={{ width: 44, height: 44, background: '#3b82f6', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 'bold' }}>{p.ch}</span>)}
+            </div>
+            <div style={{ minHeight: 60, marginBottom: 12, display: 'flex', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+              {scrambled.map(s => <button key={s.id} onClick={() => tap(s.id)} disabled={s.used} style={{ width: 50, height: 50, background: s.used?'#1e293b':'#f59e0b', color: 'white', border: 'none', borderRadius: 8, fontSize: 24, fontWeight: 'bold', cursor: s.used?'default':'pointer', opacity: s.used?0.3:1 }}>{s.ch}</button>)}
+            </div>
+            {msg && <p style={{ fontSize: 18, marginBottom: 10 }}>{msg}</p>}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={undo} style={{ padding: '10px 20px', background: '#64748b', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>← Xóa</button>
+              <button onClick={newWord} style={{ padding: '10px 20px', background: '#10b981', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Bỏ qua</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 7. N-BACK ============
+    const Nback = ({ back }) => {
+      const [seq, setSeq] = useState([]); // history of positions (0-8 in 3x3 grid)
+      const [active, setActive] = useState(-1);
+      const [running, setRunning] = useState(false);
+      const [round, setRound] = useState(0);
+      const [score, setScore] = useState(0);
+      const [best, setBest] = useState(getHigh('nback'));
+      const [msg, setMsg] = useState('Bấm Start. Mỗi 1.5s ô sáng. Bấm "MATCH" nếu vị trí hiện tại = vị trí 2 lượt trước.');
+      const seqRef = useRef([]);
+      const lockRef = useRef(false);
+
+      const tick = () => {
+        const pos = Math.floor(Math.random()*9);
+        seqRef.current = [...seqRef.current, pos];
+        setSeq([...seqRef.current]);
+        setActive(pos);
+        setRound(r => r+1);
+        lockRef.current = false;
+        setTimeout(() => setActive(-1), 700);
+      };
+
+      useEffect(() => {
+        if (!running) return;
+        const id = setInterval(tick, 1500);
+        return () => clearInterval(id);
+      }, [running]);
+
+      const start = () => {
+        seqRef.current = [];
+        setSeq([]); setActive(-1); setRound(0); setScore(0); setMsg('Đang chạy... bấm MATCH nếu trùng');
+        setRunning(true);
+      };
+      const stop = () => {
+        setRunning(false);
+        if (score > best) { setBest(score); saveScore('nback', score); }
+        setMsg('Dừng — Điểm: ' + score);
+      };
+
+      const claim = () => {
+        if (!running || lockRef.current) return;
+        lockRef.current = true;
+        const s = seqRef.current;
+        const isMatch = s.length >= 3 && s[s.length-1] === s[s.length-3];
+        if (isMatch) { setScore(x=>x+1); setMsg('✅ Đúng!'); }
+        else { setScore(x=>Math.max(0,x-1)); setMsg('❌ Không trùng'); }
+      };
+
+      return (
+        <div>
+          <BackBar back={back} title="🎯 N-Back (n=2)" score={best} />
+          <div style={{ padding: 30, textAlign: 'center', maxWidth: 500, margin: '0 auto' }}>
+            <p style={{ color: '#94a3b8', marginBottom: 10, fontSize: 14 }}>{msg}</p>
+            <p style={{ marginBottom: 14 }}>Lượt: {round} — Điểm: {score}</p>
+            <div style={{ display: 'inline-grid', gridTemplateColumns: 'repeat(3,80px)', gap: 6, marginBottom: 16 }}>
+              {Array.from({length:9}).map((_,i)=>(
+                <div key={i} style={{ width: 80, height: 80, background: i===active?'#22d3ee':'#334155', borderRadius: 8 }} />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              {!running ? <button onClick={start} style={{ padding: '12px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 16 }}>▶ Start</button>
+                : <>
+                    <button onClick={claim} style={{ padding: '12px 30px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 16, fontWeight: 'bold' }}>MATCH</button>
+                    <button onClick={stop} style={{ padding: '12px 24px', background: '#dc2626', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Stop</button>
+                  </>}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 8. MINESWEEPER ============
+    const Minesweeper = ({ back }) => {
+      const N = 8, MINES = 10;
+      const [cells, setCells] = useState([]);
+      const [over, setOver] = useState('');
+      const [revealed, setRevealed] = useState(0);
+      const [best, setBest] = useState(getHigh('minesweeper'));
+
+      const gen = () => {
+        const c = Array.from({length:N*N}, () => ({ mine:false, open:false, flag:false, n:0 }));
+        let placed = 0;
+        while (placed < MINES) {
+          const i = Math.floor(Math.random()*N*N);
+          if (!c[i].mine) { c[i].mine = true; placed++; }
+        }
+        for (let i=0;i<N*N;i++){
+          if (c[i].mine) continue;
+          const r = Math.floor(i/N), col = i%N;
+          let cnt = 0;
+          for (let dr=-1;dr<=1;dr++) for (let dc=-1;dc<=1;dc++) {
+            const nr=r+dr, nc=col+dc;
+            if (nr>=0&&nr<N&&nc>=0&&nc<N&&c[nr*N+nc].mine) cnt++;
+          }
+          c[i].n = cnt;
+        }
+        setCells(c); setOver(''); setRevealed(0);
+      };
+
+      useEffect(gen, []);
+
+      const open = (i) => {
+        if (over || cells[i].open || cells[i].flag) return;
+        const c = cells.map(x=>({...x}));
+        if (c[i].mine) {
+          c.forEach(x => { if (x.mine) x.open = true; });
+          setCells(c); setOver('💥 Thua!');
+          return;
+        }
+        const stack = [i]; let opened = 0;
+        while (stack.length) {
+          const k = stack.pop();
+          if (c[k].open || c[k].flag || c[k].mine) continue;
+          c[k].open = true; opened++;
+          if (c[k].n === 0) {
+            const r = Math.floor(k/N), col = k%N;
+            for (let dr=-1;dr<=1;dr++) for (let dc=-1;dc<=1;dc++) {
+              const nr=r+dr, nc=col+dc;
+              if (nr>=0&&nr<N&&nc>=0&&nc<N) stack.push(nr*N+nc);
+            }
+          }
+        }
+        const total = revealed + opened;
+        setCells(c); setRevealed(total);
+        if (total === N*N - MINES) {
+          setOver('🎉 Thắng!');
+          if (total > best) { setBest(total); saveScore('minesweeper', total); }
+        }
+      };
+
+      const flag = (e, i) => {
+        e.preventDefault();
+        if (over || cells[i].open) return;
+        const c = cells.map(x=>({...x}));
+        c[i].flag = !c[i].flag;
+        setCells(c);
+      };
+
+      const colors = ['','#3b82f6','#10b981','#ef4444','#8b5cf6','#dc2626','#06b6d4','#000','#777'];
+
+      return (
+        <div>
+          <BackBar back={back} title="💣 Dò Mìn" score={best} />
+          <div style={{ padding: 20, textAlign: 'center' }}>
+            <p style={{ marginBottom: 10 }}>Mở: {revealed}/{N*N-MINES} {over && '— '+over}</p>
+            <div style={{ display: 'inline-grid', gridTemplateColumns: `repeat(${N},36px)`, gap: 2, background: '#0f1f2e', padding: 6, borderRadius: 8 }}>
+              {cells.map((c,i)=>(
+                <button key={i} onClick={()=>open(i)} onContextMenu={(e)=>flag(e,i)}
+                  style={{ width: 36, height: 36, background: c.open ? (c.mine?'#dc2626':'#1e293b') : '#475569', border: '1px solid #334155', borderRadius: 4, color: c.open?(colors[c.n]||'white'):'white', fontSize: 16, fontWeight: 'bold', cursor: 'pointer' }}>
+                  {c.flag && !c.open ? '🚩' : c.open ? (c.mine?'💣':(c.n||'')) : ''}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 10 }}>Click trái: mở — Click phải: cắm cờ</p>
+            <button onClick={gen} style={{ marginTop: 12, padding: '10px 24px', background: '#10b981', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Ván mới</button>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 9. 2048 ============
+    const G2048 = ({ back }) => {
+      const N = 4;
+      const [grid, setGrid] = useState(null);
+      const [score, setScore] = useState(0);
+      const [over, setOver] = useState(false);
+      const [best, setBest] = useState(getHigh('2048'));
+
+      const empty = () => Array.from({length:N},()=>Array(N).fill(0));
+      const addTile = (g) => {
+        const empties = [];
+        for (let r=0;r<N;r++) for (let c=0;c<N;c++) if (g[r][c]===0) empties.push([r,c]);
+        if (!empties.length) return g;
+        const [r,c] = empties[Math.floor(Math.random()*empties.length)];
+        g[r][c] = Math.random()<0.9 ? 2 : 4;
+        return g;
+      };
+      const reset = () => { let g = empty(); g = addTile(g); g = addTile(g); setGrid(g); setScore(0); setOver(false); };
+
+      useEffect(reset, []);
+
+      const slide = (row) => {
+        const arr = row.filter(x=>x);
+        let gain = 0;
+        for (let i=0;i<arr.length-1;i++) { if (arr[i]===arr[i+1]) { arr[i]*=2; gain+=arr[i]; arr[i+1]=0; } }
+        const out = arr.filter(x=>x);
+        while (out.length < N) out.push(0);
+        return { row: out, gain };
+      };
+
+      const move = (dir) => {
+        if (over || !grid) return;
+        let g = grid.map(r=>[...r]);
+        let gain = 0;
+        if (dir === 'L') {
+          g = g.map(r => { const s = slide(r); gain += s.gain; return s.row; });
+        } else if (dir === 'R') {
+          g = g.map(r => { const s = slide([...r].reverse()); gain += s.gain; return s.row.reverse(); });
+        } else if (dir === 'U') {
+          for (let c=0;c<N;c++) {
+            const col = g.map(r=>r[c]);
+            const s = slide(col); gain += s.gain;
+            for (let r=0;r<N;r++) g[r][c] = s.row[r];
+          }
+        } else if (dir === 'D') {
+          for (let c=0;c<N;c++) {
+            const col = g.map(r=>r[c]).reverse();
+            const s = slide(col); gain += s.gain;
+            const out = s.row.reverse();
+            for (let r=0;r<N;r++) g[r][c] = out[r];
+          }
+        }
+        if (JSON.stringify(g) === JSON.stringify(grid)) return;
+        g = addTile(g);
+        const ns = score + gain;
+        setGrid(g); setScore(ns);
+        if (ns > best) { setBest(ns); saveScore('2048', ns); }
+        // check over
+        const has0 = g.some(r => r.some(x => x===0));
+        let canMove = has0;
+        if (!has0) {
+          for (let r=0;r<N&&!canMove;r++) for (let c=0;c<N&&!canMove;c++) {
+            if (c+1<N && g[r][c]===g[r][c+1]) canMove = true;
+            if (r+1<N && g[r][c]===g[r+1][c]) canMove = true;
+          }
+        }
+        if (!canMove) setOver(true);
+      };
+
+      useEffect(() => {
+        const onKey = (e) => {
+          if (e.key === 'ArrowLeft') { e.preventDefault(); move('L'); }
+          else if (e.key === 'ArrowRight') { e.preventDefault(); move('R'); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); move('U'); }
+          else if (e.key === 'ArrowDown') { e.preventDefault(); move('D'); }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [grid, over, score]);
+
+      const colorOf = (v) => {
+        const m = { 0:'#334155', 2:'#fef3c7', 4:'#fde68a', 8:'#fbbf24', 16:'#f59e0b', 32:'#fb923c', 64:'#f97316', 128:'#fcd34d', 256:'#facc15', 512:'#eab308', 1024:'#a3e635', 2048:'#22c55e' };
+        return m[v] || '#16a34a';
+      };
+
+      return (
+        <div>
+          <BackBar back={back} title="🔢 2048" score={best} />
+          <div style={{ padding: 20, textAlign: 'center' }}>
+            <p style={{ marginBottom: 10 }}>Điểm: {score} {over && '— Game Over!'}</p>
+            <div style={{ display: 'inline-grid', gridTemplateColumns: `repeat(${N},70px)`, gap: 6, background: '#0f1f2e', padding: 8, borderRadius: 10 }}>
+              {grid && grid.flat().map((v,i)=>(
+                <div key={i} style={{ width: 70, height: 70, background: colorOf(v), color: v<8?'#1e293b':'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: v>=1024?20:26, fontWeight: 'bold', borderRadius: 6 }}>{v||''}</div>
+              ))}
+            </div>
+            <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 10 }}>Phím mũi tên ← → ↑ ↓</p>
+            <div style={{ marginTop: 10, display: 'inline-grid', gridTemplateColumns: 'repeat(3,60px)', gap: 4 }}>
+              <div></div><button onClick={()=>move('U')} style={btn2048}>↑</button><div></div>
+              <button onClick={()=>move('L')} style={btn2048}>←</button>
+              <button onClick={reset} style={{...btn2048, background:'#10b981'}}>↻</button>
+              <button onClick={()=>move('R')} style={btn2048}>→</button>
+              <div></div><button onClick={()=>move('D')} style={btn2048}>↓</button><div></div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+    const btn2048 = { width: 60, height: 50, background: '#475569', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 20 };
+
+    // ============ 10. TETRIS ============
+    const Tetris = ({ back }) => {
+      const W = 10, H = 16;
+      const SHAPES = [
+        [[1,1,1,1]],            // I
+        [[1,1],[1,1]],          // O
+        [[0,1,0],[1,1,1]],      // T
+        [[1,0,0],[1,1,1]],      // J
+        [[0,0,1],[1,1,1]],      // L
+        [[1,1,0],[0,1,1]],      // S
+        [[0,1,1],[1,1,0]],      // Z
+      ];
+      const COLORS = ['#06b6d4','#facc15','#a855f7','#3b82f6','#f97316','#10b981','#ef4444'];
+
+      const [board, setBoard] = useState(() => Array.from({length:H},()=>Array(W).fill(0)));
+      const [piece, setPiece] = useState(null);
+      const [score, setScore] = useState(0);
+      const [over, setOver] = useState(false);
+      const [best, setBest] = useState(getHigh('tetris'));
+      const boardRef = useRef(null);
+      const pieceRef = useRef(null);
+      const overRef = useRef(false);
+
+      boardRef.current = board;
+      pieceRef.current = piece;
+      overRef.current = over;
+
+      const newPiece = () => {
+        const t = Math.floor(Math.random()*SHAPES.length);
+        return { shape: SHAPES[t], type: t+1, x: Math.floor(W/2)-1, y: 0 };
+      };
+
+      const collide = (b, p, dx=0, dy=0, shape=null) => {
+        const sh = shape || p.shape;
+        for (let r=0;r<sh.length;r++) for (let c=0;c<sh[r].length;c++) {
+          if (!sh[r][c]) continue;
+          const nx = p.x+c+dx, ny = p.y+r+dy;
+          if (nx<0||nx>=W||ny>=H) return true;
+          if (ny>=0 && b[ny][nx]) return true;
+        }
+        return false;
+      };
+
+      const merge = (b, p) => {
+        const nb = b.map(r=>[...r]);
+        for (let r=0;r<p.shape.length;r++) for (let c=0;c<p.shape[r].length;c++) {
+          if (p.shape[r][c] && p.y+r >= 0) nb[p.y+r][p.x+c] = p.type;
+        }
+        // clear lines
+        let cleared = 0;
+        for (let r=H-1;r>=0;r--) {
+          if (nb[r].every(x=>x)) { nb.splice(r,1); nb.unshift(Array(W).fill(0)); cleared++; r++; }
+        }
+        return { board: nb, cleared };
+      };
+
+      const tick = () => {
+        if (overRef.current) return;
+        const p = pieceRef.current;
+        const b = boardRef.current;
+        if (!p) {
+          const np = newPiece();
+          if (collide(b, np)) { setOver(true); return; }
+          setPiece(np);
+          return;
+        }
+        if (!collide(b, p, 0, 1)) {
+          setPiece({ ...p, y: p.y+1 });
+        } else {
+          const { board: nb, cleared } = merge(b, p);
+          setBoard(nb);
+          if (cleared) {
+            const gain = [0,100,300,500,800][cleared] || 1000;
+            setScore(s => {
+              const ns = s+gain;
+              if (ns > best) { setBest(ns); saveScore('tetris', ns); }
+              return ns;
+            });
+          }
+          const np = newPiece();
+          if (collide(nb, np)) { setOver(true); setPiece(null); return; }
+          setPiece(np);
+        }
+      };
+
+      useEffect(() => {
+        const id = setInterval(tick, 500);
+        return () => clearInterval(id);
+      }, []);
+
+      const move = (dx) => {
+        const p = pieceRef.current; if (!p || overRef.current) return;
+        if (!collide(boardRef.current, p, dx, 0)) setPiece({...p, x: p.x+dx});
+      };
+      const drop = () => {
+        let p = pieceRef.current; if (!p || overRef.current) return;
+        let ny = p.y;
+        while (!collide(boardRef.current, {...p, y: ny}, 0, 1)) ny++;
+        setPiece({...p, y: ny});
+      };
+      const rotate = () => {
+        const p = pieceRef.current; if (!p || overRef.current) return;
+        const s = p.shape;
+        const rot = s[0].map((_,c) => s.map(r => r[c]).reverse());
+        if (!collide(boardRef.current, p, 0, 0, rot)) setPiece({...p, shape: rot});
+      };
+
+      useEffect(() => {
+        const onKey = (e) => {
+          if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1); }
+          else if (e.key === 'ArrowRight') { e.preventDefault(); move(1); }
+          else if (e.key === 'ArrowDown') { e.preventDefault(); tick(); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); rotate(); }
+          else if (e.key === ' ') { e.preventDefault(); drop(); }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, []);
+
+      const reset = () => {
+        setBoard(Array.from({length:H},()=>Array(W).fill(0)));
+        setPiece(null); setScore(0); setOver(false);
+        overRef.current = false;
+      };
+
+      // Render board with current piece overlay
+      const display = board.map(r=>[...r]);
+      if (piece) {
+        for (let r=0;r<piece.shape.length;r++) for (let c=0;c<piece.shape[r].length;c++) {
+          if (piece.shape[r][c] && piece.y+r >= 0 && piece.y+r < H && piece.x+c >= 0 && piece.x+c < W)
+            display[piece.y+r][piece.x+c] = piece.type;
+        }
+      }
+
+      return (
+        <div>
+          <BackBar back={back} title="🧱 Tetris" score={best} />
+          <div style={{ padding: 14, textAlign: 'center' }}>
+            <p style={{ marginBottom: 8 }}>Điểm: {score} {over && '— Game Over!'}</p>
+            <div style={{ display: 'inline-grid', gridTemplateColumns: `repeat(${W}, 22px)`, gap: 1, background: '#0f1f2e', padding: 4, borderRadius: 6 }}>
+              {display.flat().map((v,i)=>(
+                <div key={i} style={{ width: 22, height: 22, background: v?COLORS[v-1]:'#1e293b', borderRadius: 2 }} />
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>← → di chuyển — ↑ xoay — ↓ rớt nhanh — Space drop</p>
+            <div style={{ marginTop: 8, display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button onClick={()=>move(-1)} style={tetBtn}>←</button>
+              <button onClick={rotate} style={tetBtn}>⟳</button>
+              <button onClick={()=>move(1)} style={tetBtn}>→</button>
+              <button onClick={drop} style={{...tetBtn, background:'#f59e0b'}}>⤓</button>
+              <button onClick={reset} style={{...tetBtn, background:'#10b981'}}>↻</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+    const tetBtn = { width: 50, height: 44, background: '#475569', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 18 };
+
+    // ============ APP ROUTER ============
+    const App = () => {
+      const [view, setView] = useState(() => (window.location.hash || '#hub').slice(1));
+      useEffect(() => {
+        const h = () => setView((window.location.hash || '#hub').slice(1));
+        window.addEventListener('hashchange', h);
+        return () => window.removeEventListener('hashchange', h);
+      }, []);
+      const go = (id) => { window.location.hash = id; setView(id); };
+      const back = () => { window.location.hash = 'hub'; setView('hub'); };
+
+      switch (view) {
+        case 'tictactoe': return <TicTacToe back={back} />;
+        case 'reaction': return <Reaction back={back} />;
+        case 'riddle': return <Riddle back={back} />;
+        case 'spot': return <Spot back={back} />;
+        case 'word': return <WordFill back={back} />;
+        case 'anagram': return <Anagram back={back} />;
+        case 'nback': return <Nback back={back} />;
+        case 'minesweeper': return <Minesweeper back={back} />;
+        case '2048': return <G2048 back={back} />;
+        case 'tetris': return <Tetris back={back} />;
+        default: return <Hub go={go} />;
+      }
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

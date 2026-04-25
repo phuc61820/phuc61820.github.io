@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>👨‍🍳 Nấu Ăn Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #2e1a0a; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const GAMES = [
+      { id:'pho',       name:'Phở Bò',      icon:'🍜', desc:'Nhấn nguyên liệu đúng thứ tự', color:'#f59e0b' },
+      { id:'banhmi',    name:'Bánh Mì',     icon:'🥖', desc:'Xếp lớp bánh mì',              color:'#a78bfa' },
+      { id:'bun',       name:'Bún Chả',     icon:'🍲', desc:'Nướng thịt đúng lúc',          color:'#ef4444' },
+      { id:'chao',      name:'Cháo Gà',     icon:'🥣', desc:'Khuấy nồi, đừng cho cháy',      color:'#fbbf24' },
+      { id:'goicuon',   name:'Gỏi Cuốn',    icon:'🌯', desc:'Cuốn nguyên liệu vào bánh',    color:'#22c55e' },
+      { id:'banhxeo',   name:'Bánh Xèo',    icon:'🥞', desc:'Lật bánh đúng lúc',            color:'#f97316' },
+      { id:'chegio',    name:'Chả Giò',     icon:'🥟', desc:'Cuốn đủ số lượng',             color:'#ec4899' },
+      { id:'xoi',       name:'Xôi',         icon:'🍚', desc:'Thêm topping đúng thứ tự',     color:'#8b5cf6' },
+      { id:'banhcuon',  name:'Bánh Cuốn',   icon:'🫔', desc:'Hấp và cuốn đúng lúc',         color:'#06b6d4' },
+      { id:'sinhto',    name:'Sinh Tố',     icon:'🥤', desc:'Xay trái cây theo nhịp',       color:'#10b981' },
+    ];
+
+    function loadProgress() {
+      try { return JSON.parse(localStorage.getItem('cookProgress')||'{}'); }
+      catch(e) { return {}; }
+    }
+    function saveScore(id, score) {
+      const p = loadProgress();
+      if (!p[id] || score > p[id]) { p[id] = score; localStorage.setItem('cookProgress', JSON.stringify(p)); }
+    }
+
+    // ============================================================
+    // 1. PHO - click ingredients in correct order
+    // ============================================================
+    function PhoGame({ onExit }) {
+      const STEPS = [
+        { name:'Nước dùng', icon:'🫙' },
+        { name:'Bánh phở',  icon:'🍜' },
+        { name:'Thịt bò',   icon:'🥩' },
+        { name:'Hành',      icon:'🧅' },
+        { name:'Rau thơm',  icon:'🌿' },
+        { name:'Chanh',     icon:'🍋' },
+      ];
+      const [idx, setIdx] = useState(0);
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(45);
+      const [done, setDone] = useState(false);
+      const [shuffled, setShuffled] = useState([]);
+
+      useEffect(() => { setShuffled([...STEPS].sort(()=>Math.random()-0.5)); }, [idx]);
+
+      useEffect(() => {
+        if (done) return;
+        if (time <= 0) { setDone(true); saveScore('pho', score); return; }
+        const t = setTimeout(()=>setTime(time-1), 1000);
+        return ()=>clearTimeout(t);
+      }, [time, done]);
+
+      function click(ing) {
+        if (done) return;
+        if (ing.name === STEPS[idx].name) {
+          const next = idx + 1;
+          setScore(score + 20);
+          if (next >= STEPS.length) { setDone(true); saveScore('pho', score+20+time*2); }
+          else setIdx(next);
+        } else {
+          setScore(Math.max(0, score-5));
+        }
+      }
+
+      return (
+        <div style={{padding:'20px', textAlign:'center'}}>
+          <h2 style={{fontSize:'28px', marginBottom:'10px'}}>🍜 Phở Bò</h2>
+          <p style={{marginBottom:'10px'}}>Điểm: {score} | Thời gian: {time}s</p>
+          {!done ? (
+            <>
+              <div style={{background:'#451a03', padding:'20px', borderRadius:'12px', margin:'20px auto', maxWidth:'400px'}}>
+                <p style={{fontSize:'14px', opacity:0.8}}>Bước {idx+1}/{STEPS.length}:</p>
+                <p style={{fontSize:'22px', fontWeight:'bold'}}>Thêm {STEPS[idx].name}!</p>
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'10px', maxWidth:'400px', margin:'0 auto'}}>
+                {shuffled.map((ing,i)=>(
+                  <button key={i} onClick={()=>click(ing)}
+                    style={{padding:'20px', fontSize:'32px', background:'#78350f', border:'none', borderRadius:'12px', cursor:'pointer'}}>
+                    {ing.icon}<div style={{fontSize:'12px', color:'white'}}>{ing.name}</div>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div style={{padding:'30px'}}>
+              <h3 style={{fontSize:'24px'}}>🎉 Phở hoàn tất!</h3>
+              <p style={{fontSize:'32px', margin:'20px'}}>Điểm: {score + (idx >= STEPS.length ? time*2 : 0)}</p>
+            </div>
+          )}
+          <button onClick={onExit} style={{marginTop:'20px', padding:'12px 24px', background:'#92400e', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>⬅ Về Hub</button>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 2. BANH MI - assemble sandwich layers
+    // ============================================================
+    function BanhMiGame({ onExit }) {
+      const ORDER = ['🥖 Bánh','🧈 Bơ','🥩 Pate','🌭 Chả','🥒 Dưa leo','🌶️ Ớt','🥖 Đậy bánh'];
+      const [idx, setIdx] = useState(0);
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(40);
+      const [done, setDone] = useState(false);
+      const [stack, setStack] = useState([]);
+
+      useEffect(()=>{
+        if (done) return;
+        if (time<=0){ setDone(true); saveScore('banhmi', score); return; }
+        const t=setTimeout(()=>setTime(time-1),1000);
+        return ()=>clearTimeout(t);
+      },[time,done]);
+
+      function pick(item){
+        if (done) return;
+        if (item === ORDER[idx]) {
+          setStack([...stack, item]);
+          setScore(score+15);
+          if (idx+1 >= ORDER.length) { setDone(true); saveScore('banhmi', score+15+time*2); }
+          else setIdx(idx+1);
+        } else { setScore(Math.max(0,score-3)); }
+      }
+
+      const shuffled = [...ORDER].sort((a,b)=>a.localeCompare(b));
+
+      return (
+        <div style={{padding:'20px', textAlign:'center'}}>
+          <h2 style={{fontSize:'28px'}}>🥖 Bánh Mì</h2>
+          <p>Điểm: {score} | ⏱ {time}s</p>
+          {!done ? (
+            <>
+              <p style={{margin:'15px', fontSize:'18px'}}>Tiếp theo: <b>{ORDER[idx]}</b></p>
+              <div style={{background:'#451a03', padding:'15px', minHeight:'80px', margin:'10px auto', maxWidth:'300px', borderRadius:'10px'}}>
+                {stack.map((s,i)=><div key={i} style={{fontSize:'18px'}}>{s}</div>)}
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', maxWidth:'400px', margin:'0 auto'}}>
+                {shuffled.map((item,i)=>(
+                  <button key={i} onClick={()=>pick(item)}
+                    style={{padding:'12px', background:'#a16207', border:'none', borderRadius:'8px', color:'white', cursor:'pointer', fontSize:'14px'}}>
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : <h3 style={{margin:'30px', fontSize:'24px'}}>🎉 Bánh mì: {score}</h3>}
+          <button onClick={onExit} style={{marginTop:'20px', padding:'12px 24px', background:'#92400e', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>⬅ Về Hub</button>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 3. BUN - grill meat timing minigame
+    // ============================================================
+    function BunGame({ onExit }) {
+      const [pieces, setPieces] = useState(() => Array(8).fill(0).map((_,i)=>({id:i, state:'raw', start:Date.now()+i*500})));
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(45);
+      const [done, setDone] = useState(false);
+      const [tick, setTick] = useState(0);
+
+      useEffect(()=>{
+        if (done) return;
+        const t = setInterval(()=>setTick(x=>x+1), 200);
+        return ()=>clearInterval(t);
+      },[done]);
+
+      useEffect(()=>{
+        if (done) return;
+        if (time<=0) { setDone(true); saveScore('bun', score); return; }
+        const t=setTimeout(()=>setTime(time-1),1000);
+        return ()=>clearTimeout(t);
+      },[time,done]);
+
+      useEffect(()=>{
+        setPieces(prev => prev.map(p => {
+          if (p.state!=='cooking') return p;
+          const dur = Date.now()-p.cookStart;
+          if (dur > 6000) return {...p, state:'burnt'};
+          return p;
+        }));
+      },[tick]);
+
+      function flip(p){
+        if (done) return;
+        if (p.state==='raw'){
+          setPieces(pieces.map(x=>x.id===p.id?{...x, state:'cooking', cookStart:Date.now()}:x));
+        } else if (p.state==='cooking'){
+          const dur = Date.now()-p.cookStart;
+          if (dur >= 3000 && dur <= 5500){ setScore(score+25); setPieces(pieces.map(x=>x.id===p.id?{...x, state:'done'}:x)); }
+          else if (dur < 3000) setScore(Math.max(0,score-5));
+          else { setPieces(pieces.map(x=>x.id===p.id?{...x, state:'burnt'}:x)); setScore(Math.max(0,score-5)); }
+        }
+      }
+
+      const remaining = pieces.filter(p=>p.state==='raw'||p.state==='cooking').length;
+      useEffect(()=>{ if (remaining===0 && !done) { setDone(true); saveScore('bun', score+time*3); } },[remaining]);
+
+      return (
+        <div style={{padding:'20px', textAlign:'center'}}>
+          <h2 style={{fontSize:'28px'}}>🍲 Bún Chả</h2>
+          <p>Điểm: {score} | ⏱ {time}s</p>
+          <p style={{fontSize:'14px', margin:'10px', opacity:0.8}}>Nhấn nguyên: bắt đầu nướng. Nhấn khi vàng: lấy ra. Đừng để cháy!</p>
+          {!done ? (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'10px', maxWidth:'400px', margin:'20px auto'}}>
+              {pieces.map(p=>{
+                let icon='🥩', bg='#b91c1c';
+                if (p.state==='cooking'){
+                  const d = Date.now()-p.cookStart;
+                  if (d>=3000 && d<=5500){ icon='🍖'; bg='#f59e0b'; }
+                  else { icon='🥩'; bg='#dc2626'; }
+                }
+                if (p.state==='done'){ icon='🍖'; bg='#16a34a'; }
+                if (p.state==='burnt'){ icon='🖤'; bg='#1f2937'; }
+                return <button key={p.id} onClick={()=>flip(p)} disabled={p.state==='done'||p.state==='burnt'}
+                  style={{padding:'20px', fontSize:'32px', background:bg, border:'none', borderRadius:'8px', cursor:'pointer'}}>{icon}</button>;
+              })}
+            </div>
+          ) : <h3 style={{fontSize:'24px', margin:'30px'}}>🎉 {score}</h3>}
+          <button onClick={onExit} style={{marginTop:'20px', padding:'12px 24px', background:'#92400e', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>⬅ Về Hub</button>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 4. CHAO - stir pot, don't burn
+    // ============================================================
+    function ChaoGame({ onExit }) {
+      const [heat, setHeat] = useState(50);
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(40);
+      const [done, setDone] = useState(false);
+
+      useEffect(()=>{
+        if (done) return;
+        if (time<=0){ setDone(true); saveScore('chao', score); return; }
+        const t=setTimeout(()=>{
+          setTime(time-1);
+          setHeat(h=>Math.min(100, h+6));
+          if (heat > 30 && heat < 75) setScore(s=>s+2);
+        },500);
+        return ()=>clearTimeout(t);
+      },[time,heat,done,score]);
+
+      useEffect(()=>{
+        if (heat >= 100 && !done){ setDone(true); saveScore('chao', score); }
+      },[heat,done,score]);
+
+      function stir(){
+        if (done) return;
+        setHeat(h=>Math.max(0, h-15));
+        setScore(s=>s+3);
+      }
+
+      return (
+        <div style={{padding:'20px', textAlign:'center'}}>
+          <h2 style={{fontSize:'28px'}}>🥣 Cháo Gà</h2>
+          <p>Điểm: {score} | ⏱ {time}s</p>
+          <p style={{fontSize:'14px', margin:'10px', opacity:0.8}}>Khuấy để giảm lửa. Đừng để nồi vượt 100!</p>
+          <div style={{margin:'30px auto', maxWidth:'300px'}}>
+            <div style={{background:'#333', height:'30px', borderRadius:'15px', overflow:'hidden', margin:'10px'}}>
+              <div style={{width:heat+'%', height:'100%', background:heat>75?'#dc2626':heat>50?'#f59e0b':'#16a34a', transition:'all 0.3s'}}></div>
+            </div>
+            <p>Nhiệt: {Math.round(heat)}%</p>
+          </div>
+          {!done ? (
+            <button onClick={stir} style={{padding:'30px 60px', fontSize:'50px', background:'#f59e0b', border:'none', borderRadius:'50%', cursor:'pointer'}}>🥄</button>
+          ) : <h3 style={{fontSize:'24px', margin:'30px'}}>{heat>=100?'💥 Cháy nồi!':'🎉 '}{score}</h3>}
+          <div><button onClick={onExit} style={{marginTop:'20px', padding:'12px 24px', background:'#92400e', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>⬅ Về Hub</button></div>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 5. GOI CUON - wrap ingredients (tap order)
+    // ============================================================
+    function GoiCuonGame({ onExit }) {
+      const FILLS = ['🍤 Tôm','🥬 Xà lách','🌾 Bún','🌿 Rau','🍚 Bánh tráng'];
+      const [order] = useState(()=>[...FILLS].sort(()=>Math.random()-0.5));
+      const [current, setCurrent] = useState([]);
+      const [rolls, setRolls] = useState(0);
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(50);
+      const [done, setDone] = useState(false);
+      const [target, setTarget] = useState(()=>[...FILLS].sort(()=>Math.random()-0.5));
+
+      useEffect(()=>{
+        if (done) return;
+        if (time<=0){ setDone(true); saveScore('goicuon', score); return; }
+        const t=setTimeout(()=>setTime(time-1),1000);
+        return ()=>clearTimeout(t);
+      },[time,done]);
+
+      function add(f){
+        if (done) return;
+        const next = [...current, f];
+        setCurrent(next);
+        if (next.length >= target.length){
+          const match = next.every((x,i)=>x===target[i]);
+          if (match) setScore(score+30);
+          else setScore(Math.max(0,score-5));
+          setRolls(rolls+1);
+          setCurrent([]);
+          setTarget([...FILLS].sort(()=>Math.random()-0.5));
+        }
+      }
+
+      return (
+        <div style={{padding:'20px', textAlign:'center'}}>
+          <h2 style={{fontSize:'28px'}}>🌯 Gỏi Cuốn</h2>
+          <p>Điểm: {score} | ⏱ {time}s | Cuốn: {rolls}</p>
+          {!done ? (
+            <>
+              <div style={{background:'#451a03', padding:'15px', margin:'15px auto', maxWidth:'350px', borderRadius:'10px'}}>
+                <p style={{fontSize:'14px', opacity:0.8}}>Thứ tự đúng:</p>
+                <p style={{fontSize:'16px'}}>{target.map((t,i)=><span key={i}>{i+1}. {t} </span>)}</p>
+              </div>
+              <div style={{background:'#78350f', padding:'10px', margin:'10px auto', maxWidth:'300px', borderRadius:'8px', minHeight:'50px'}}>
+                Đã cuốn: {current.join(' → ')||'(chưa có)'}
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', maxWidth:'400px', margin:'10px auto'}}>
+                {FILLS.map((f,i)=>(
+                  <button key={i} onClick={()=>add(f)} style={{padding:'15px', background:'#16a34a', border:'none', borderRadius:'8px', color:'white', cursor:'pointer', fontSize:'13px'}}>{f}</button>
+                ))}
+              </div>
+            </>
+          ) : <h3 style={{fontSize:'24px', margin:'30px'}}>🎉 {score}</h3>}
+          <button onClick={onExit} style={{marginTop:'20px', padding:'12px 24px', background:'#92400e', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>⬅ Về Hub</button>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 6. BANH XEO - flip pancake timing
+    // ============================================================
+    function BanhXeoGame({ onExit }) {
+      const [state, setState] = useState('raw');
+      const [startTime, setStartTime] = useState(Date.now());
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(45);
+      const [done, setDone] = useState(false);
+      const [count, setCount] = useState(0);
+
+      useEffect(()=>{
+        if (done) return;
+        if (time<=0){ setDone(true); saveScore('banhxeo', score); return; }
+        const t=setTimeout(()=>setTime(time-1),1000);
+        return ()=>clearTimeout(t);
+      },[time,done]);
+
+      useEffect(()=>{
+        if (state!=='cooking' || done) return;
+        const interval = setInterval(()=>{
+          const dur = Date.now()-startTime;
+          if (dur > 6000){ setState('burnt'); }
+        },200);
+        return ()=>clearInterval(interval);
+      },[state,startTime,done]);
+
+      function start(){
+        if (done) return;
+        setState('cooking');
+        setStartTime(Date.now());
+      }
+      function flip(){
+        if (done) return;
+        const dur = Date.now()-startTime;
+        if (state==='cooking'){
+          if (dur >= 3000 && dur <= 5000){ setScore(score+40); setCount(count+1); }
+          else if (dur < 3000) setScore(Math.max(0,score-5));
+          else setScore(Math.max(0,score-10));
+          setState('raw');
+        }
+      }
+
+      return (
+        <div style={{padding:'20px', textAlign:'center'}}>
+          <h2 style={{fontSize:'28px'}}>🥞 Bánh Xèo</h2>
+          <p>Điểm: {score} | ⏱ {time}s | Bánh: {count}</p>
+          <p style={{fontSize:'14px', opacity:0.8, margin:'10px'}}>Nhấn "Đổ bột" để bắt đầu. Lật khi bánh vàng (3-5s)!</p>
+          {!done && (
+            <div style={{margin:'30px', fontSize:'80px'}}>
+              {state==='raw'?'🍳':state==='cooking'?'🥞':'🖤'}
+            </div>
+          )}
+          {!done ? (
+            state==='raw' ?
+              <button onClick={start} style={{padding:'20px 40px', fontSize:'18px', background:'#f97316', border:'none', borderRadius:'12px', color:'white', cursor:'pointer'}}>Đổ bột</button> :
+              <button onClick={flip} style={{padding:'20px 40px', fontSize:'18px', background:'#f59e0b', border:'none', borderRadius:'12px', color:'white', cursor:'pointer'}}>Lật bánh!</button>
+          ) : <h3 style={{fontSize:'24px', margin:'30px'}}>🎉 {score}</h3>}
+          <div><button onClick={onExit} style={{marginTop:'20px', padding:'12px 24px', background:'#92400e', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>⬅ Về Hub</button></div>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 7. CHA GIO - roll spring rolls (count)
+    // ============================================================
+    function ChaGioGame({ onExit }) {
+      const [target, setTarget] = useState(Math.floor(Math.random()*5)+3);
+      const [rolled, setRolled] = useState(0);
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(40);
+      const [done, setDone] = useState(false);
+      const [completed, setCompleted] = useState(0);
+
+      useEffect(()=>{
+        if (done) return;
+        if (time<=0){ setDone(true); saveScore('chegio', score); return; }
+        const t=setTimeout(()=>setTime(time-1),1000);
+        return ()=>clearTimeout(t);
+      },[time,done]);
+
+      function roll(){
+        if (done) return;
+        setRolled(rolled+1);
+      }
+      function submit(){
+        if (done) return;
+        if (rolled === target) { setScore(score+30); setCompleted(completed+1); }
+        else setScore(Math.max(0, score - Math.abs(rolled-target)*3));
+        setRolled(0);
+        setTarget(Math.floor(Math.random()*5)+3);
+      }
+
+      return (
+        <div style={{padding:'20px', textAlign:'center'}}>
+          <h2 style={{fontSize:'28px'}}>🥟 Chả Giò</h2>
+          <p>Điểm: {score} | ⏱ {time}s | Đĩa: {completed}</p>
+          {!done ? (
+            <>
+              <div style={{background:'#451a03', padding:'20px', margin:'20px auto', maxWidth:'350px', borderRadius:'10px'}}>
+                <p style={{fontSize:'22px'}}>Cần: <b>{target}</b> cuốn</p>
+                <p style={{fontSize:'40px', margin:'10px'}}>{Array(rolled).fill('🥟').join('')||'(trống)'}</p>
+                <p>Đã cuốn: {rolled}</p>
+              </div>
+              <button onClick={roll} style={{padding:'15px 30px', fontSize:'18px', background:'#ec4899', border:'none', borderRadius:'10px', color:'white', cursor:'pointer', margin:'5px'}}>+ Cuốn</button>
+              <button onClick={submit} style={{padding:'15px 30px', fontSize:'18px', background:'#16a34a', border:'none', borderRadius:'10px', color:'white', cursor:'pointer', margin:'5px'}}>✓ Nộp</button>
+            </>
+          ) : <h3 style={{fontSize:'24px', margin:'30px'}}>🎉 {score}</h3>}
+          <div><button onClick={onExit} style={{marginTop:'20px', padding:'12px 24px', background:'#92400e', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>⬅ Về Hub</button></div>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 8. XOI - add toppings in order
+    // ============================================================
+    function XoiGame({ onExit }) {
+      const TOPPINGS = ['🌾 Xôi','🥥 Dừa','🌰 Đậu','🥜 Lạc','🍯 Đường','🧂 Muối vừng'];
+      const [target, setTarget] = useState(()=>[...TOPPINGS].sort(()=>Math.random()-0.5).slice(0,4));
+      const [idx, setIdx] = useState(0);
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(50);
+      const [done, setDone] = useState(false);
+      const [bowls, setBowls] = useState(0);
+
+      useEffect(()=>{
+        if (done) return;
+        if (time<=0){ setDone(true); saveScore('xoi', score); return; }
+        const t=setTimeout(()=>setTime(time-1),1000);
+        return ()=>clearTimeout(t);
+      },[time,done]);
+
+      function add(t){
+        if (done) return;
+        if (t === target[idx]){
+          setScore(score+15);
+          if (idx+1 >= target.length){
+            setBowls(bowls+1);
+            setScore(s=>s+20);
+            setIdx(0);
+            setTarget([...TOPPINGS].sort(()=>Math.random()-0.5).slice(0,4));
+          } else setIdx(idx+1);
+        } else setScore(Math.max(0,score-3));
+      }
+
+      return (
+        <div style={{padding:'20px', textAlign:'center'}}>
+          <h2 style={{fontSize:'28px'}}>🍚 Xôi</h2>
+          <p>Điểm: {score} | ⏱ {time}s | Bát: {bowls}</p>
+          {!done ? (
+            <>
+              <div style={{background:'#451a03', padding:'15px', margin:'15px auto', maxWidth:'350px', borderRadius:'10px'}}>
+                <p style={{fontSize:'14px', opacity:0.8}}>Thứ tự:</p>
+                <p style={{fontSize:'15px'}}>{target.map((t,i)=><span key={i} style={{color:i<idx?'#16a34a':i===idx?'#fbbf24':'white'}}>{i+1}. {t} </span>)}</p>
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', maxWidth:'400px', margin:'10px auto'}}>
+                {TOPPINGS.map((t,i)=>(
+                  <button key={i} onClick={()=>add(t)} style={{padding:'15px', background:'#8b5cf6', border:'none', borderRadius:'8px', color:'white', cursor:'pointer', fontSize:'13px'}}>{t}</button>
+                ))}
+              </div>
+            </>
+          ) : <h3 style={{fontSize:'24px', margin:'30px'}}>🎉 {score}</h3>}
+          <button onClick={onExit} style={{marginTop:'20px', padding:'12px 24px', background:'#92400e', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>⬅ Về Hub</button>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 9. BANH CUON - steam and roll timing
+    // ============================================================
+    function BanhCuonGame({ onExit }) {
+      const [phase, setPhase] = useState('pour');
+      const [startTime, setStartTime] = useState(0);
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(45);
+      const [done, setDone] = useState(false);
+      const [count, setCount] = useState(0);
+
+      useEffect(()=>{
+        if (done) return;
+        if (time<=0){ setDone(true); saveScore('banhcuon', score); return; }
+        const t=setTimeout(()=>setTime(time-1),1000);
+        return ()=>clearTimeout(t);
+      },[time,done]);
+
+      function pour(){
+        if (done) return;
+        setPhase('steam');
+        setStartTime(Date.now());
+      }
+      function roll(){
+        if (done) return;
+        const dur = Date.now()-startTime;
+        if (dur >= 2000 && dur <= 4000){ setScore(score+35); setCount(count+1); }
+        else if (dur < 2000) setScore(Math.max(0, score-3));
+        else setScore(Math.max(0, score-8));
+        setPhase('pour');
+      }
+
+      return (
+        <div style={{padding:'20px', textAlign:'center'}}>
+          <h2 style={{fontSize:'28px'}}>🫔 Bánh Cuốn</h2>
+          <p>Điểm: {score} | ⏱ {time}s | Cuốn: {count}</p>
+          <p style={{fontSize:'14px', opacity:0.8, margin:'10px'}}>Đổ bột → đợi hấp → cuốn khi vừa chín (2-4s)</p>
+          {!done && <div style={{margin:'30px', fontSize:'80px'}}>{phase==='pour'?'🍚':'♨️'}</div>}
+          {!done ? (
+            phase==='pour' ?
+              <button onClick={pour} style={{padding:'20px 40px', fontSize:'18px', background:'#06b6d4', border:'none', borderRadius:'12px', color:'white', cursor:'pointer'}}>Đổ bột</button> :
+              <button onClick={roll} style={{padding:'20px 40px', fontSize:'18px', background:'#fbbf24', border:'none', borderRadius:'12px', color:'white', cursor:'pointer'}}>Cuốn!</button>
+          ) : <h3 style={{fontSize:'24px', margin:'30px'}}>🎉 {score}</h3>}
+          <div><button onClick={onExit} style={{marginTop:'20px', padding:'12px 24px', background:'#92400e', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>⬅ Về Hub</button></div>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 10. SINH TO - blend fruit rhythm tap
+    // ============================================================
+    function SinhToGame({ onExit }) {
+      const FRUITS = ['🍓','🥭','🍌','🍍','🥥'];
+      const [target, setTarget] = useState(()=>FRUITS[Math.floor(Math.random()*FRUITS.length)]);
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(40);
+      const [done, setDone] = useState(false);
+      const [combo, setCombo] = useState(0);
+      const [beats, setBeats] = useState(0);
+
+      useEffect(()=>{
+        if (done) return;
+        if (time<=0){ setDone(true); saveScore('sinhto', score); return; }
+        const t=setTimeout(()=>setTime(time-1),1000);
+        return ()=>clearTimeout(t);
+      },[time,done]);
+
+      useEffect(()=>{
+        if (done) return;
+        const t=setInterval(()=>{
+          setTarget(FRUITS[Math.floor(Math.random()*FRUITS.length)]);
+          setBeats(b=>b+1);
+        }, 1200);
+        return ()=>clearInterval(t);
+      },[done]);
+
+      function tap(f){
+        if (done) return;
+        if (f === target){
+          setScore(s=>s+10+combo*2);
+          setCombo(c=>c+1);
+        } else {
+          setCombo(0);
+          setScore(s=>Math.max(0, s-3));
+        }
+      }
+
+      return (
+        <div style={{padding:'20px', textAlign:'center'}}>
+          <h2 style={{fontSize:'28px'}}>🥤 Sinh Tố</h2>
+          <p>Điểm: {score} | ⏱ {time}s | Combo: {combo}x</p>
+          {!done ? (
+            <>
+              <div style={{background:'#451a03', padding:'30px', margin:'20px auto', maxWidth:'300px', borderRadius:'15px'}}>
+                <p style={{fontSize:'16px', opacity:0.8}}>Nhấn nhanh:</p>
+                <p style={{fontSize:'80px'}}>{target}</p>
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'8px', maxWidth:'400px', margin:'0 auto'}}>
+                {FRUITS.map((f,i)=>(
+                  <button key={i} onClick={()=>tap(f)} style={{padding:'20px', fontSize:'32px', background:'#10b981', border:'none', borderRadius:'10px', cursor:'pointer'}}>{f}</button>
+                ))}
+              </div>
+            </>
+          ) : <h3 style={{fontSize:'24px', margin:'30px'}}>🎉 {score}</h3>}
+          <button onClick={onExit} style={{marginTop:'20px', padding:'12px 24px', background:'#92400e', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>⬅ Về Hub</button>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // HUB
+    // ============================================================
+    function Hub({ onPick }) {
+      const progress = loadProgress();
+      return (
+        <div style={{padding:'20px', maxWidth:'900px', margin:'0 auto'}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
+            <a href="../index.html" style={{color:'white', textDecoration:'none', fontSize:'16px', background:'#92400e', padding:'10px 18px', borderRadius:'8px'}}>← Trang chủ</a>
+            <h1 style={{fontSize:'28px', textAlign:'center'}}>👨‍🍳 Nấu Ăn Hub</h1>
+            <div style={{width:'100px'}}></div>
+          </div>
+          <p style={{textAlign:'center', marginBottom:'20px', opacity:0.8}}>Chọn món để nấu — 10 mini-game độc đáo!</p>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:'15px'}}>
+            {GAMES.map(g=>(
+              <button key={g.id} onClick={()=>onPick(g.id)}
+                style={{padding:'20px 15px', background:g.color, border:'none', borderRadius:'14px', color:'white', cursor:'pointer', textAlign:'center', minHeight:'170px', display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
+                <div style={{fontSize:'50px'}}>{g.icon}</div>
+                <div>
+                  <div style={{fontSize:'17px', fontWeight:'bold', marginTop:'8px'}}>{g.name}</div>
+                  <div style={{fontSize:'12px', opacity:0.9, margin:'6px 0'}}>{g.desc}</div>
+                  <div style={{fontSize:'12px', background:'rgba(0,0,0,0.3)', padding:'4px 8px', borderRadius:'6px', display:'inline-block'}}>🏆 {progress[g.id]||0}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [current, setCurrent] = useState(null);
+
+      useEffect(()=>{
+        const hash = window.location.hash.slice(1);
+        if (hash && GAMES.find(g=>g.id===hash)) setCurrent(hash);
+      },[]);
+
+      useEffect(()=>{
+        if (current) window.location.hash = current;
+        else window.location.hash = '';
+      },[current]);
+
+      function exit(){ setCurrent(null); }
+
+      if (!current) return <Hub onPick={setCurrent} />;
+      if (current==='pho')      return <PhoGame onExit={exit} />;
+      if (current==='banhmi')   return <BanhMiGame onExit={exit} />;
+      if (current==='bun')      return <BunGame onExit={exit} />;
+      if (current==='chao')     return <ChaoGame onExit={exit} />;
+      if (current==='goicuon')  return <GoiCuonGame onExit={exit} />;
+      if (current==='banhxeo')  return <BanhXeoGame onExit={exit} />;
+      if (current==='chegio')   return <ChaGioGame onExit={exit} />;
+      if (current==='xoi')      return <XoiGame onExit={exit} />;
+      if (current==='banhcuon') return <BanhCuonGame onExit={exit} />;
+      if (current==='sinhto')   return <SinhToGame onExit={exit} />;
+      return <Hub onPick={setCurrent} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

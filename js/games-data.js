@@ -516,6 +516,157 @@ RBLX_GAMES.forEach(([hub, hash, name, icon, desc, bgDark, border]) => {
   });
 });
 
+// ============================================================
+// 100 more themed games across 10 new hubs
+// ============================================================
+const MORE_GAMES = [
+  // COOKING (10)
+  ['cook-hub', 'pho',       'Nấu Phở Bò',       '🍜', 'Bấm nguyên liệu đúng thứ tự để nấu phở', 'simulation', '#7c2d12', '#fb923c'],
+  ['cook-hub', 'banhmi',    'Làm Bánh Mì',      '🥖', 'Xếp lớp bánh mì Việt Nam', 'simulation', '#78350f', '#fbbf24'],
+  ['cook-hub', 'bun',       'Bún Chả',          '🍲', 'Nướng thịt đúng thời gian', 'simulation', '#7c2d12', '#fdba74'],
+  ['cook-hub', 'chao',      'Cháo Gà',          '🥣', 'Khuấy cháo, đừng để cháy', 'simulation', '#854d0e', '#fde047'],
+  ['cook-hub', 'goicuon',   'Gỏi Cuốn',         '🌯', 'Cuốn đúng thứ tự nguyên liệu', 'simulation', '#166534', '#4ade80'],
+  ['cook-hub', 'banhxeo',   'Bánh Xèo',         '🥞', 'Đổ bột, lật bánh đúng lúc', 'simulation', '#92400e', '#f59e0b'],
+  ['cook-hub', 'chegio',    'Chả Giò',          '🥟', 'Cuốn đủ số chả giò yêu cầu', 'simulation', '#7c2d12', '#fb923c'],
+  ['cook-hub', 'xoi',       'Xôi Đậu',          '🍚', 'Thêm topping xôi theo thứ tự', 'simulation', '#78350f', '#fde68a'],
+  ['cook-hub', 'banhcuon',  'Bánh Cuốn',        '🌯', 'Hấp và cuốn bánh cuốn', 'simulation', '#854d0e', '#fde68a'],
+  ['cook-hub', 'sinhto',    'Sinh Tố',          '🥤', 'Xay trái cây theo nhịp', 'simulation', '#9d174d', '#f472b6'],
+
+  // SPORTS (10)
+  ['sport-hub', 'soccer',    'Đá Phạt',         '⚽', 'Sút bóng vào lưới, né thủ môn', 'arcade', '#14532d', '#4ade80'],
+  ['sport-hub', 'basketball','Ném Rổ',          '🏀', 'Tính toán lực ném vào rổ', 'arcade', '#7c2d12', '#fb923c'],
+  ['sport-hub', 'tennis',    'Tennis',          '🎾', 'Đánh tennis kiểu pong với AI', 'arcade', '#14532d', '#a3e635'],
+  ['sport-hub', 'golf',      'Đánh Golf',       '⛳', 'Đánh bóng golf qua 5 hố', 'arcade', '#166534', '#4ade80'],
+  ['sport-hub', 'bowling',   'Bowling',         '🎳', 'Nhắm và ném đổ con boling', 'arcade', '#78350f', '#fbbf24'],
+  ['sport-hub', 'archery',   'Bắn Cung',        '🏹', 'Bắn cung có yếu tố gió', 'arcade', '#7c2d12', '#f87171'],
+  ['sport-hub', 'pingpong',  'Bóng Bàn',        '🏓', 'Đập bóng bàn đúng lúc', 'arcade', '#9d174d', '#f472b6'],
+  ['sport-hub', 'badminton', 'Cầu Lông',        '🏸', 'Đập cầu 4 hướng theo mũi tên', 'arcade', '#1e40af', '#60a5fa'],
+  ['sport-hub', 'boxing',    'Đấm Bốc',         '🥊', 'Quick-time event đấm và né', 'arcade', '#7f1d1d', '#f87171'],
+  ['sport-hub', 'swimming',  'Bơi Lội',         '🏊', 'Luân phiên nhịp trái-phải để bơi', 'arcade', '#0c4a6e', '#38bdf8'],
+
+  // MUSIC (10)
+  ['music-hub', 'piano',     'Đàn Piano',       '🎹', '8 phím piano synth', 'simulation', '#1e1b4b', '#a78bfa'],
+  ['music-hub', 'guitar',    'Đàn Guitar',      '🎸', '6 dây guitar, gẩy tạo âm', 'simulation', '#78350f', '#fbbf24'],
+  ['music-hub', 'drums',     'Trống',           '🥁', '6 pad trống: kick, snare, hat...', 'simulation', '#7f1d1d', '#f87171'],
+  ['music-hub', 'tap',       'Tap Nhịp',        '🎵', '4 làn nốt rơi theo nhịp', 'arcade', '#4c1d95', '#c084fc'],
+  ['music-hub', 'synth',     'Synth Sequencer', '🎹', 'Lập trình 4x8 step sequencer', 'simulation', '#1e40af', '#60a5fa'],
+  ['music-hub', 'xylophone', 'Xylophone',       '🎶', '8 thanh màu, chạm tạo note', 'simulation', '#be185d', '#ec4899'],
+  ['music-hub', 'violin',    'Đàn Violin',      '🎻', 'Kéo đàn, di chuyển điều chỉnh cao độ', 'simulation', '#7c2d12', '#fbbf24'],
+  ['music-hub', 'dj',        'DJ Scratch',      '🎧', 'Quay bàn DJ để scratch', 'simulation', '#0f172a', '#38bdf8'],
+  ['music-hub', 'choir',     'Hát Hợp Xướng',   '🎤', 'Điều chỉnh giọng khớp cao độ mục tiêu', 'simulation', '#7e22ce', '#c084fc'],
+  ['music-hub', 'beatbox',   'Beatbox',         '🎵', '3x3 pad beatbox vocal', 'arcade', '#18181b', '#a1a1aa'],
+
+  // CARD (10)
+  ['card-hub', 'solitaire', 'Solitaire Cổ Điển','🃏', 'Xếp bài A→K theo chất', 'card', '#064e3b', '#34d399'],
+  ['card-hub', 'war',       'War Bài',          '⚔️', 'Bài lớn nhất thắng mỗi lượt', 'card', '#7f1d1d', '#f87171'],
+  ['card-hub', 'blackjack', 'Blackjack 21',     '🎰', 'Đấu 21 với nhà cái', 'card', '#14532d', '#4ade80'],
+  ['card-hub', 'war21',     'Gần 21',           '🎯', 'Ai gần 21 hơn thắng', 'card', '#78350f', '#fbbf24'],
+  ['card-hub', 'speed',     'Speed Card',       '⚡', 'Đánh nhanh trong 30 giây', 'card', '#4c1d95', '#c084fc'],
+  ['card-hub', 'snap',      'Snap!',            '🫰', 'Đập tay khi thấy bài trùng', 'card', '#9d174d', '#f472b6'],
+  ['card-hub', 'higher',    'Cao Hay Thấp',     '⬆️', 'Đoán bài kế tiếp cao hay thấp', 'card', '#1e40af', '#60a5fa'],
+  ['card-hub', 'memory',    'Nhớ Thứ Tự Bài',   '🧠', 'Simon với bài', 'card', '#581c87', '#a78bfa'],
+  ['card-hub', 'pairs',     'Tìm Cặp',          '👯', 'Lật bài tìm 8 cặp trong 60s', 'card', '#0f766e', '#2dd4bf'],
+  ['card-hub', 'crazy8',    'Crazy Eights',     '🎪', 'Đánh hết bài, số 8 wild', 'card', '#7c2d12', '#fb923c'],
+
+  // EDUCATION (10)
+  ['edu-hub', 'addition',       'Cộng Nhanh',        '➕', 'Làm phép cộng trong 60s', 'puzzle', '#0c4a6e', '#38bdf8'],
+  ['edu-hub', 'subtraction',    'Trừ Nhanh',         '➖', 'Làm phép trừ trong 60s', 'puzzle', '#0c4a6e', '#60a5fa'],
+  ['edu-hub', 'multiplication', 'Bảng Cửu Chương',   '✖️', 'Nhân 2-9 nhanh', 'puzzle', '#7c2d12', '#fb923c'],
+  ['edu-hub', 'division',       'Chia Nhanh',        '➗', 'Chia không dư', 'puzzle', '#166534', '#4ade80'],
+  ['edu-hub', 'alphabet',       'Ghép Chữ',          '🔤', 'Sắp xếp chữ thành từ tiếng Việt', 'puzzle', '#4c1d95', '#c084fc'],
+  ['edu-hub', 'vocab',          'Từ Vựng Anh',       '📖', 'EN→VI trắc nghiệm', 'puzzle', '#1e40af', '#60a5fa'],
+  ['edu-hub', 'typing',         'Gõ Phím',           '⌨️', 'Gõ từ chính xác', 'puzzle', '#18181b', '#a1a1aa'],
+  ['edu-hub', 'geo',            'Thủ Đô Thế Giới',   '🌍', 'Trắc nghiệm thủ đô 30 nước', 'puzzle', '#0c4a6e', '#7dd3fc'],
+  ['edu-hub', 'history',        'Lịch Sử Việt Nam',  '📜', 'Câu hỏi lịch sử VN', 'puzzle', '#78350f', '#fbbf24'],
+  ['edu-hub', 'science',        'Khoa Học',          '🔬', 'Câu hỏi khoa học', 'puzzle', '#0f766e', '#2dd4bf'],
+
+  // IDLE (10)
+  ['idle-hub', 'cookie',  'Cookie Clicker',    '🍪', 'Click bánh cookie vô tận', 'clicker', '#78350f', '#fbbf24'],
+  ['idle-hub', 'coin',    'Xếp Xu',            '💰', 'Click tích lũy xu', 'clicker', '#854d0e', '#fde047'],
+  ['idle-hub', 'tree',    'Trồng Cây',         '🌳', 'Click để gieo hạt, lớn thành cây', 'clicker', '#166534', '#4ade80'],
+  ['idle-hub', 'taco',    'Tiệm Taco',         '🌮', 'Làm taco liên tục', 'clicker', '#7c2d12', '#fb923c'],
+  ['idle-hub', 'bitcoin', 'Đào Crypto',        '₿', 'Click để đào bitcoin', 'clicker', '#713f12', '#fbbf24'],
+  ['idle-hub', 'robot',   'Đạo Quân Robot',    '🤖', 'Xây robot tự động', 'clicker', '#18181b', '#a1a1aa'],
+  ['idle-hub', 'factory', 'Nhà Máy Click',     '🏭', 'Click sản xuất hàng loạt', 'clicker', '#1f2937', '#9ca3af'],
+  ['idle-hub', 'gem',     'Nhặt Đá Quý',       '💎', 'Thu thập kim cương', 'clicker', '#0f766e', '#2dd4bf'],
+  ['idle-hub', 'magic',   'Mana Phép',         '🔮', 'Click tích lũy phép thuật', 'clicker', '#4c1d95', '#c084fc'],
+  ['idle-hub', 'farm',    'Thu Hoạch Nông',    '🚜', 'Thu hoạch nông sản', 'clicker', '#166534', '#65a30d'],
+
+  // BRAIN (10)
+  ['brain-hub', 'tictactoe',   'Cờ Ca-rô 3x3',    '⭕', 'Ca-rô 3 hàng vs AI', 'strategy', '#1e293b', '#94a3b8'],
+  ['brain-hub', 'reaction',    'Thời Gian Phản Xạ','⚡', 'Click khi thấy màu xanh', 'puzzle', '#14532d', '#4ade80'],
+  ['brain-hub', 'riddle',      'Câu Đố Logic',    '💭', '12 câu đố logic Việt Nam', 'puzzle', '#4c1d95', '#c084fc'],
+  ['brain-hub', 'spot',        'Tìm Ô Khác Màu',  '🔍', 'Tìm ô màu khác trong lưới', 'puzzle', '#0c4a6e', '#38bdf8'],
+  ['brain-hub', 'word',        'Điền Thành Ngữ',  '📝', 'Điền từ thiếu trong thành ngữ', 'puzzle', '#78350f', '#fbbf24'],
+  ['brain-hub', 'anagram',     'Sắp Xếp Chữ',     '🔄', 'Sắp lại chữ cái thành từ', 'puzzle', '#7e22ce', '#d8b4fe'],
+  ['brain-hub', 'nback',       'N-back Trí Nhớ',  '🎯', 'Test N-back spatial memory', 'puzzle', '#1e40af', '#60a5fa'],
+  ['brain-hub', 'minesweeper', 'Dò Mìn 8x8',      '💣', 'Cổ điển Minesweeper 8x8', 'strategy', '#3f3f46', '#d4d4d8'],
+  ['brain-hub', '2048',        '2048',            '🔢', 'Gộp số 2, 4, 8... lên 2048', 'puzzle', '#78350f', '#fde047'],
+  ['brain-hub', 'tetris',      'Tetris',          '🧱', 'Xếp khối Tetris cổ điển', 'puzzle', '#1e293b', '#22d3ee'],
+
+  // ART (10)
+  ['art-hub', 'paint',    'Vẽ Tự Do',         '🎨', 'Canvas vẽ với cọ và màu', 'simulation', '#9d174d', '#f472b6'],
+  ['art-hub', 'pixel',    'Pixel Art 16x16',  '🕹️', 'Vẽ pixel 16x16', 'simulation', '#4c1d95', '#c084fc'],
+  ['art-hub', 'coloring', 'Tô Màu Theo Số',   '🖍️', 'Tô màu theo số trên SVG', 'simulation', '#1e40af', '#60a5fa'],
+  ['art-hub', 'mandala',  'Vẽ Mandala',       '🌀', 'Vẽ đối xứng N-fold', 'simulation', '#7e22ce', '#d8b4fe'],
+  ['art-hub', 'emoji',    'Nghệ Thuật Emoji', '😀', 'Xếp emoji tạo tác phẩm', 'simulation', '#be185d', '#f472b6'],
+  ['art-hub', 'story',    'Viết Truyện',      '📖', 'Điền vào mẫu truyện', 'simulation', '#78350f', '#fbbf24'],
+  ['art-hub', 'comic',    'Vẽ Truyện Tranh',  '💬', 'Tạo comic 3 khung', 'simulation', '#14532d', '#4ade80'],
+  ['art-hub', 'flag',     'Thiết Kế Cờ',      '🏴', 'Tạo cờ với sọc + biểu tượng', 'simulation', '#7f1d1d', '#f87171'],
+  ['art-hub', 'logo',     'Tạo Logo',         '🎨', 'Logo với hình + chữ + màu', 'simulation', '#0f766e', '#2dd4bf'],
+  ['art-hub', 'tattoo',   'Thiết Kế Hình Xăm','✨', 'Đặt icon trên silhouette người', 'simulation', '#18181b', '#a1a1aa'],
+
+  // HORROR/MYSTERY (10)
+  ['horror-hub', 'ghost',     'Săn Ma',             '👻', 'Click ma trong 30 giây', 'arcade', '#18181b', '#a1a1aa'],
+  ['horror-hub', 'escape',    'Phòng Bí Ẩn',        '🚪', 'Tìm manh mối thoát khỏi phòng', 'puzzle', '#0f172a', '#38bdf8'],
+  ['horror-hub', 'murder',    'Ai Là Hung Thủ',     '🔪', 'Chọn nghi phạm từ manh mối', 'puzzle', '#7f1d1d', '#f87171'],
+  ['horror-hub', 'haunted',   'Biệt Thự Ma Ám',     '🏚️', 'Phiêu lưu chọn lựa', 'simulation', '#3f3f46', '#a1a1aa'],
+  ['horror-hub', 'seance',    'Cầu Cơ',             '🔮', 'Simon với biểu tượng', 'puzzle', '#4c1d95', '#c084fc'],
+  ['horror-hub', 'ouija',     'Bảng Ouija',         '🕯️', 'Đoán chữ kiểu treo cổ', 'puzzle', '#1f2937', '#d4d4d8'],
+  ['horror-hub', 'cursed',    'Vật Bị Nguyền',      '📜', 'Nhớ dãy màu tránh bẫy', 'puzzle', '#78350f', '#fbbf24'],
+  ['horror-hub', 'exorcism',  'Trừ Tà',             '🧛', 'Khớp mẫu phép trừ tà', 'puzzle', '#581c87', '#a78bfa'],
+  ['horror-hub', 'cemetery',  'Đào Mộ',             '⚰️', 'Đào 4x4 tìm cổ vật', 'puzzle', '#1f2937', '#6b7280'],
+  ['horror-hub', 'witch',     'Pha Chế Phù Thủy',   '🧙‍♀️', 'Nhớ công thức thuốc phù thủy', 'puzzle', '#065f46', '#34d399'],
+
+  // LIFE (10)
+  ['life-hub', 'baby',       'Chăm Em Bé',       '👶', 'Cho ăn, ngủ, chơi', 'simulation', '#9d174d', '#f472b6'],
+  ['life-hub', 'school',     'Đi Học',           '🏫', 'Xếp lịch học mỗi ngày', 'simulation', '#1e40af', '#60a5fa'],
+  ['life-hub', 'date',       'Hẹn Hò',           '💕', 'Chọn lựa hội thoại tăng tình yêu', 'simulation', '#be185d', '#ec4899'],
+  ['life-hub', 'wedding',    'Kế Hoạch Đám Cưới','💒', 'Quản lý ngân sách cưới', 'simulation', '#9d174d', '#f9a8d4'],
+  ['life-hub', 'home',       'Trang Trí Nhà',    '🏠', 'Kéo thả nội thất 4x4', 'simulation', '#78350f', '#fbbf24'],
+  ['life-hub', 'garden',     'Làm Vườn',         '🌱', '9 ô vườn trồng cây', 'simulation', '#166534', '#4ade80'],
+  ['life-hub', 'cleaning',   'Dọn Nhà',          '🧹', 'Click các vết bẩn', 'simulation', '#0c4a6e', '#38bdf8'],
+  ['life-hub', 'shopping',   'Đi Chợ',           '🛒', 'Quản lý ngân sách mua sắm', 'simulation', '#7e22ce', '#c084fc'],
+  ['life-hub', 'travel',     'Du Lịch',          '✈️', 'Lên kế hoạch chuyến đi', 'simulation', '#0c4a6e', '#7dd3fc'],
+  ['life-hub', 'retirement', 'Nghỉ Hưu',         '👴', 'Quản lý sinh hoạt hàng ngày', 'simulation', '#374151', '#9ca3af'],
+];
+
+MORE_GAMES.forEach(([hub, hash, name, icon, desc, category, bgDark, border]) => {
+  const tagMap = {
+    'cook-hub': ['nấu ăn', 'Việt Nam', 'timing'],
+    'sport-hub': ['thể thao', 'phản xạ', 'vận động'],
+    'music-hub': ['âm nhạc', 'nhạc cụ', 'synth'],
+    'card-hub': ['bài', 'cổ điển', 'may rủi'],
+    'edu-hub': ['học tập', 'trí tuệ', 'tư duy'],
+    'idle-hub': ['idle', 'click', 'nâng cấp'],
+    'brain-hub': ['luyện não', 'logic', 'tư duy'],
+    'art-hub': ['nghệ thuật', 'sáng tạo', 'vẽ'],
+    'horror-hub': ['bí ẩn', 'ma quái', 'rùng rợn'],
+    'life-hub': ['cuộc sống', 'mô phỏng', 'thư giãn']
+  };
+  GAMES.push({
+    id: `${hub}-${hash}`,
+    name: name,
+    icon: icon,
+    desc: desc,
+    category: category,
+    tags: tagMap[hub],
+    bg: `linear-gradient(135deg, #0a0a1e, ${bgDark})`,
+    border: border,
+    file: `${hub}.html#${hash}`
+  });
+});
+
 // Get games by category
 function getGamesByCategory(categoryId) {
   if (categoryId === 'all') return GAMES;

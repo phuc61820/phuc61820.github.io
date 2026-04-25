@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>👻 Bí Ẩn Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const STORAGE = 'horrorProgress';
+    const loadProg = () => { try { return JSON.parse(localStorage.getItem(STORAGE) || '{}'); } catch(e) { return {}; } };
+    const saveProg = (id, score) => {
+      const p = loadProg();
+      if (!p[id] || score > p[id]) { p[id] = score; localStorage.setItem(STORAGE, JSON.stringify(p)); }
+    };
+
+    const GAMES = [
+      { id: 'ghost', icon: '👻', title: 'Săn Ma', desc: 'Bấm ma xuất hiện thật nhanh', color: '#6b46c1' },
+      { id: 'escape', icon: '🚪', title: 'Phòng Bí Ẩn', desc: 'Tìm chìa khóa thoát ra', color: '#7c2d12' },
+      { id: 'murder', icon: '🔪', title: 'Ai Là Hung Thủ', desc: 'Đoán hung thủ qua manh mối', color: '#991b1b' },
+      { id: 'haunted', icon: '🏚️', title: 'Biệt Thự Ma Ám', desc: 'Khám phá biệt thự bí ẩn', color: '#581c87' },
+      { id: 'seance', icon: '🔮', title: 'Cầu Cơ', desc: 'Trò chuyện với linh hồn', color: '#0c4a6e' },
+      { id: 'ouija', icon: '🕯️', title: 'Bảng Ouija', desc: 'Đoán chữ linh hồn gửi', color: '#365314' },
+      { id: 'cursed', icon: '📜', title: 'Vật Bị Nguyền', desc: 'Tháo bẫy báu vật', color: '#854d0e' },
+      { id: 'exorcism', icon: '🧛', title: 'Trừ Tà', desc: 'Lặp lại phép thuật', color: '#7f1d1d' },
+      { id: 'cemetery', icon: '⚰️', title: 'Đào Mộ', desc: 'Đào tìm cổ vật', color: '#3f3f46' },
+      { id: 'witch', icon: '🧙‍♀️', title: 'Pha Chế Phù Thủy', desc: 'Pha thuốc theo công thức', color: '#4c1d95' },
+    ];
+
+    function Hub({ go }) {
+      const prog = loadProg();
+      return (
+        <div style={{padding:20, maxWidth:1100, margin:'0 auto'}}>
+          <div style={{textAlign:'center', marginBottom:30, padding:'30px 20px', background:'linear-gradient(135deg, #1a0033, #330033)', borderRadius:20, border:'2px solid #6b46c1'}}>
+            <h1 style={{fontSize:'2.5em', marginBottom:10, textShadow:'0 0 20px #a855f7'}}>👻 Bí Ẩn Hub 🔮</h1>
+            <p style={{opacity:0.9}}>10 trò chơi ma quái vui nhộn — không đáng sợ!</p>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap:15, marginBottom:25}}>
+            {GAMES.map(g => (
+              <button key={g.id} onClick={() => go(g.id)} style={{padding:20, background:`linear-gradient(135deg, ${g.color}, #1a0033)`, border:'2px solid #6b46c1', borderRadius:15, color:'white', cursor:'pointer', textAlign:'left'}}>
+                <div style={{fontSize:'3em', marginBottom:8}}>{g.icon}</div>
+                <div style={{fontSize:'1.2em', fontWeight:'bold', marginBottom:4}}>{g.title}</div>
+                <div style={{fontSize:'0.85em', opacity:0.85, marginBottom:8}}>{g.desc}</div>
+                {prog[g.id] !== undefined && <div style={{fontSize:'0.8em', color:'#fbbf24'}}>🏆 Cao nhất: {prog[g.id]}</div>}
+              </button>
+            ))}
+          </div>
+          <div style={{textAlign:'center'}}>
+            <a href="../index.html" style={{display:'inline-block', padding:'12px 24px', background:'#374151', color:'white', textDecoration:'none', borderRadius:10}}>← Trang chủ</a>
+          </div>
+        </div>
+      );
+    }
+
+    function Frame({ title, icon, onBack, children }) {
+      return (
+        <div style={{padding:20, maxWidth:800, margin:'0 auto'}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, padding:15, background:'#1a0033', borderRadius:12, border:'2px solid #6b46c1'}}>
+            <button onClick={onBack} style={{padding:'8px 16px', background:'#6b46c1', color:'white', border:'none', borderRadius:8, cursor:'pointer'}}>← Hub</button>
+            <h2 style={{fontSize:'1.4em'}}>{icon} {title}</h2>
+            <div style={{width:80}}></div>
+          </div>
+          {children}
+        </div>
+      );
+    }
+
+    // 1. Ghost Hunt
+    function Ghost({ onBack }) {
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(30);
+      const [ghosts, setGhosts] = useState([]);
+      const [over, setOver] = useState(false);
+      useEffect(() => {
+        if (over) return;
+        const t = setInterval(() => setTime(s => s <= 1 ? (setOver(true), 0) : s - 1), 1000);
+        const g = setInterval(() => setGhosts(gs => [...gs, {id:Date.now()+Math.random(), x:Math.random()*80+5, y:Math.random()*60+10, t:Date.now()}].slice(-6)), 800);
+        return () => { clearInterval(t); clearInterval(g); };
+      }, [over]);
+      useEffect(() => {
+        if (over) saveProg('ghost', score);
+      }, [over]);
+      const click = (id) => { setGhosts(gs => gs.filter(x => x.id !== id)); setScore(s => s + 10); };
+      return (
+        <Frame title="Săn Ma" icon="👻" onBack={onBack}>
+          <div style={{display:'flex', justifyContent:'space-around', marginBottom:15, fontSize:'1.2em'}}>
+            <div>⏱️ {time}s</div><div>🏆 {score}</div>
+          </div>
+          <div style={{position:'relative', height:400, background:'linear-gradient(180deg, #1a0033, #000)', borderRadius:15, border:'2px solid #6b46c1', overflow:'hidden'}}>
+            {over ? (
+              <div style={{textAlign:'center', paddingTop:150}}>
+                <div style={{fontSize:'3em'}}>🎉</div>
+                <div style={{fontSize:'1.5em'}}>Hết giờ! Điểm: {score}</div>
+                <button onClick={() => {setScore(0);setTime(30);setOver(false);setGhosts([]);}} style={{marginTop:15, padding:'10px 20px', background:'#6b46c1', border:'none', borderRadius:10, color:'white', cursor:'pointer'}}>Chơi lại</button>
+              </div>
+            ) : ghosts.map(g => (
+              <button key={g.id} onClick={() => click(g.id)} style={{position:'absolute', left:`${g.x}%`, top:`${g.y}%`, fontSize:'2.5em', background:'transparent', border:'none', cursor:'pointer'}}>👻</button>
+            ))}
+          </div>
+        </Frame>
+      );
+    }
+
+    // 2. Escape Room
+    function Escape({ onBack }) {
+      const [items, setItems] = useState({book:false, painting:false, clock:false});
+      const [hasKey, setHasKey] = useState(false);
+      const [escaped, setEscaped] = useState(false);
+      const [tries, setTries] = useState(0);
+      const allFound = items.book && items.painting && items.clock;
+      const click = (k) => { setItems(i => ({...i, [k]:true})); setTries(t => t+1); };
+      const tryDoor = () => {
+        if (allFound && !hasKey) setHasKey(true);
+        else if (hasKey) { setEscaped(true); saveProg('escape', Math.max(100 - tries*5, 10)); }
+      };
+      return (
+        <Frame title="Phòng Bí Ẩn" icon="🚪" onBack={onBack}>
+          {escaped ? (
+            <div style={{textAlign:'center', padding:40, background:'#1a0033', borderRadius:15}}>
+              <div style={{fontSize:'4em'}}>🎊</div>
+              <h2>Bạn đã thoát!</h2>
+              <p style={{margin:'15px 0'}}>Số lần thử: {tries}</p>
+              <button onClick={() => {setItems({book:false,painting:false,clock:false});setHasKey(false);setEscaped(false);setTries(0);}} style={{padding:'10px 20px', background:'#6b46c1', border:'none', borderRadius:10, color:'white', cursor:'pointer'}}>Chơi lại</button>
+            </div>
+          ) : (
+            <div>
+              <p style={{textAlign:'center', marginBottom:15}}>Tìm 3 manh mối, sau đó lấy chìa khóa!</p>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:15, marginBottom:15}}>
+                <button onClick={() => click('book')} disabled={items.book} style={{padding:30, fontSize:'3em', background:items.book?'#22c55e':'#1a0033', border:'2px solid #6b46c1', borderRadius:12, cursor:'pointer'}}>{items.book?'✅':'📚'}</button>
+                <button onClick={() => click('painting')} disabled={items.painting} style={{padding:30, fontSize:'3em', background:items.painting?'#22c55e':'#1a0033', border:'2px solid #6b46c1', borderRadius:12, cursor:'pointer'}}>{items.painting?'✅':'🖼️'}</button>
+                <button onClick={() => click('clock')} disabled={items.clock} style={{padding:30, fontSize:'3em', background:items.clock?'#22c55e':'#1a0033', border:'2px solid #6b46c1', borderRadius:12, cursor:'pointer'}}>{items.clock?'✅':'🕰️'}</button>
+                <button onClick={tryDoor} style={{padding:30, fontSize:'3em', background:hasKey?'#fbbf24':'#1a0033', border:'2px solid #6b46c1', borderRadius:12, cursor:'pointer'}}>{hasKey?'🗝️':'🚪'}</button>
+              </div>
+              <p style={{textAlign:'center', opacity:0.8}}>{hasKey ? 'Có chìa rồi! Bấm cửa để thoát.' : allFound ? 'Đã tìm đủ! Bấm cửa lấy chìa.' : `Còn ${3 - Object.values(items).filter(Boolean).length} manh mối`}</p>
+            </div>
+          )}
+        </Frame>
+      );
+    }
+
+    // 3. Murder Mystery
+    function Murder({ onBack }) {
+      const SUSPECTS = [
+        {emoji:'👨', name:'Ông Quản Gia'},
+        {emoji:'👩', name:'Bà Đầu Bếp'},
+        {emoji:'🧓', name:'Cụ Vườn'},
+        {emoji:'👱', name:'Cô Người Hầu'},
+      ];
+      const [round, setRound] = useState(1);
+      const [score, setScore] = useState(0);
+      const [culprit, setCulprit] = useState(0);
+      const [clue, setClue] = useState('');
+      const [done, setDone] = useState(false);
+      const newRound = () => {
+        const c = Math.floor(Math.random() * 4);
+        setCulprit(c);
+        const clues = ['tóc dài', 'đeo tạp dề', 'đi giày bùn', 'mặc đồng phục'];
+        setClue(clues[c]);
+      };
+      useEffect(() => { newRound(); }, []);
+      const guess = (i) => {
+        if (i === culprit) setScore(s => s + 20);
+        if (round >= 5) { setDone(true); saveProg('murder', score + (i === culprit ? 20 : 0)); }
+        else { setRound(r => r+1); newRound(); }
+      };
+      return (
+        <Frame title="Ai Là Hung Thủ" icon="🔪" onBack={onBack}>
+          {done ? (
+            <div style={{textAlign:'center', padding:30, background:'#1a0033', borderRadius:15}}>
+              <h2>🏆 Điểm: {score}</h2>
+              <button onClick={() => {setRound(1);setScore(0);setDone(false);newRound();}} style={{marginTop:15, padding:'10px 20px', background:'#6b46c1', border:'none', borderRadius:10, color:'white', cursor:'pointer'}}>Chơi lại</button>
+            </div>
+          ) : (
+            <div>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom:15}}><span>Vụ {round}/5</span><span>🏆 {score}</span></div>
+              <div style={{padding:20, background:'#1a0033', borderRadius:12, marginBottom:15, textAlign:'center', border:'2px solid #6b46c1'}}>
+                <div style={{fontSize:'2em'}}>🕵️</div>
+                <p>Manh mối: hung thủ <b>{clue}</b></p>
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12}}>
+                {SUSPECTS.map((s, i) => (
+                  <button key={i} onClick={() => guess(i)} style={{padding:15, background:'#1a0033', border:'2px solid #6b46c1', borderRadius:12, color:'white', cursor:'pointer'}}>
+                    <div style={{fontSize:'2.5em'}}>{s.emoji}</div>
+                    <div>{s.name}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </Frame>
+      );
+    }
+
+    // 4. Haunted Mansion
+    function Haunted({ onBack }) {
+      const ROOMS = [
+        {desc:'Bạn vào sảnh chính. Có 2 cánh cửa.', opts:[{t:'Cửa trái 🚪', n:1, p:10},{t:'Cửa phải 🚪', n:2, p:5}]},
+        {desc:'Phòng đầy sách cổ. Một cuốn lấp lánh!', opts:[{t:'Lấy sách 📖', n:3, p:20},{t:'Bỏ qua', n:3, p:5}]},
+        {desc:'Bếp lạnh lẽo. Có tiếng động.', opts:[{t:'Trốn 🙈', n:3, p:15},{t:'Kiểm tra 👀', n:3, p:10}]},
+        {desc:'Bạn lên tầng 2. Có cầu thang đến gác mái.', opts:[{t:'Lên gác 🪜', n:4, p:25},{t:'Quay xuống', n:4, p:10}]},
+        {desc:'🎉 Hoàn thành chuyến phiêu lưu!', opts:[]},
+      ];
+      const [room, setRoom] = useState(0);
+      const [score, setScore] = useState(0);
+      const r = ROOMS[room];
+      const choose = (o) => {
+        setScore(s => s + o.p);
+        setRoom(o.n);
+        if (o.n === 4) saveProg('haunted', score + o.p);
+      };
+      return (
+        <Frame title="Biệt Thự Ma Ám" icon="🏚️" onBack={onBack}>
+          <div style={{padding:25, background:'linear-gradient(135deg, #1a0033, #330033)', borderRadius:15, border:'2px solid #6b46c1', textAlign:'center', marginBottom:15}}>
+            <div style={{fontSize:'4em', marginBottom:10}}>🏚️</div>
+            <p style={{fontSize:'1.1em', marginBottom:15}}>{r.desc}</p>
+            <p>🏆 {score}</p>
+          </div>
+          {r.opts.length > 0 ? (
+            <div style={{display:'grid', gap:10}}>
+              {r.opts.map((o,i) => <button key={i} onClick={() => choose(o)} style={{padding:15, background:'#6b46c1', border:'none', borderRadius:10, color:'white', fontSize:'1em', cursor:'pointer'}}>{o.t}</button>)}
+            </div>
+          ) : (
+            <button onClick={() => {setRoom(0);setScore(0);}} style={{width:'100%', padding:15, background:'#6b46c1', border:'none', borderRadius:10, color:'white', cursor:'pointer'}}>Chơi lại</button>
+          )}
+        </Frame>
+      );
+    }
+
+    // 5. Seance
+    function Seance({ onBack }) {
+      const SYM = ['🌙','⭐','☀️','🔥','💧','🌿'];
+      const [pattern, setPattern] = useState([]);
+      const [input, setInput] = useState([]);
+      const [show, setShow] = useState(true);
+      const [round, setRound] = useState(1);
+      const [score, setScore] = useState(0);
+      const [over, setOver] = useState(false);
+      useEffect(() => {
+        const p = Array(2 + round).fill(0).map(() => SYM[Math.floor(Math.random()*SYM.length)]);
+        setPattern(p);
+        setInput([]);
+        setShow(true);
+        const t = setTimeout(() => setShow(false), 1500 + round*500);
+        return () => clearTimeout(t);
+      }, [round]);
+      const click = (s) => {
+        if (show) return;
+        const ni = [...input, s];
+        if (s !== pattern[input.length]) {
+          setOver(true); saveProg('seance', score);
+          return;
+        }
+        if (ni.length === pattern.length) {
+          setScore(sc => sc + round * 10);
+          setRound(r => r+1);
+        } else setInput(ni);
+      };
+      return (
+        <Frame title="Cầu Cơ" icon="🔮" onBack={onBack}>
+          {over ? (
+            <div style={{textAlign:'center', padding:30, background:'#1a0033', borderRadius:15}}>
+              <h2>Linh hồn rời đi! 🏆 {score}</h2>
+              <button onClick={() => {setRound(1);setScore(0);setOver(false);}} style={{marginTop:15, padding:'10px 20px', background:'#6b46c1', border:'none', borderRadius:10, color:'white', cursor:'pointer'}}>Cầu cơ lại</button>
+            </div>
+          ) : (
+            <div>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom:15}}><span>Vòng {round}</span><span>🏆 {score}</span></div>
+              <div style={{padding:25, background:'#1a0033', borderRadius:15, textAlign:'center', marginBottom:15, minHeight:100, border:'2px solid #6b46c1'}}>
+                {show ? <div style={{fontSize:'2.5em'}}>{pattern.join(' ')}</div> : <div style={{fontSize:'1.2em'}}>Lặp lại theo thứ tự!</div>}
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10}}>
+                {SYM.map(s => <button key={s} onClick={() => click(s)} style={{padding:20, fontSize:'2em', background:'#6b46c1', border:'none', borderRadius:10, cursor:'pointer'}}>{s}</button>)}
+              </div>
+            </div>
+          )}
+        </Frame>
+      );
+    }
+
+    // 6. Ouija
+    function Ouija({ onBack }) {
+      const WORDS = ['MEO','MA','BI','AN','MAT','SAN','LO','HOA','VUI','CHO'];
+      const [word, setWord] = useState('');
+      const [guessed, setGuessed] = useState([]);
+      const [wrong, setWrong] = useState(0);
+      const [round, setRound] = useState(1);
+      const [score, setScore] = useState(0);
+      const [done, setDone] = useState(false);
+      useEffect(() => {
+        setWord(WORDS[Math.floor(Math.random()*WORDS.length)]);
+        setGuessed([]); setWrong(0);
+      }, [round]);
+      const letters = 'ABCDEFGHIKLMNOPRSTUV'.split('');
+      const guess = (l) => {
+        if (guessed.includes(l)) return;
+        const ng = [...guessed, l];
+        setGuessed(ng);
+        if (!word.includes(l)) setWrong(w => w+1);
+        else {
+          const won = word.split('').every(c => ng.includes(c));
+          if (won) setScore(s => s + 30);
+        }
+      };
+      const display = word.split('').map(c => guessed.includes(c) ? c : '_').join(' ');
+      const won = word && word.split('').every(c => guessed.includes(c));
+      const lost = wrong >= 6;
+      const next = () => {
+        if (round >= 3 || lost) { setDone(true); saveProg('ouija', score); }
+        else setRound(r => r+1);
+      };
+      return (
+        <Frame title="Bảng Ouija" icon="🕯️" onBack={onBack}>
+          {done ? (
+            <div style={{textAlign:'center', padding:30, background:'#1a0033', borderRadius:15}}>
+              <h2>🏆 {score}</h2>
+              <button onClick={() => {setRound(1);setScore(0);setDone(false);}} style={{marginTop:15, padding:'10px 20px', background:'#6b46c1', border:'none', borderRadius:10, color:'white', cursor:'pointer'}}>Chơi lại</button>
+            </div>
+          ) : (
+            <div>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom:15}}><span>Vòng {round}/3</span><span>❌ {wrong}/6</span><span>🏆 {score}</span></div>
+              <div style={{padding:25, background:'#1a0033', borderRadius:15, textAlign:'center', marginBottom:15, border:'2px solid #6b46c1'}}>
+                <div style={{fontSize:'2em', letterSpacing:5, fontFamily:'monospace'}}>{display}</div>
+                {(won || lost) && <div style={{marginTop:15}}><div>{won?'🎉 Đúng rồi!':`💀 Đáp án: ${word}`}</div><button onClick={next} style={{marginTop:10, padding:'8px 16px', background:'#6b46c1', border:'none', borderRadius:8, color:'white', cursor:'pointer'}}>{round >= 3 || lost ? 'Kết thúc' : 'Tiếp'}</button></div>}
+              </div>
+              {!won && !lost && (
+                <div style={{display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:5}}>
+                  {letters.map(l => <button key={l} onClick={() => guess(l)} disabled={guessed.includes(l)} style={{padding:10, background:guessed.includes(l)?'#374151':'#6b46c1', border:'none', borderRadius:6, color:'white', cursor:'pointer'}}>{l}</button>)}
+                </div>
+              )}
+            </div>
+          )}
+        </Frame>
+      );
+    }
+
+    // 7. Cursed Artifact
+    function Cursed({ onBack }) {
+      const [seq, setSeq] = useState([]);
+      const [target, setTarget] = useState([]);
+      const [score, setScore] = useState(0);
+      const [round, setRound] = useState(1);
+      const [done, setDone] = useState(false);
+      const COLORS = [{c:'#ef4444',n:'Đỏ'},{c:'#3b82f6',n:'Lam'},{c:'#22c55e',n:'Xanh'},{c:'#fbbf24',n:'Vàng'}];
+      useEffect(() => {
+        const t = Array(3 + round).fill(0).map(() => Math.floor(Math.random()*4));
+        setTarget(t); setSeq([]);
+      }, [round]);
+      const click = (i) => {
+        const ns = [...seq, i];
+        if (i !== target[seq.length]) {
+          setDone(true); saveProg('cursed', score);
+          return;
+        }
+        if (ns.length === target.length) {
+          setScore(s => s + round*15);
+          if (round >= 5) { setDone(true); saveProg('cursed', score + round*15); }
+          else setRound(r => r+1);
+        } else setSeq(ns);
+      };
+      return (
+        <Frame title="Vật Bị Nguyền" icon="📜" onBack={onBack}>
+          {done ? (
+            <div style={{textAlign:'center', padding:30, background:'#1a0033', borderRadius:15}}>
+              <h2>🏆 {score}</h2>
+              <button onClick={() => {setRound(1);setScore(0);setDone(false);}} style={{marginTop:15, padding:'10px 20px', background:'#6b46c1', border:'none', borderRadius:10, color:'white', cursor:'pointer'}}>Tháo bẫy lại</button>
+            </div>
+          ) : (
+            <div>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom:15}}><span>Bẫy {round}/5</span><span>🏆 {score}</span></div>
+              <div style={{padding:20, background:'#1a0033', borderRadius:15, marginBottom:15, border:'2px solid #6b46c1'}}>
+                <p style={{textAlign:'center', marginBottom:10}}>Bấm theo thứ tự:</p>
+                <div style={{display:'flex', gap:5, flexWrap:'wrap', justifyContent:'center'}}>
+                  {target.map((t,i) => <div key={i} style={{width:30, height:30, background:COLORS[t].c, borderRadius:6, opacity: i < seq.length ? 0.3 : 1}}></div>)}
+                </div>
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10}}>
+                {COLORS.map((c,i) => <button key={i} onClick={() => click(i)} style={{padding:25, background:c.c, border:'none', borderRadius:10, color:'white', fontSize:'1.1em', cursor:'pointer'}}>{c.n}</button>)}
+              </div>
+            </div>
+          )}
+        </Frame>
+      );
+    }
+
+    // 8. Exorcism
+    function Exorcism({ onBack }) {
+      const SPELLS = ['✋','✊','✌️'];
+      const [target, setTarget] = useState([]);
+      const [input, setInput] = useState([]);
+      const [round, setRound] = useState(1);
+      const [score, setScore] = useState(0);
+      const [show, setShow] = useState(true);
+      const [over, setOver] = useState(false);
+      useEffect(() => {
+        const t = Array(2 + round).fill(0).map(() => Math.floor(Math.random()*3));
+        setTarget(t); setInput([]); setShow(true);
+        const tm = setTimeout(() => setShow(false), 2000);
+        return () => clearTimeout(tm);
+      }, [round]);
+      const click = (i) => {
+        if (show) return;
+        const ni = [...input, i];
+        if (i !== target[input.length]) { setOver(true); saveProg('exorcism', score); return; }
+        if (ni.length === target.length) {
+          setScore(s => s + round*12);
+          setRound(r => r+1);
+        } else setInput(ni);
+      };
+      return (
+        <Frame title="Trừ Tà" icon="🧛" onBack={onBack}>
+          {over ? (
+            <div style={{textAlign:'center', padding:30, background:'#1a0033', borderRadius:15}}>
+              <h2>Phép thất bại! 🏆 {score}</h2>
+              <button onClick={() => {setRound(1);setScore(0);setOver(false);}} style={{marginTop:15, padding:'10px 20px', background:'#6b46c1', border:'none', borderRadius:10, color:'white', cursor:'pointer'}}>Trừ tà lại</button>
+            </div>
+          ) : (
+            <div>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom:15}}><span>Phép {round}</span><span>🏆 {score}</span></div>
+              <div style={{padding:25, background:'#1a0033', borderRadius:15, textAlign:'center', marginBottom:15, minHeight:100, border:'2px solid #6b46c1'}}>
+                {show ? <div style={{fontSize:'2.5em'}}>{target.map(t => SPELLS[t]).join(' ')}</div> : <div>Lặp lại phép thuật!</div>}
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10}}>
+                {SPELLS.map((s,i) => <button key={i} onClick={() => click(i)} style={{padding:25, fontSize:'2.5em', background:'#6b46c1', border:'none', borderRadius:10, cursor:'pointer'}}>{s}</button>)}
+              </div>
+            </div>
+          )}
+        </Frame>
+      );
+    }
+
+    // 9. Cemetery Dig
+    function Cemetery({ onBack }) {
+      const [grid, setGrid] = useState([]);
+      const [score, setScore] = useState(0);
+      const [digs, setDigs] = useState(20);
+      const [over, setOver] = useState(false);
+      useEffect(() => { reset(); }, []);
+      const reset = () => {
+        const g = Array(16).fill(null).map(() => {
+          const r = Math.random();
+          if (r < 0.15) return {item:'💎', val:30};
+          if (r < 0.3) return {item:'🪙', val:15};
+          if (r < 0.45) return {item:'🏺', val:20};
+          if (r < 0.55) return {item:'💀', val:5};
+          return {item:'🪨', val:0};
+        });
+        setGrid(g.map(c => ({...c, dug:false})));
+        setScore(0); setDigs(20); setOver(false);
+      };
+      const dig = (i) => {
+        if (grid[i].dug || over) return;
+        const ng = [...grid];
+        ng[i] = {...ng[i], dug:true};
+        setGrid(ng);
+        const ns = score + ng[i].val;
+        setScore(ns);
+        const nd = digs - 1;
+        setDigs(nd);
+        if (nd <= 0) { setOver(true); saveProg('cemetery', ns); }
+      };
+      return (
+        <Frame title="Đào Mộ" icon="⚰️" onBack={onBack}>
+          <div style={{display:'flex', justifyContent:'space-around', marginBottom:15}}>
+            <div>⛏️ {digs}</div><div>🏆 {score}</div>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:15}}>
+            {grid.map((c,i) => (
+              <button key={i} onClick={() => dig(i)} disabled={c.dug || over} style={{aspectRatio:'1', fontSize:'2em', background:c.dug?'#1a0033':'#3f3f46', border:'2px solid #6b46c1', borderRadius:10, cursor:'pointer'}}>{c.dug ? c.item : '🟫'}</button>
+            ))}
+          </div>
+          {over && <div style={{textAlign:'center'}}><button onClick={reset} style={{padding:'10px 20px', background:'#6b46c1', border:'none', borderRadius:10, color:'white', cursor:'pointer'}}>Đào lại</button></div>}
+        </Frame>
+      );
+    }
+
+    // 10. Witch Potion
+    function Witch({ onBack }) {
+      const ING = ['🍄','🌿','🦎','🕷️','🐍','🦇'];
+      const [recipe, setRecipe] = useState([]);
+      const [picked, setPicked] = useState([]);
+      const [score, setScore] = useState(0);
+      const [round, setRound] = useState(1);
+      const [show, setShow] = useState(true);
+      const [done, setDone] = useState(false);
+      useEffect(() => {
+        const r = Array(2 + Math.min(round, 4)).fill(0).map(() => ING[Math.floor(Math.random()*ING.length)]);
+        setRecipe(r); setPicked([]); setShow(true);
+        const t = setTimeout(() => setShow(false), 2000 + round*300);
+        return () => clearTimeout(t);
+      }, [round]);
+      const pick = (ing) => {
+        if (show) return;
+        const np = [...picked, ing];
+        if (ing !== recipe[picked.length]) {
+          setDone(true); saveProg('witch', score); return;
+        }
+        if (np.length === recipe.length) {
+          setScore(s => s + round*15);
+          if (round >= 5) { setDone(true); saveProg('witch', score + round*15); }
+          else setRound(r => r+1);
+        } else setPicked(np);
+      };
+      return (
+        <Frame title="Pha Chế Phù Thủy" icon="🧙‍♀️" onBack={onBack}>
+          {done ? (
+            <div style={{textAlign:'center', padding:30, background:'#1a0033', borderRadius:15}}>
+              <h2>🏆 {score}</h2>
+              <button onClick={() => {setRound(1);setScore(0);setDone(false);}} style={{marginTop:15, padding:'10px 20px', background:'#6b46c1', border:'none', borderRadius:10, color:'white', cursor:'pointer'}}>Pha lại</button>
+            </div>
+          ) : (
+            <div>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom:15}}><span>Lọ {round}/5</span><span>🏆 {score}</span></div>
+              <div style={{padding:25, background:'#1a0033', borderRadius:15, textAlign:'center', marginBottom:15, minHeight:100, border:'2px solid #6b46c1'}}>
+                {show ? (<><p style={{marginBottom:10}}>Công thức:</p><div style={{fontSize:'2em'}}>{recipe.join(' ')}</div></>) : (<div>Chọn nguyên liệu theo thứ tự!</div>)}
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10}}>
+                {ING.map(i => <button key={i} onClick={() => pick(i)} style={{padding:20, fontSize:'2.5em', background:'#6b46c1', border:'none', borderRadius:10, cursor:'pointer'}}>{i}</button>)}
+              </div>
+            </div>
+          )}
+        </Frame>
+      );
+    }
+
+    const COMPONENTS = {
+      ghost: Ghost, escape: Escape, murder: Murder, haunted: Haunted, seance: Seance,
+      ouija: Ouija, cursed: Cursed, exorcism: Exorcism, cemetery: Cemetery, witch: Witch,
+    };
+
+    function App() {
+      const [route, setRoute] = useState(window.location.hash.slice(1) || '');
+      useEffect(() => {
+        const h = () => setRoute(window.location.hash.slice(1) || '');
+        window.addEventListener('hashchange', h);
+        return () => window.removeEventListener('hashchange', h);
+      }, []);
+      const go = (id) => { window.location.hash = id; };
+      const back = () => { window.location.hash = ''; };
+      const G = COMPONENTS[route];
+      if (G) return <G onBack={back} />;
+      return <Hub go={go} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

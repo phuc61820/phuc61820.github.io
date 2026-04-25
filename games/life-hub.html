@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏠 Cuộc Sống Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a2e3a; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const GAMES = [
+      { id: 'baby', icon: '👶', name: 'Chăm Em Bé', desc: 'Cho ăn, ngủ, chơi với bé yêu', color: '#ff9aa2' },
+      { id: 'school', icon: '🏫', name: 'Học Đường', desc: 'Sắp xếp lịch học mỗi ngày', color: '#ffb7b2' },
+      { id: 'date', icon: '💕', name: 'Hẹn Hò', desc: 'Trò chuyện và chinh phục trái tim', color: '#ff6b9d' },
+      { id: 'wedding', icon: '💒', name: 'Lên Kế Hoạch Cưới', desc: 'Quản lý ngân sách đám cưới', color: '#ffc8dd' },
+      { id: 'home', icon: '🏠', name: 'Decor Nhà', desc: 'Sắp xếp đồ nội thất', color: '#bde0fe' },
+      { id: 'garden', icon: '🌱', name: 'Làm Vườn', desc: 'Trồng cây, tưới nước', color: '#a8e6a3' },
+      { id: 'cleaning', icon: '🧹', name: 'Dọn Nhà', desc: 'Tìm và lau sạch các vết bẩn', color: '#c7ceea' },
+      { id: 'shopping', icon: '🛒', name: 'Mua Sắm', desc: 'Quản lý ngân sách mua sắm', color: '#ffdac1' },
+      { id: 'travel', icon: '✈️', name: 'Du Lịch', desc: 'Lên kế hoạch chuyến đi', color: '#a0c4ff' },
+      { id: 'retirement', icon: '👴', name: 'Nghỉ Hưu', desc: 'Quản lý ngày nghỉ thư giãn', color: '#ffd6a5' },
+    ];
+
+    const loadProgress = () => {
+      try { return JSON.parse(localStorage.getItem('lifeProgress')) || {}; }
+      catch { return {}; }
+    };
+    const saveProgress = (id, data) => {
+      const p = loadProgress();
+      p[id] = data;
+      localStorage.setItem('lifeProgress', JSON.stringify(p));
+    };
+
+    function Hub({ go }) {
+      const progress = loadProgress();
+      return (
+        <div style={{ padding: 20, maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 30 }}>
+            <h1 style={{ fontSize: 42, marginBottom: 8 }}>🏠 Cuộc Sống Hub</h1>
+            <p style={{ opacity: 0.85 }}>10 game mô phỏng cuộc sống thường ngày — thư giãn và ấm áp</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+            {GAMES.map(g => {
+              const pr = progress[g.id];
+              return (
+                <button key={g.id} onClick={() => go(g.id)} style={{
+                  background: g.color, border: 'none', borderRadius: 18, padding: 20,
+                  cursor: 'pointer', color: '#222', textAlign: 'left',
+                  boxShadow: '0 6px 14px rgba(0,0,0,0.25)'
+                }}>
+                  <div style={{ fontSize: 48, marginBottom: 8 }}>{g.icon}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700 }}>{g.name}</div>
+                  <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{g.desc}</div>
+                  {pr && <div style={{ fontSize: 11, marginTop: 8, fontWeight: 600 }}>⭐ {pr.score || pr.day || '✓'}</div>}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 30 }}>
+            <a href="../index.html" style={{ color: '#ffd', textDecoration: 'none', fontSize: 16, padding: '10px 22px', background: 'rgba(255,255,255,0.15)', borderRadius: 10 }}>← Về trang chính</a>
+          </div>
+        </div>
+      );
+    }
+
+    function Frame({ title, color, children, back }) {
+      return (
+        <div style={{ padding: 16, maxWidth: 760, margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <button onClick={back} style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', padding: '8px 14px', borderRadius: 8, cursor: 'pointer' }}>← Hub</button>
+            <h2 style={{ flex: 1, textAlign: 'center' }}>{title}</h2>
+          </div>
+          <div style={{ background: color, color: '#222', borderRadius: 18, padding: 20, boxShadow: '0 6px 16px rgba(0,0,0,0.3)' }}>
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    // 1. BABY
+    function BabyGame({ back }) {
+      const init = loadProgress().baby || { score: 0 };
+      const [cry, setCry] = useState(50);
+      const [hunger, setHunger] = useState(40);
+      const [sleep, setSleep] = useState(60);
+      const [happy, setHappy] = useState(50);
+      const [score, setScore] = useState(init.score);
+      const [msg, setMsg] = useState('Bé đang khóc!');
+
+      useEffect(() => {
+        const t = setInterval(() => {
+          setHunger(h => Math.min(100, h + 3));
+          setSleep(s => Math.max(0, s - 2));
+          setHappy(h => Math.max(0, h - 2));
+        }, 1500);
+        return () => clearInterval(t);
+      }, []);
+
+      useEffect(() => {
+        const c = Math.min(100, hunger * 0.4 + (100 - sleep) * 0.3 + (100 - happy) * 0.3);
+        setCry(c);
+        if (c > 70) setMsg('Bé khóc to quá! 😭');
+        else if (c > 40) setMsg('Bé hơi quấy 😣');
+        else setMsg('Bé ngoan ghê! 😊');
+      }, [hunger, sleep, happy]);
+
+      const feed = () => { setHunger(0); setScore(s => { const n = s + 10; saveProgress('baby', { score: n }); return n; }); };
+      const nap = () => { setSleep(100); setScore(s => { const n = s + 10; saveProgress('baby', { score: n }); return n; }); };
+      const play = () => { setHappy(100); setScore(s => { const n = s + 10; saveProgress('baby', { score: n }); return n; }); };
+
+      const Bar = ({ label, val, color }) => (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span>{label}</span><span>{Math.round(val)}</span></div>
+          <div style={{ height: 14, background: '#fff', borderRadius: 7, overflow: 'hidden' }}>
+            <div style={{ width: val + '%', height: '100%', background: color, transition: 'width 0.3s' }} />
+          </div>
+        </div>
+      );
+
+      return (
+        <Frame title="👶 Chăm Em Bé" color="#ff9aa2" back={back}>
+          <div style={{ textAlign: 'center', fontSize: 80, marginBottom: 10 }}>👶</div>
+          <div style={{ textAlign: 'center', fontSize: 18, marginBottom: 16, fontWeight: 600 }}>{msg}</div>
+          <Bar label="😭 Tiếng khóc" val={cry} color="#e63946" />
+          <Bar label="🍼 Đói" val={hunger} color="#f4a261" />
+          <Bar label="💤 Ngủ" val={sleep} color="#457b9d" />
+          <Bar label="😊 Vui" val={happy} color="#06d6a0" />
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button onClick={feed} style={btn('#f4a261')}>🍼 Cho ăn</button>
+            <button onClick={nap} style={btn('#457b9d')}>💤 Ru ngủ</button>
+            <button onClick={play} style={btn('#06d6a0')}>🎈 Chơi</button>
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 14, fontWeight: 700 }}>⭐ Điểm: {score}</div>
+        </Frame>
+      );
+    }
+
+    // 2. SCHOOL
+    function SchoolGame({ back }) {
+      const init = loadProgress().school || { day: 1, score: 0 };
+      const [day, setDay] = useState(init.day);
+      const [score, setScore] = useState(init.score);
+      const [slots, setSlots] = useState([null, null, null, null]);
+      const subjects = [
+        { n: 'Toán', i: '🔢', e: 8 },
+        { n: 'Văn', i: '📚', e: 6 },
+        { n: 'Anh', i: '🌐', e: 7 },
+        { n: 'Thể dục', i: '⚽', e: 4 },
+        { n: 'Mỹ thuật', i: '🎨', e: 5 },
+        { n: 'Âm nhạc', i: '🎵', e: 4 },
+      ];
+
+      const place = (i, s) => {
+        const ns = [...slots]; ns[i] = s; setSlots(ns);
+      };
+      const finish = () => {
+        const filled = slots.filter(x => x).length;
+        const points = slots.reduce((a, s) => a + (s ? s.e : 0), 0) + filled * 5;
+        const ns = score + points;
+        const nd = day + 1;
+        setScore(ns); setDay(nd); setSlots([null, null, null, null]);
+        saveProgress('school', { day: nd, score: ns });
+      };
+
+      return (
+        <Frame title="🏫 Học Đường" color="#ffb7b2" back={back}>
+          <div style={{ textAlign: 'center', marginBottom: 14 }}>📅 Ngày {day} — Sắp xếp 4 tiết học</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 14 }}>
+            {slots.map((s, i) => (
+              <div key={i} style={{ minHeight: 70, background: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: 8, textAlign: 'center', fontSize: 13 }}>
+                <div style={{ fontSize: 11, opacity: 0.7 }}>Tiết {i + 1}</div>
+                {s ? <div><div style={{ fontSize: 24 }}>{s.i}</div>{s.n}</div> : <div style={{ marginTop: 18, opacity: 0.5 }}>—</div>}
+              </div>
+            ))}
+          </div>
+          <div style={{ marginBottom: 8, fontSize: 13 }}>Chọn môn học:</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+            {subjects.map((sb, i) => (
+              <button key={i} onClick={() => {
+                const empty = slots.findIndex(x => !x);
+                if (empty >= 0) place(empty, sb);
+              }} style={btn('#ffd6a5')}>{sb.i} {sb.n}</button>
+            ))}
+          </div>
+          <button onClick={finish} disabled={slots.some(x => !x)} style={{ ...btn('#06d6a0'), width: '100%', opacity: slots.some(x => !x) ? 0.5 : 1 }}>
+            Kết thúc ngày
+          </button>
+          <div style={{ textAlign: 'center', marginTop: 12, fontWeight: 700 }}>⭐ Điểm: {score}</div>
+        </Frame>
+      );
+    }
+
+    // 3. DATE
+    function DateGame({ back }) {
+      const init = loadProgress().date || { score: 0 };
+      const [score, setScore] = useState(init.score);
+      const [love, setLove] = useState(50);
+      const [round, setRound] = useState(0);
+      const qs = [
+        { q: 'Bạn nói gì khi gặp cô ấy?', a: [{ t: 'Em xinh quá!', v: 10 }, { t: 'Chào...', v: 3 }, { t: 'Đi ăn không?', v: -5 }] },
+        { q: 'Cô ấy hỏi sở thích của bạn?', a: [{ t: 'Đọc sách và du lịch', v: 12 }, { t: 'Game', v: 4 }, { t: 'Ngủ', v: -3 }] },
+        { q: 'Chọn quà tặng?', a: [{ t: '🌹 Hoa hồng', v: 15 }, { t: '🍫 Sô cô la', v: 8 }, { t: '🧦 Tất', v: -10 }] },
+        { q: 'Cuối buổi hẹn?', a: [{ t: 'Đưa em về nhé', v: 12 }, { t: 'Hẹn lần sau', v: 6 }, { t: 'Bye', v: -8 }] },
+      ];
+
+      const choose = (v) => {
+        const nl = Math.max(0, Math.min(100, love + v));
+        setLove(nl);
+        if (round + 1 >= qs.length) {
+          const pts = Math.round(nl);
+          const ns = score + pts;
+          setScore(ns);
+          saveProgress('date', { score: ns });
+          setTimeout(() => { setRound(0); setLove(50); }, 1200);
+        } else {
+          setRound(round + 1);
+        }
+      };
+
+      return (
+        <Frame title="💕 Hẹn Hò" color="#ff6b9d" back={back}>
+          <div style={{ textAlign: 'center', fontSize: 70, marginBottom: 8 }}>💕</div>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 13, marginBottom: 4 }}>Tình cảm: {Math.round(love)}%</div>
+            <div style={{ height: 16, background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ width: love + '%', height: '100%', background: '#e63946', transition: 'width 0.5s' }} />
+            </div>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.5)', padding: 14, borderRadius: 12, marginBottom: 12, minHeight: 60 }}>
+            <strong>{qs[round].q}</strong>
+          </div>
+          {qs[round].a.map((opt, i) => (
+            <button key={i} onClick={() => choose(opt.v)} style={{ ...btn('#ffc8dd'), width: '100%', marginBottom: 6, textAlign: 'left' }}>
+              {opt.t}
+            </button>
+          ))}
+          <div style={{ textAlign: 'center', marginTop: 12, fontWeight: 700 }}>⭐ Điểm: {score}</div>
+        </Frame>
+      );
+    }
+
+    // 4. WEDDING
+    function WeddingGame({ back }) {
+      const init = loadProgress().wedding || { score: 0 };
+      const [budget, setBudget] = useState(50000000);
+      const [items, setItems] = useState({});
+      const [score, setScore] = useState(init.score);
+      const list = [
+        { id: 'ao', n: 'Áo cưới', i: '👰', p: 8000000 },
+        { id: 'tiec', n: 'Đặt tiệc', i: '🍽️', p: 20000000 },
+        { id: 'hoa', n: 'Hoa cưới', i: '💐', p: 3000000 },
+        { id: 'nhan', n: 'Nhẫn cưới', i: '💍', p: 10000000 },
+        { id: 'anh', n: 'Chụp ảnh', i: '📸', p: 5000000 },
+        { id: 'xe', n: 'Xe hoa', i: '🚗', p: 4000000 },
+        { id: 'mc', n: 'MC + nhạc', i: '🎤', p: 3000000 },
+        { id: 'vi', n: 'Trang trí', i: '🎀', p: 4000000 },
+      ];
+
+      const buy = (it) => {
+        if (items[it.id]) return;
+        if (budget < it.p) return;
+        setBudget(budget - it.p);
+        setItems({ ...items, [it.id]: true });
+      };
+      const finish = () => {
+        const cnt = Object.keys(items).length;
+        const pts = cnt * 20 + Math.floor(budget / 1000000);
+        const ns = score + pts;
+        setScore(ns);
+        saveProgress('wedding', { score: ns });
+        setBudget(50000000); setItems({});
+      };
+      const fmt = (n) => n.toLocaleString('vi-VN') + 'đ';
+
+      return (
+        <Frame title="💒 Lên Kế Hoạch Cưới" color="#ffc8dd" back={back}>
+          <div style={{ textAlign: 'center', fontSize: 18, marginBottom: 14, fontWeight: 700 }}>💰 Ngân sách: {fmt(budget)}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 14 }}>
+            {list.map(it => (
+              <button key={it.id} onClick={() => buy(it)} disabled={items[it.id] || budget < it.p} style={{
+                background: items[it.id] ? '#06d6a0' : '#fff', border: 'none', borderRadius: 10, padding: 10, cursor: 'pointer',
+                opacity: items[it.id] ? 0.7 : (budget < it.p ? 0.4 : 1)
+              }}>
+                <div style={{ fontSize: 28 }}>{it.i}</div>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{it.n}</div>
+                <div style={{ fontSize: 11 }}>{fmt(it.p)}</div>
+                {items[it.id] && <div style={{ fontSize: 11 }}>✓ Đã mua</div>}
+              </button>
+            ))}
+          </div>
+          <button onClick={finish} style={{ ...btn('#06d6a0'), width: '100%' }}>Hoàn thành</button>
+          <div style={{ textAlign: 'center', marginTop: 12, fontWeight: 700 }}>⭐ Điểm: {score}</div>
+        </Frame>
+      );
+    }
+
+    // 5. HOME DECOR
+    function HomeGame({ back }) {
+      const init = loadProgress().home || { score: 0 };
+      const [score, setScore] = useState(init.score);
+      const [placed, setPlaced] = useState({});
+      const [selected, setSelected] = useState(null);
+      const furn = [
+        { id: 'sofa', i: '🛋️', n: 'Sofa' },
+        { id: 'tv', i: '📺', n: 'TV' },
+        { id: 'bed', i: '🛏️', n: 'Giường' },
+        { id: 'lamp', i: '💡', n: 'Đèn' },
+        { id: 'plant', i: '🪴', n: 'Cây' },
+        { id: 'pic', i: '🖼️', n: 'Tranh' },
+      ];
+
+      const place = (cell) => {
+        if (!selected) return;
+        if (Object.values(placed).includes(selected)) return;
+        setPlaced({ ...placed, [cell]: selected });
+        setSelected(null);
+      };
+      const finish = () => {
+        const cnt = Object.keys(placed).length;
+        const ns = score + cnt * 15;
+        setScore(ns);
+        saveProgress('home', { score: ns });
+        setPlaced({});
+      };
+
+      return (
+        <Frame title="🏠 Decor Nhà" color="#bde0fe" back={back}>
+          <div style={{ textAlign: 'center', marginBottom: 12, fontSize: 14 }}>Chọn nội thất rồi nhấn vào ô để đặt</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 14, background: '#fff', padding: 10, borderRadius: 12 }}>
+            {Array.from({ length: 16 }).map((_, i) => {
+              const f = placed[i] && furn.find(x => x.id === placed[i]);
+              return (
+                <div key={i} onClick={() => place(i)} style={{
+                  aspectRatio: '1', background: '#e8f4ff', borderRadius: 8, display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', fontSize: 28, cursor: 'pointer'
+                }}>{f ? f.i : ''}</div>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            {furn.map(f => (
+              <button key={f.id} onClick={() => setSelected(f.id)} disabled={Object.values(placed).includes(f.id)} style={{
+                background: selected === f.id ? '#ffd6a5' : '#fff', border: 'none', padding: 8, borderRadius: 8, cursor: 'pointer',
+                opacity: Object.values(placed).includes(f.id) ? 0.4 : 1
+              }}>{f.i} {f.n}</button>
+            ))}
+          </div>
+          <button onClick={finish} style={{ ...btn('#06d6a0'), width: '100%' }}>Hoàn thành phòng</button>
+          <div style={{ textAlign: 'center', marginTop: 12, fontWeight: 700 }}>⭐ Điểm: {score}</div>
+        </Frame>
+      );
+    }
+
+    // 6. GARDEN
+    function GardenGame({ back }) {
+      const init = loadProgress().garden || { score: 0 };
+      const [score, setScore] = useState(init.score);
+      const [plants, setPlants] = useState(Array(9).fill(null));
+
+      useEffect(() => {
+        const t = setInterval(() => {
+          setPlants(ps => ps.map(p => {
+            if (!p) return p;
+            const age = Date.now() - p.t;
+            if (p.water && age > 4000 && p.stage < 3) return { ...p, stage: p.stage + 1, t: Date.now() };
+            return p;
+          }));
+        }, 1000);
+        return () => clearInterval(t);
+      }, []);
+
+      const plant = (i) => {
+        if (plants[i]) return;
+        const np = [...plants];
+        np[i] = { stage: 0, water: false, t: Date.now() };
+        setPlants(np);
+      };
+      const water = (i) => {
+        if (!plants[i]) return;
+        const np = [...plants];
+        np[i] = { ...np[i], water: true, t: Date.now() };
+        setPlants(np);
+      };
+      const harvest = (i) => {
+        if (!plants[i] || plants[i].stage < 3) return;
+        const np = [...plants];
+        np[i] = null;
+        setPlants(np);
+        const ns = score + 25;
+        setScore(ns);
+        saveProgress('garden', { score: ns });
+      };
+      const icons = ['🌱', '🌿', '🌷', '🌸'];
+
+      return (
+        <Frame title="🌱 Làm Vườn" color="#a8e6a3" back={back}>
+          <div style={{ textAlign: 'center', marginBottom: 12, fontSize: 14 }}>Trồng → Tưới → Thu hoạch (mất ~12s mỗi cây)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
+            {plants.map((p, i) => (
+              <div key={i} style={{ aspectRatio: '1', background: '#7d4f24', borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 6 }}
+                   onClick={() => !p ? plant(i) : (p.stage >= 3 ? harvest(i) : water(i))}>
+                <div style={{ fontSize: 36 }}>{p ? icons[p.stage] : '🟫'}</div>
+                <div style={{ fontSize: 11, color: 'white', marginTop: 2 }}>
+                  {!p ? 'Trồng' : p.stage >= 3 ? 'Hái!' : (p.water ? 'Lớn...' : 'Tưới')}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 8, fontWeight: 700 }}>⭐ Điểm: {score}</div>
+        </Frame>
+      );
+    }
+
+    // 7. CLEANING
+    function CleaningGame({ back }) {
+      const init = loadProgress().cleaning || { score: 0 };
+      const [score, setScore] = useState(init.score);
+      const [spots, setSpots] = useState([]);
+      const [time, setTime] = useState(30);
+      const [running, setRunning] = useState(false);
+
+      useEffect(() => {
+        if (!running) return;
+        const t = setInterval(() => {
+          setTime(x => x - 1);
+          if (Math.random() < 0.6) {
+            setSpots(s => [...s, { id: Date.now() + Math.random(), x: 5 + Math.random() * 85, y: 5 + Math.random() * 85, type: ['🟫', '💩', '🕸️', '🍂'][Math.floor(Math.random() * 4)] }]);
+          }
+        }, 1000);
+        return () => clearInterval(t);
+      }, [running]);
+
+      useEffect(() => {
+        if (time <= 0 && running) {
+          setRunning(false);
+          saveProgress('cleaning', { score });
+        }
+      }, [time, running]);
+
+      const start = () => { setRunning(true); setTime(30); setSpots([]); };
+      const wipe = (id) => {
+        setSpots(s => s.filter(x => x.id !== id));
+        const ns = score + 5;
+        setScore(ns);
+      };
+
+      return (
+        <Frame title="🧹 Dọn Nhà" color="#c7ceea" back={back}>
+          <div style={{ textAlign: 'center', marginBottom: 12 }}>⏱️ {time}s — Bấm vào vết bẩn để lau!</div>
+          <div style={{ position: 'relative', height: 320, background: '#fff5e1', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
+            {spots.map(s => (
+              <button key={s.id} onClick={() => wipe(s.id)} style={{
+                position: 'absolute', left: s.x + '%', top: s.y + '%', fontSize: 28,
+                background: 'transparent', border: 'none', cursor: 'pointer'
+              }}>{s.type}</button>
+            ))}
+            {!running && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+              <div style={{ fontSize: 60 }}>🧹</div>
+              <button onClick={start} style={btn('#06d6a0')}>Bắt đầu dọn</button>
+            </div>}
+          </div>
+          <div style={{ textAlign: 'center', fontWeight: 700 }}>⭐ Điểm: {score}</div>
+        </Frame>
+      );
+    }
+
+    // 8. SHOPPING
+    function ShoppingGame({ back }) {
+      const init = loadProgress().shopping || { score: 0 };
+      const [score, setScore] = useState(init.score);
+      const [budget, setBudget] = useState(500000);
+      const [cart, setCart] = useState({});
+      const items = [
+        { id: 'rau', i: '🥬', n: 'Rau xanh', p: 30000 },
+        { id: 'thit', i: '🥩', n: 'Thịt bò', p: 150000 },
+        { id: 'ca', i: '🐟', n: 'Cá tươi', p: 80000 },
+        { id: 'banh', i: '🍞', n: 'Bánh mì', p: 25000 },
+        { id: 'sua', i: '🥛', n: 'Sữa', p: 40000 },
+        { id: 'trai', i: '🍎', n: 'Trái cây', p: 60000 },
+        { id: 'gao', i: '🍚', n: 'Gạo', p: 120000 },
+        { id: 'trung', i: '🥚', n: 'Trứng', p: 45000 },
+      ];
+      const need = ['rau', 'thit', 'banh', 'sua', 'trai'];
+
+      const add = (it) => {
+        if (budget < it.p) return;
+        if (cart[it.id]) return;
+        setBudget(budget - it.p);
+        setCart({ ...cart, [it.id]: true });
+      };
+      const checkout = () => {
+        const got = Object.keys(cart);
+        const right = need.filter(n => got.includes(n)).length;
+        const wrong = got.filter(g => !need.includes(g)).length;
+        const pts = right * 20 - wrong * 10 + Math.floor(budget / 5000);
+        const ns = score + Math.max(0, pts);
+        setScore(ns);
+        saveProgress('shopping', { score: ns });
+        setBudget(500000); setCart({});
+      };
+      const fmt = n => n.toLocaleString('vi-VN') + 'đ';
+
+      return (
+        <Frame title="🛒 Mua Sắm" color="#ffdac1" back={back}>
+          <div style={{ textAlign: 'center', marginBottom: 8 }}>💰 Còn lại: {fmt(budget)}</div>
+          <div style={{ fontSize: 12, textAlign: 'center', marginBottom: 12 }}>📋 Cần mua: rau, thịt bò, bánh mì, sữa, trái cây</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 6, marginBottom: 12 }}>
+            {items.map(it => (
+              <button key={it.id} onClick={() => add(it)} disabled={cart[it.id] || budget < it.p} style={{
+                background: cart[it.id] ? '#06d6a0' : '#fff', border: 'none', padding: 10, borderRadius: 10, cursor: 'pointer',
+                opacity: cart[it.id] ? 0.7 : (budget < it.p ? 0.4 : 1)
+              }}>
+                <div style={{ fontSize: 24 }}>{it.i}</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{it.n}</div>
+                <div style={{ fontSize: 11 }}>{fmt(it.p)}</div>
+              </button>
+            ))}
+          </div>
+          <button onClick={checkout} style={{ ...btn('#06d6a0'), width: '100%' }}>Thanh toán</button>
+          <div style={{ textAlign: 'center', marginTop: 12, fontWeight: 700 }}>⭐ Điểm: {score}</div>
+        </Frame>
+      );
+    }
+
+    // 9. TRAVEL
+    function TravelGame({ back }) {
+      const init = loadProgress().travel || { score: 0 };
+      const [score, setScore] = useState(init.score);
+      const [step, setStep] = useState(0);
+      const [pick, setPick] = useState({});
+      const steps = [
+        { k: 'dest', q: 'Chọn điểm đến?', opts: [{ t: '🏖️ Đà Nẵng', v: 15 }, { t: '🏔️ Sa Pa', v: 18 }, { t: '🏝️ Phú Quốc', v: 20 }, { t: '🏛️ Hội An', v: 16 }] },
+        { k: 'trans', q: 'Phương tiện?', opts: [{ t: '✈️ Máy bay', v: 15 }, { t: '🚆 Tàu hỏa', v: 12 }, { t: '🚌 Xe khách', v: 8 }] },
+        { k: 'hotel', q: 'Chỗ ở?', opts: [{ t: '🏨 Resort 5 sao', v: 20 }, { t: '🏩 Khách sạn 3 sao', v: 12 }, { t: '🏠 Homestay', v: 10 }] },
+        { k: 'food', q: 'Thử món gì?', opts: [{ t: '🍜 Phở địa phương', v: 12 }, { t: '🍤 Hải sản', v: 15 }, { t: '🍲 Đồ nướng', v: 10 }] },
+        { k: 'act', q: 'Hoạt động?', opts: [{ t: '🤿 Lặn biển', v: 18 }, { t: '🚴 Đạp xe', v: 12 }, { t: '🛍️ Mua sắm', v: 10 }] },
+      ];
+
+      const choose = (opt) => {
+        const np = { ...pick, [steps[step].k]: opt };
+        setPick(np);
+        if (step + 1 >= steps.length) {
+          const pts = Object.values(np).reduce((a, x) => a + x.v, 0);
+          const ns = score + pts;
+          setScore(ns);
+          saveProgress('travel', { score: ns });
+          setTimeout(() => { setStep(0); setPick({}); }, 1500);
+        } else {
+          setStep(step + 1);
+        }
+      };
+
+      return (
+        <Frame title="✈️ Du Lịch" color="#a0c4ff" back={back}>
+          <div style={{ textAlign: 'center', fontSize: 60, marginBottom: 8 }}>✈️</div>
+          <div style={{ marginBottom: 12, fontSize: 13 }}>Bước {step + 1}/{steps.length}</div>
+          <div style={{ background: 'rgba(255,255,255,0.6)', padding: 14, borderRadius: 12, marginBottom: 12 }}>
+            <strong>{steps[step].q}</strong>
+          </div>
+          {steps[step].opts.map((o, i) => (
+            <button key={i} onClick={() => choose(o)} style={{ ...btn('#bde0fe'), width: '100%', marginBottom: 6, textAlign: 'left' }}>{o.t}</button>
+          ))}
+          <div style={{ marginTop: 12, fontSize: 12 }}>
+            {Object.entries(pick).map(([k, v]) => <div key={k}>✓ {v.t}</div>)}
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 12, fontWeight: 700 }}>⭐ Điểm: {score}</div>
+        </Frame>
+      );
+    }
+
+    // 10. RETIREMENT
+    function RetirementGame({ back }) {
+      const init = loadProgress().retirement || { score: 0, day: 1 };
+      const [score, setScore] = useState(init.score);
+      const [day, setDay] = useState(init.day);
+      const [done, setDone] = useState({});
+      const [energy, setEnergy] = useState(100);
+      const acts = [
+        { id: 'tea', i: '🍵', n: 'Uống trà sáng', e: 5, p: 8 },
+        { id: 'walk', i: '🚶', n: 'Đi dạo công viên', e: 20, p: 15 },
+        { id: 'chess', i: '♟️', n: 'Đánh cờ với bạn', e: 15, p: 12 },
+        { id: 'garden', i: '🌻', n: 'Tưới cây', e: 10, p: 10 },
+        { id: 'read', i: '📖', n: 'Đọc báo', e: 5, p: 8 },
+        { id: 'grand', i: '👶', n: 'Chăm cháu', e: 25, p: 20 },
+        { id: 'cook', i: '🍳', n: 'Nấu ăn', e: 15, p: 12 },
+        { id: 'nap', i: '😴', n: 'Ngủ trưa', e: -30, p: 5 },
+      ];
+
+      const doAct = (a) => {
+        if (done[a.id]) return;
+        if (a.e > 0 && energy < a.e) return;
+        setEnergy(Math.max(0, Math.min(100, energy - a.e)));
+        setDone({ ...done, [a.id]: true });
+        const ns = score + a.p;
+        setScore(ns);
+        saveProgress('retirement', { score: ns, day });
+      };
+      const nextDay = () => {
+        setDay(day + 1); setDone({}); setEnergy(100);
+        saveProgress('retirement', { score, day: day + 1 });
+      };
+
+      return (
+        <Frame title="👴 Nghỉ Hưu" color="#ffd6a5" back={back}>
+          <div style={{ textAlign: 'center', marginBottom: 8 }}>📅 Ngày {day} an nhàn</div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 13 }}>⚡ Năng lượng: {energy}</div>
+            <div style={{ height: 12, background: '#fff', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ width: energy + '%', height: '100%', background: '#06d6a0', transition: 'width 0.4s' }} />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 6, marginBottom: 12 }}>
+            {acts.map(a => (
+              <button key={a.id} onClick={() => doAct(a)} disabled={done[a.id]} style={{
+                background: done[a.id] ? '#06d6a0' : '#fff', border: 'none', padding: 10, borderRadius: 10, cursor: 'pointer',
+                opacity: done[a.id] ? 0.6 : 1
+              }}>
+                <div style={{ fontSize: 24 }}>{a.i}</div>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>{a.n}</div>
+                <div style={{ fontSize: 10 }}>+{a.p}đ {a.e > 0 ? `(-${a.e}⚡)` : `(+${-a.e}⚡)`}</div>
+              </button>
+            ))}
+          </div>
+          <button onClick={nextDay} style={{ ...btn('#bde0fe'), width: '100%' }}>Sang ngày mới</button>
+          <div style={{ textAlign: 'center', marginTop: 12, fontWeight: 700 }}>⭐ Điểm: {score}</div>
+        </Frame>
+      );
+    }
+
+    function btn(bg) {
+      return { background: bg, border: 'none', padding: '10px 14px', borderRadius: 10, cursor: 'pointer', fontWeight: 600, color: '#222', fontSize: 14 };
+    }
+
+    function App() {
+      const [view, setView] = useState(window.location.hash.slice(1) || 'hub');
+      useEffect(() => {
+        const h = () => setView(window.location.hash.slice(1) || 'hub');
+        window.addEventListener('hashchange', h);
+        return () => window.removeEventListener('hashchange', h);
+      }, []);
+      const go = (id) => { window.location.hash = id; setView(id); };
+      const back = () => { window.location.hash = ''; setView('hub'); };
+
+      const map = {
+        baby: BabyGame, school: SchoolGame, date: DateGame, wedding: WeddingGame,
+        home: HomeGame, garden: GardenGame, cleaning: CleaningGame,
+        shopping: ShoppingGame, travel: TravelGame, retirement: RetirementGame,
+      };
+      const G = map[view];
+      if (G) return <G back={back} />;
+      return <Hub go={go} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

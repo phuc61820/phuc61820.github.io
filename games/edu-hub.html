@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📚 Học Tập Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a1a3e; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const GAMES = [
+      { id: 'addition', icon: '➕', name: 'Cộng Nhanh', desc: 'Phép cộng các số', color: '#22c55e' },
+      { id: 'subtraction', icon: '➖', name: 'Trừ Nhanh', desc: 'Phép trừ các số', color: '#ef4444' },
+      { id: 'multiplication', icon: '✖️', name: 'Bảng Cửu Chương', desc: 'Phép nhân 1-9', color: '#f59e0b' },
+      { id: 'division', icon: '➗', name: 'Chia Nhanh', desc: 'Phép chia số nguyên', color: '#3b82f6' },
+      { id: 'alphabet', icon: '🔤', name: 'Ghép Chữ Cái', desc: 'Sắp xếp chữ thành từ', color: '#a855f7' },
+      { id: 'vocab', icon: '📖', name: 'Từ Vựng Anh', desc: 'Dịch tiếng Anh', color: '#ec4899' },
+      { id: 'typing', icon: '⌨️', name: 'Gõ Phím', desc: 'Gõ chữ đúng nhanh', color: '#06b6d4' },
+      { id: 'geo', icon: '🌍', name: 'Thủ Đô', desc: 'Thủ đô các nước', color: '#10b981' },
+      { id: 'history', icon: '📜', name: 'Lịch Sử VN', desc: 'Câu hỏi lịch sử', color: '#dc2626' },
+      { id: 'science', icon: '🔬', name: 'Khoa Học', desc: 'Khoa học vui', color: '#8b5cf6' },
+    ];
+
+    const loadProgress = () => {
+      try { return JSON.parse(localStorage.getItem('eduProgress') || '{}'); }
+      catch { return {}; }
+    };
+    const saveHigh = (id, score) => {
+      const p = loadProgress();
+      if (!p[id] || score > p[id]) { p[id] = score; localStorage.setItem('eduProgress', JSON.stringify(p)); return true; }
+      return false;
+    };
+
+    const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+    const shuffle = arr => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+    function GameShell({ id, title, color, makeQ, children, renderQ, checkAnswer }) {
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(60);
+      const [q, setQ] = useState(null);
+      const [phase, setPhase] = useState('ready');
+      const [feedback, setFeedback] = useState('');
+      const [streak, setStreak] = useState(0);
+      const [newHigh, setNewHigh] = useState(false);
+      const high = loadProgress()[id] || 0;
+
+      useEffect(() => {
+        if (phase !== 'play') return;
+        if (time <= 0) {
+          const isHigh = saveHigh(id, score);
+          setNewHigh(isHigh);
+          setPhase('over');
+          return;
+        }
+        const t = setTimeout(() => setTime(time - 1), 1000);
+        return () => clearTimeout(t);
+      }, [time, phase]);
+
+      const start = () => { setScore(0); setTime(60); setStreak(0); setQ(makeQ()); setPhase('play'); setFeedback(''); setNewHigh(false); };
+      const submit = (ans) => {
+        if (checkAnswer(q, ans)) {
+          setScore(s => s + 10 + streak);
+          setStreak(s => s + 1);
+          setFeedback('✅ Đúng!');
+        } else {
+          setStreak(0);
+          setFeedback('❌ Sai! Đáp án: ' + (q.answer ?? q.correct));
+        }
+        setTimeout(() => { setFeedback(''); setQ(makeQ()); }, 600);
+      };
+
+      return (
+        <div style={{ padding: 20, maxWidth: 700, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <button onClick={() => location.hash = ''} style={{ padding: '8px 14px', background: '#374151', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>← Hub</button>
+            <h1 style={{ fontSize: 24 }}>{title}</h1>
+            <div style={{ width: 70 }}></div>
+          </div>
+
+          {phase === 'ready' && (
+            <div style={{ textAlign: 'center', padding: 40, background: 'rgba(255,255,255,0.05)', borderRadius: 16 }}>
+              <div style={{ fontSize: 60, marginBottom: 16 }}>{GAMES.find(g => g.id === id).icon}</div>
+              <p style={{ marginBottom: 16, opacity: 0.8 }}>Trả lời nhiều câu nhất trong 60 giây!</p>
+              <p style={{ marginBottom: 20, color: '#fbbf24' }}>🏆 Kỷ lục: {high}</p>
+              <button onClick={start} style={{ padding: '14px 28px', fontSize: 18, background: color, color: 'white', border: 'none', borderRadius: 12, cursor: 'pointer', fontWeight: 'bold' }}>▶ Bắt Đầu</button>
+            </div>
+          )}
+
+          {phase === 'play' && q && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: 20, fontSize: 18 }}>
+                <div>⏱️ {time}s</div>
+                <div style={{ color: '#fbbf24' }}>⭐ {score}</div>
+                <div>🔥 {streak}</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.08)', padding: 30, borderRadius: 16, textAlign: 'center', marginBottom: 16, minHeight: 280 }}>
+                {renderQ(q, submit)}
+              </div>
+              {feedback && <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 'bold' }}>{feedback}</div>}
+            </>
+          )}
+
+          {phase === 'over' && (
+            <div style={{ textAlign: 'center', padding: 40, background: 'rgba(255,255,255,0.05)', borderRadius: 16 }}>
+              <h2 style={{ fontSize: 28, marginBottom: 16 }}>⏰ Hết giờ!</h2>
+              {newHigh && <div style={{ fontSize: 22, color: '#fbbf24', marginBottom: 12 }}>🎉 Kỷ lục mới!</div>}
+              <p style={{ fontSize: 24, marginBottom: 8 }}>Điểm: {score}</p>
+              <p style={{ marginBottom: 24, opacity: 0.8 }}>🏆 Kỷ lục: {Math.max(high, score)}</p>
+              <button onClick={start} style={{ padding: '12px 24px', fontSize: 16, background: color, color: 'white', border: 'none', borderRadius: 12, cursor: 'pointer', marginRight: 10, fontWeight: 'bold' }}>🔄 Chơi Lại</button>
+              <button onClick={() => location.hash = ''} style={{ padding: '12px 24px', fontSize: 16, background: '#374151', color: 'white', border: 'none', borderRadius: 12, cursor: 'pointer' }}>← Hub</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- Math input ---
+    function NumInput({ onSubmit }) {
+      const [v, setV] = useState('');
+      const ref = useRef(null);
+      useEffect(() => { ref.current && ref.current.focus(); }, []);
+      const go = () => { if (v !== '') { onSubmit(Number(v)); setV(''); } };
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 24 }}>
+          <input ref={ref} type="number" value={v} onChange={e => setV(e.target.value)} onKeyDown={e => e.key === 'Enter' && go()} style={{ padding: 12, fontSize: 22, width: 130, borderRadius: 8, border: 'none', textAlign: 'center' }} />
+          <button onClick={go} style={{ padding: '12px 22px', fontSize: 18, background: '#22c55e', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>OK</button>
+        </div>
+      );
+    }
+
+    // --- Multiple choice ---
+    function Choices({ options, onPick, correct }) {
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 24 }}>
+          {options.map((o, i) => (
+            <button key={i} onClick={() => onPick(o)} style={{ padding: 14, fontSize: 17, background: '#1e3a8a', color: 'white', border: '2px solid #3b82f6', borderRadius: 10, cursor: 'pointer' }}>{o}</button>
+          ))}
+        </div>
+      );
+    }
+
+    // --- Math games ---
+    const Addition = () => <GameShell id="addition" title="➕ Cộng Nhanh" color="#22c55e"
+      makeQ={() => { const a = rand(1, 99), b = rand(1, 99); return { a, b, answer: a + b }; }}
+      renderQ={(q, sub) => <><div style={{ fontSize: 48, fontWeight: 'bold' }}>{q.a} + {q.b} = ?</div><NumInput onSubmit={sub} /></>}
+      checkAnswer={(q, a) => a === q.answer} />;
+
+    const Subtraction = () => <GameShell id="subtraction" title="➖ Trừ Nhanh" color="#ef4444"
+      makeQ={() => { const a = rand(10, 99), b = rand(1, a); return { a, b, answer: a - b }; }}
+      renderQ={(q, sub) => <><div style={{ fontSize: 48, fontWeight: 'bold' }}>{q.a} − {q.b} = ?</div><NumInput onSubmit={sub} /></>}
+      checkAnswer={(q, a) => a === q.answer} />;
+
+    const Multiplication = () => <GameShell id="multiplication" title="✖️ Bảng Cửu Chương" color="#f59e0b"
+      makeQ={() => { const a = rand(2, 9), b = rand(2, 9); return { a, b, answer: a * b }; }}
+      renderQ={(q, sub) => <><div style={{ fontSize: 48, fontWeight: 'bold' }}>{q.a} × {q.b} = ?</div><NumInput onSubmit={sub} /></>}
+      checkAnswer={(q, a) => a === q.answer} />;
+
+    const Division = () => <GameShell id="division" title="➗ Chia Nhanh" color="#3b82f6"
+      makeQ={() => { const b = rand(2, 9), ans = rand(2, 9); return { a: b * ans, b, answer: ans }; }}
+      renderQ={(q, sub) => <><div style={{ fontSize: 48, fontWeight: 'bold' }}>{q.a} ÷ {q.b} = ?</div><NumInput onSubmit={sub} /></>}
+      checkAnswer={(q, a) => a === q.answer} />;
+
+    // --- Alphabet (unscramble) ---
+    const WORDS_VI = ['MEO', 'CHO', 'GA', 'CA', 'CHIM', 'HOA', 'CAY', 'NHA', 'TRUONG', 'BAN', 'SACH', 'BUT', 'GIAY', 'BANG', 'GHE', 'BAN', 'CUA', 'DEN', 'XE', 'TAU', 'BIEN', 'NUI', 'SONG', 'MAY', 'NANG', 'MUA', 'GIO', 'TUYET', 'TRANG', 'XANH', 'DO', 'VANG', 'TIM', 'CAM', 'DEN', 'NAU', 'HONG'];
+    function Alphabet() {
+      return <GameShell id="alphabet" title="🔤 Ghép Chữ Cái" color="#a855f7"
+        makeQ={() => { const w = WORDS_VI[rand(0, WORDS_VI.length - 1)]; return { word: w, scrambled: shuffle(w.split('')).join(''), answer: w }; }}
+        renderQ={(q, sub) => <AlphaQ q={q} onSubmit={sub} />}
+        checkAnswer={(q, a) => a === q.answer} />;
+    }
+    function AlphaQ({ q, onSubmit }) {
+      const [v, setV] = useState('');
+      useEffect(() => setV(''), [q]);
+      const ref = useRef(null);
+      useEffect(() => { ref.current && ref.current.focus(); }, [q]);
+      return (
+        <>
+          <div style={{ fontSize: 18, opacity: 0.8, marginBottom: 8 }}>Sắp xếp các chữ cái:</div>
+          <div style={{ fontSize: 44, fontWeight: 'bold', letterSpacing: 8 }}>{q.scrambled}</div>
+          <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center', gap: 10 }}>
+            <input ref={ref} type="text" value={v} onChange={e => setV(e.target.value.toUpperCase())} onKeyDown={e => e.key === 'Enter' && (onSubmit(v), setV(''))} style={{ padding: 12, fontSize: 22, width: 200, borderRadius: 8, border: 'none', textAlign: 'center' }} />
+            <button onClick={() => { onSubmit(v); setV(''); }} style={{ padding: '12px 22px', fontSize: 18, background: '#a855f7', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>OK</button>
+          </div>
+        </>
+      );
+    }
+
+    // --- Vocab EN-VI ---
+    const VOCAB = [
+      ['cat', 'mèo'], ['dog', 'chó'], ['fish', 'cá'], ['bird', 'chim'], ['house', 'nhà'], ['tree', 'cây'],
+      ['flower', 'hoa'], ['book', 'sách'], ['pen', 'bút'], ['paper', 'giấy'], ['table', 'bàn'], ['chair', 'ghế'],
+      ['door', 'cửa'], ['window', 'cửa sổ'], ['water', 'nước'], ['fire', 'lửa'], ['sun', 'mặt trời'], ['moon', 'mặt trăng'],
+      ['star', 'ngôi sao'], ['sky', 'bầu trời'], ['cloud', 'mây'], ['rain', 'mưa'], ['wind', 'gió'], ['snow', 'tuyết'],
+      ['red', 'đỏ'], ['blue', 'xanh dương'], ['green', 'xanh lá'], ['yellow', 'vàng'], ['black', 'đen'], ['white', 'trắng'],
+      ['big', 'lớn'], ['small', 'nhỏ'], ['fast', 'nhanh'], ['slow', 'chậm'], ['happy', 'vui'], ['sad', 'buồn'],
+      ['eat', 'ăn'], ['drink', 'uống'], ['run', 'chạy'], ['walk', 'đi bộ'], ['sleep', 'ngủ'], ['read', 'đọc'],
+      ['apple', 'táo'], ['banana', 'chuối'], ['orange', 'cam'], ['rice', 'cơm'], ['bread', 'bánh mì'], ['milk', 'sữa']
+    ];
+    const Vocab = () => <GameShell id="vocab" title="📖 Từ Vựng Anh" color="#ec4899"
+      makeQ={() => {
+        const idx = rand(0, VOCAB.length - 1);
+        const correct = VOCAB[idx][1];
+        const wrongs = shuffle(VOCAB.filter((_, i) => i !== idx)).slice(0, 3).map(v => v[1]);
+        return { word: VOCAB[idx][0], answer: correct, options: shuffle([correct, ...wrongs]) };
+      }}
+      renderQ={(q, sub) => <><div style={{ fontSize: 18, opacity: 0.8, marginBottom: 12 }}>Nghĩa của từ này?</div><div style={{ fontSize: 44, fontWeight: 'bold' }}>{q.word}</div><Choices options={q.options} onPick={sub} /></>}
+      checkAnswer={(q, a) => a === q.answer} />;
+
+    // --- Typing ---
+    const TYPE_WORDS = ['code', 'play', 'game', 'fast', 'cool', 'star', 'fire', 'wind', 'rain', 'snow', 'tree', 'book', 'home', 'love', 'best', 'jump', 'walk', 'talk', 'sing', 'ride', 'computer', 'keyboard', 'monitor', 'student', 'school', 'teacher', 'friend', 'family', 'happy', 'smile'];
+    function Typing() {
+      return <GameShell id="typing" title="⌨️ Gõ Phím" color="#06b6d4"
+        makeQ={() => ({ word: TYPE_WORDS[rand(0, TYPE_WORDS.length - 1)], answer: TYPE_WORDS[rand(0, TYPE_WORDS.length - 1)] })}
+        renderQ={(q, sub) => <TypeQ q={q} onSubmit={sub} />}
+        checkAnswer={(q, a) => a === q.word} />;
+    }
+    function TypeQ({ q, onSubmit }) {
+      const [v, setV] = useState('');
+      const ref = useRef(null);
+      useEffect(() => { setV(''); ref.current && ref.current.focus(); }, [q]);
+      useEffect(() => { if (v === q.word) { onSubmit(v); setV(''); } }, [v]);
+      return (
+        <>
+          <div style={{ fontSize: 18, opacity: 0.8, marginBottom: 12 }}>Gõ chính xác từ này:</div>
+          <div style={{ fontSize: 48, fontWeight: 'bold', color: '#06b6d4', letterSpacing: 4 }}>{q.word}</div>
+          <input ref={ref} type="text" value={v} onChange={e => setV(e.target.value.toLowerCase())} style={{ marginTop: 24, padding: 12, fontSize: 24, width: 280, borderRadius: 8, border: 'none', textAlign: 'center' }} />
+          <div style={{ marginTop: 12, fontSize: 14, opacity: 0.7 }}>Tự động qua câu khi gõ đúng</div>
+        </>
+      );
+    }
+
+    // --- Geography (capitals) ---
+    const CAPITALS = [
+      ['Việt Nam', 'Hà Nội'], ['Lào', 'Viêng Chăn'], ['Campuchia', 'Phnom Penh'], ['Thái Lan', 'Bangkok'],
+      ['Trung Quốc', 'Bắc Kinh'], ['Nhật Bản', 'Tokyo'], ['Hàn Quốc', 'Seoul'], ['Singapore', 'Singapore'],
+      ['Pháp', 'Paris'], ['Anh', 'London'], ['Đức', 'Berlin'], ['Ý', 'Roma'], ['Tây Ban Nha', 'Madrid'],
+      ['Nga', 'Moscow'], ['Mỹ', 'Washington D.C.'], ['Canada', 'Ottawa'], ['Brazil', 'Brasília'],
+      ['Úc', 'Canberra'], ['Ấn Độ', 'New Delhi'], ['Ai Cập', 'Cairo'], ['Hy Lạp', 'Athens'],
+      ['Bỉ', 'Brussels'], ['Hà Lan', 'Amsterdam'], ['Thụy Điển', 'Stockholm'], ['Phần Lan', 'Helsinki'],
+      ['Na Uy', 'Oslo'], ['Đan Mạch', 'Copenhagen'], ['Indonesia', 'Jakarta'], ['Malaysia', 'Kuala Lumpur'], ['Philippines', 'Manila']
+    ];
+    const Geo = () => <GameShell id="geo" title="🌍 Thủ Đô" color="#10b981"
+      makeQ={() => {
+        const idx = rand(0, CAPITALS.length - 1);
+        const correct = CAPITALS[idx][1];
+        const wrongs = shuffle(CAPITALS.filter((_, i) => i !== idx)).slice(0, 3).map(c => c[1]);
+        return { country: CAPITALS[idx][0], answer: correct, options: shuffle([correct, ...wrongs]) };
+      }}
+      renderQ={(q, sub) => <><div style={{ fontSize: 18, opacity: 0.8, marginBottom: 12 }}>Thủ đô của nước này?</div><div style={{ fontSize: 32, fontWeight: 'bold' }}>🏛️ {q.country}</div><Choices options={q.options} onPick={sub} /></>}
+      checkAnswer={(q, a) => a === q.answer} />;
+
+    // --- History VN ---
+    const HISTORY = [
+      { q: 'Ai là người sáng lập triều Nguyễn?', a: 'Nguyễn Ánh', w: ['Lê Lợi', 'Quang Trung', 'Trần Hưng Đạo'] },
+      { q: 'Bác Hồ đọc Tuyên ngôn Độc lập năm nào?', a: '1945', w: ['1930', '1954', '1975'] },
+      { q: 'Chiến thắng Điện Biên Phủ năm nào?', a: '1954', w: ['1945', '1968', '1975'] },
+      { q: 'Ai đánh tan quân Thanh trong trận Ngọc Hồi - Đống Đa?', a: 'Quang Trung', w: ['Lê Lợi', 'Lý Thường Kiệt', 'Trần Hưng Đạo'] },
+      { q: 'Hai Bà Trưng khởi nghĩa năm bao nhiêu?', a: '40', w: ['938', '1010', '1428'] },
+      { q: 'Ai là vua đầu tiên của nước Văn Lang?', a: 'Hùng Vương', w: ['An Dương Vương', 'Lý Bí', 'Đinh Bộ Lĩnh'] },
+      { q: 'Trận Bạch Đằng năm 938 do ai chỉ huy?', a: 'Ngô Quyền', w: ['Lý Thường Kiệt', 'Trần Hưng Đạo', 'Lê Lợi'] },
+      { q: 'Nhà Lý dời đô về Thăng Long năm nào?', a: '1010', w: ['968', '1226', '1428'] },
+      { q: 'Ai là tác giả "Bình Ngô Đại Cáo"?', a: 'Nguyễn Trãi', w: ['Nguyễn Du', 'Hồ Xuân Hương', 'Lý Thường Kiệt'] },
+      { q: 'Việt Nam thống nhất năm nào?', a: '1975', w: ['1954', '1968', '1986'] },
+      { q: 'Ai chỉ huy 3 lần đánh bại quân Nguyên Mông?', a: 'Trần Hưng Đạo', w: ['Lý Thường Kiệt', 'Lê Lợi', 'Quang Trung'] },
+      { q: 'Lê Lợi khởi nghĩa Lam Sơn năm nào?', a: '1418', w: ['1010', '1284', '1789'] },
+      { q: 'Tác giả Truyện Kiều là ai?', a: 'Nguyễn Du', w: ['Nguyễn Trãi', 'Hồ Xuân Hương', 'Nguyễn Đình Chiểu'] },
+      { q: 'Đảng Cộng sản Việt Nam thành lập năm nào?', a: '1930', w: ['1925', '1945', '1954'] },
+    ];
+    const History = () => <GameShell id="history" title="📜 Lịch Sử VN" color="#dc2626"
+      makeQ={() => { const h = HISTORY[rand(0, HISTORY.length - 1)]; return { question: h.q, answer: h.a, options: shuffle([h.a, ...h.w]) }; }}
+      renderQ={(q, sub) => <><div style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8 }}>{q.question}</div><Choices options={q.options} onPick={sub} /></>}
+      checkAnswer={(q, a) => a === q.answer} />;
+
+    // --- Science ---
+    const SCIENCE = [
+      { q: 'Hành tinh nào gần Mặt Trời nhất?', a: 'Sao Thủy', w: ['Sao Kim', 'Trái Đất', 'Sao Hỏa'] },
+      { q: 'Nước có công thức hóa học là?', a: 'H2O', w: ['CO2', 'O2', 'NaCl'] },
+      { q: 'Cơ quan bơm máu trong cơ thể là?', a: 'Tim', w: ['Phổi', 'Gan', 'Thận'] },
+      { q: 'Loài vật lớn nhất trên Trái Đất là?', a: 'Cá voi xanh', w: ['Voi', 'Khủng long', 'Cá mập'] },
+      { q: 'Ánh sáng đi nhanh hơn âm thanh đúng không?', a: 'Đúng', w: ['Sai', 'Bằng nhau', 'Không xác định'] },
+      { q: 'Trái Đất có bao nhiêu lục địa?', a: '7', w: ['5', '6', '8'] },
+      { q: 'Cây xanh hấp thụ khí gì để quang hợp?', a: 'CO2', w: ['O2', 'N2', 'H2'] },
+      { q: 'Đơn vị đo nhiệt độ phổ biến ở VN?', a: '°C', w: ['°F', 'K', '°R'] },
+      { q: 'Bộ não nằm ở đâu trong cơ thể?', a: 'Đầu', w: ['Ngực', 'Bụng', 'Lưng'] },
+      { q: 'Dơi sử dụng giác quan gì để định vị?', a: 'Sóng âm', w: ['Ánh sáng', 'Mùi', 'Nhiệt'] },
+      { q: 'Mặt Trời là một?', a: 'Ngôi sao', w: ['Hành tinh', 'Vệ tinh', 'Sao chổi'] },
+      { q: 'Loài nào không phải thú?', a: 'Cá sấu', w: ['Voi', 'Mèo', 'Cá voi'] },
+      { q: 'Nguyên tố hóa học phổ biến nhất vũ trụ?', a: 'Hydro', w: ['Oxy', 'Carbon', 'Nitơ'] },
+      { q: 'Ai phát minh ra bóng đèn điện?', a: 'Edison', w: ['Newton', 'Einstein', 'Tesla'] },
+      { q: 'Tốc độ ánh sáng xấp xỉ?', a: '300.000 km/s', w: ['3.000 km/s', '30.000 km/s', '3.000.000 km/s'] },
+      { q: 'Đường ruột nằm trong hệ?', a: 'Tiêu hóa', w: ['Tuần hoàn', 'Hô hấp', 'Bài tiết'] },
+    ];
+    const Science = () => <GameShell id="science" title="🔬 Khoa Học" color="#8b5cf6"
+      makeQ={() => { const s = SCIENCE[rand(0, SCIENCE.length - 1)]; return { question: s.q, answer: s.a, options: shuffle([s.a, ...s.w]) }; }}
+      renderQ={(q, sub) => <><div style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8 }}>{q.question}</div><Choices options={q.options} onPick={sub} /></>}
+      checkAnswer={(q, a) => a === q.answer} />;
+
+    // --- Hub ---
+    function Hub() {
+      const progress = loadProgress();
+      return (
+        <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <a href="../index.html" style={{ padding: '8px 14px', background: '#374151', color: 'white', textDecoration: 'none', borderRadius: 8 }}>← Trang Chủ</a>
+            <h1 style={{ fontSize: 28, textAlign: 'center', flex: 1 }}>📚 Học Tập Hub</h1>
+            <div style={{ width: 100 }}></div>
+          </div>
+          <p style={{ textAlign: 'center', opacity: 0.8, marginBottom: 24 }}>10 trò chơi giáo dục: toán, ngôn ngữ, trí nhớ, logic</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
+            {GAMES.map(g => (
+              <button key={g.id} onClick={() => location.hash = g.id} style={{ padding: 18, background: 'rgba(255,255,255,0.06)', border: `2px solid ${g.color}`, borderRadius: 14, color: 'white', cursor: 'pointer', textAlign: 'center' }}>
+                <div style={{ fontSize: 44, marginBottom: 8 }}>{g.icon}</div>
+                <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4 }}>{g.name}</div>
+                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>{g.desc}</div>
+                <div style={{ fontSize: 13, color: '#fbbf24' }}>🏆 {progress[g.id] || 0}</div>
+              </button>
+            ))}
+          </div>
+          <div style={{ marginTop: 24, textAlign: 'center', opacity: 0.6, fontSize: 13 }}>Mỗi vòng 60 giây — trả lời càng nhiều câu càng được điểm cao!</div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [route, setRoute] = useState(location.hash.slice(1));
+      useEffect(() => {
+        const onHash = () => setRoute(location.hash.slice(1));
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+      switch (route) {
+        case 'addition': return <Addition />;
+        case 'subtraction': return <Subtraction />;
+        case 'multiplication': return <Multiplication />;
+        case 'division': return <Division />;
+        case 'alphabet': return <Alphabet />;
+        case 'vocab': return <Vocab />;
+        case 'typing': return <Typing />;
+        case 'geo': return <Geo />;
+        case 'history': return <History />;
+        case 'science': return <Science />;
+        default: return <Hub />;
+      }
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

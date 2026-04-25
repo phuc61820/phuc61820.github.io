@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎨 Sáng Tạo Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #2e0a2e; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+
+    const GAMES = [
+      { id: 'paint', icon: '🎨', name: 'Vẽ Canvas', desc: 'Vẽ tự do với cọ và màu' },
+      { id: 'pixel', icon: '🕹️', name: 'Pixel Art', desc: 'Vẽ pixel 16x16' },
+      { id: 'coloring', icon: '🖍️', name: 'Tô Màu', desc: 'Tô theo số' },
+      { id: 'mandala', icon: '🌀', name: 'Mandala', desc: 'Vẽ đối xứng' },
+      { id: 'emoji', icon: '😀', name: 'Emoji Art', desc: 'Ghép emoji' },
+      { id: 'story', icon: '📖', name: 'Viết Truyện', desc: 'Tạo truyện ngắn' },
+      { id: 'comic', icon: '💬', name: 'Truyện Tranh', desc: '3 khung truyện' },
+      { id: 'flag', icon: '🏴', name: 'Thiết Kế Cờ', desc: 'Cờ sọc + biểu tượng' },
+      { id: 'logo', icon: '🎨', name: 'Tạo Logo', desc: 'Logo với hình + chữ' },
+      { id: 'tattoo', icon: '✨', name: 'Xăm Hình', desc: 'Thiết kế hình xăm' }
+    ];
+
+    const saveArt = (id, data) => {
+      const p = JSON.parse(localStorage.getItem('artProgress') || '{}');
+      p[id] = data;
+      localStorage.setItem('artProgress', JSON.stringify(p));
+    };
+    const loadArt = (id) => {
+      const p = JSON.parse(localStorage.getItem('artProgress') || '{}');
+      return p[id];
+    };
+
+    const COLORS = ['#000000','#FFFFFF','#FF0000','#FF8800','#FFFF00','#00FF00','#00FFFF','#0088FF','#0000FF','#8800FF','#FF00FF','#FF88AA','#884400','#888888','#FFCC88','#00AA00'];
+
+    // ===== 1. PAINT =====
+    function Paint() {
+      const canvasRef = useRef(null);
+      const [color, setColor] = useState('#000000');
+      const [size, setSize] = useState(5);
+      const drawing = useRef(false);
+
+      useEffect(() => {
+        const c = canvasRef.current;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, c.width, c.height);
+        const saved = loadArt('paint');
+        if (saved) {
+          const img = new Image();
+          img.onload = () => ctx.drawImage(img, 0, 0);
+          img.src = saved;
+        }
+      }, []);
+
+      const getPos = (e) => {
+        const r = canvasRef.current.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        return { x: (t.clientX - r.left) * (canvasRef.current.width / r.width), y: (t.clientY - r.top) * (canvasRef.current.height / r.height) };
+      };
+      const start = (e) => { e.preventDefault(); drawing.current = true; const p = getPos(e); const ctx = canvasRef.current.getContext('2d'); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+      const move = (e) => { if (!drawing.current) return; e.preventDefault(); const p = getPos(e); const ctx = canvasRef.current.getContext('2d'); ctx.strokeStyle = color; ctx.lineWidth = size; ctx.lineCap = 'round'; ctx.lineTo(p.x, p.y); ctx.stroke(); };
+      const end = () => { drawing.current = false; saveArt('paint', canvasRef.current.toDataURL()); };
+      const clear = () => { const ctx = canvasRef.current.getContext('2d'); ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 400, 400); saveArt('paint', canvasRef.current.toDataURL()); };
+
+      return (
+        <div style={{padding:20, textAlign:'center'}}>
+          <h2>🎨 Vẽ Canvas</h2>
+          <canvas ref={canvasRef} width={400} height={400} style={{border:'3px solid #fff', background:'white', touchAction:'none', maxWidth:'100%'}}
+            onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+            onTouchStart={start} onTouchMove={move} onTouchEnd={end}></canvas>
+          <div style={{marginTop:10, display:'flex', flexWrap:'wrap', gap:5, justifyContent:'center'}}>
+            {COLORS.map(c => <button key={c} onClick={() => setColor(c)} style={{width:30, height:30, background:c, border: color===c?'3px solid #ff0':'1px solid #333', borderRadius:4}}></button>)}
+          </div>
+          <div style={{marginTop:10}}>
+            <label>Cọ: {size}px </label>
+            <input type="range" min="1" max="30" value={size} onChange={e => setSize(+e.target.value)} />
+            <button onClick={clear} style={{marginLeft:10, padding:'5px 15px', background:'#e74c3c', color:'white', border:'none', borderRadius:5}}>Xóa</button>
+          </div>
+        </div>
+      );
+    }
+
+    // ===== 2. PIXEL =====
+    function Pixel() {
+      const [grid, setGrid] = useState(() => loadArt('pixel') || Array(256).fill('#FFFFFF'));
+      const [color, setColor] = useState('#000000');
+      const paint = (i) => { const n = [...grid]; n[i] = color; setGrid(n); saveArt('pixel', n); };
+      return (
+        <div style={{padding:20, textAlign:'center'}}>
+          <h2>🕹️ Pixel Art 16x16</h2>
+          <div style={{display:'inline-grid', gridTemplateColumns:'repeat(16, 20px)', gap:1, background:'#333', padding:2, margin:'10px 0'}}>
+            {grid.map((c, i) => <div key={i} onClick={() => paint(i)} onMouseOver={e => e.buttons === 1 && paint(i)} style={{width:20, height:20, background:c, cursor:'pointer'}}></div>)}
+          </div>
+          <div style={{display:'flex', flexWrap:'wrap', gap:5, justifyContent:'center'}}>
+            {COLORS.map(c => <button key={c} onClick={() => setColor(c)} style={{width:30, height:30, background:c, border: color===c?'3px solid #ff0':'1px solid #333'}}></button>)}
+          </div>
+          <button onClick={() => { const n = Array(256).fill('#FFFFFF'); setGrid(n); saveArt('pixel', n); }} style={{marginTop:10, padding:'5px 15px', background:'#e74c3c', color:'white', border:'none', borderRadius:5}}>Xóa</button>
+        </div>
+      );
+    }
+
+    // ===== 3. COLORING =====
+    function Coloring() {
+      const SHAPES = [
+        { name: 'Ngôi nhà', parts: [{n:'Mái', d:'M20,40 L50,15 L80,40 Z', num:1},{n:'Tường', d:'M25,40 L75,40 L75,80 L25,80 Z', num:2},{n:'Cửa', d:'M45,55 L55,55 L55,80 L45,80 Z', num:3},{n:'Cửa sổ', d:'M30,50 L40,50 L40,60 L30,60 Z', num:4}] },
+        { name: 'Hoa', parts: [{n:'Cánh 1', d:'M50,20 Q60,30 50,40 Q40,30 50,20', num:1},{n:'Cánh 2', d:'M50,60 Q60,70 50,80 Q40,70 50,60', num:1},{n:'Tâm', d:'M45,45 L55,45 L55,55 L45,55 Z', num:2},{n:'Lá', d:'M50,55 Q30,70 25,85 Q50,75 50,55', num:3}] }
+      ];
+      const NUM_COLORS = { 1: '#FF69B4', 2: '#8B4513', 3: '#00AA00', 4: '#87CEEB' };
+      const [shapeIdx, setShapeIdx] = useState(0);
+      const [colors, setColors] = useState(() => loadArt('coloring') || {});
+      const shape = SHAPES[shapeIdx];
+      const key = `${shapeIdx}`;
+      const partColors = colors[key] || {};
+
+      const colorPart = (i, num) => {
+        const next = { ...colors, [key]: { ...partColors, [i]: NUM_COLORS[num] } };
+        setColors(next);
+        saveArt('coloring', next);
+      };
+
+      return (
+        <div style={{padding:20, textAlign:'center'}}>
+          <h2>🖍️ Tô Màu Theo Số</h2>
+          <div style={{margin:10}}>
+            {SHAPES.map((s, i) => <button key={i} onClick={() => setShapeIdx(i)} style={{margin:5, padding:'5px 15px', background:shapeIdx===i?'#e91e63':'#555', color:'white', border:'none', borderRadius:5}}>{s.name}</button>)}
+          </div>
+          <svg viewBox="0 0 100 100" width="300" height="300" style={{background:'white', border:'3px solid #fff'}}>
+            {shape.parts.map((p, i) => <path key={i} d={p.d} fill={partColors[i] || 'white'} stroke="black" strokeWidth="0.5" onClick={() => colorPart(i, p.num)} style={{cursor:'pointer'}}>
+              <title>Tô số {p.num}</title>
+            </path>)}
+            {shape.parts.map((p, i) => {
+              const m = p.d.match(/M(\d+),(\d+)/);
+              return m && !partColors[i] ? <text key={'t'+i} x={+m[1]+5} y={+m[2]+10} fontSize="4" fill="#333">{p.num}</text> : null;
+            })}
+          </svg>
+          <div style={{marginTop:10}}>
+            {Object.entries(NUM_COLORS).map(([n, c]) => <span key={n} style={{margin:5, display:'inline-block', padding:'3px 10px', background:c, color:'white', borderRadius:10}}>{n}</span>)}
+          </div>
+        </div>
+      );
+    }
+
+    // ===== 4. MANDALA =====
+    function Mandala() {
+      const canvasRef = useRef(null);
+      const [color, setColor] = useState('#FF00FF');
+      const [symmetry, setSymmetry] = useState(8);
+      const drawing = useRef(false);
+
+      useEffect(() => {
+        const ctx = canvasRef.current.getContext('2d');
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, 400, 400);
+      }, []);
+
+      const getPos = (e) => {
+        const r = canvasRef.current.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        return { x: (t.clientX - r.left) * (400 / r.width) - 200, y: (t.clientY - r.top) * (400 / r.height) - 200 };
+      };
+      const drawSym = (p1, p2) => {
+        const ctx = canvasRef.current.getContext('2d');
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < symmetry; i++) {
+          const a = (Math.PI * 2 / symmetry) * i;
+          const cos = Math.cos(a), sin = Math.sin(a);
+          ctx.beginPath();
+          ctx.moveTo(200 + p1.x*cos - p1.y*sin, 200 + p1.x*sin + p1.y*cos);
+          ctx.lineTo(200 + p2.x*cos - p2.y*sin, 200 + p2.x*sin + p2.y*cos);
+          ctx.stroke();
+          // Mirror
+          ctx.beginPath();
+          ctx.moveTo(200 + p1.x*cos + p1.y*sin, 200 + p1.x*sin - p1.y*cos);
+          ctx.lineTo(200 + p2.x*cos + p2.y*sin, 200 + p2.x*sin - p2.y*cos);
+          ctx.stroke();
+        }
+      };
+      const last = useRef(null);
+      const start = (e) => { e.preventDefault(); drawing.current = true; last.current = getPos(e); };
+      const move = (e) => { if (!drawing.current) return; e.preventDefault(); const p = getPos(e); drawSym(last.current, p); last.current = p; };
+      const end = () => { drawing.current = false; saveArt('mandala', canvasRef.current.toDataURL()); };
+      const clear = () => { const ctx = canvasRef.current.getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 400, 400); };
+
+      return (
+        <div style={{padding:20, textAlign:'center'}}>
+          <h2>🌀 Mandala Đối Xứng</h2>
+          <canvas ref={canvasRef} width={400} height={400} style={{border:'3px solid #fff', touchAction:'none', maxWidth:'100%'}}
+            onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+            onTouchStart={start} onTouchMove={move} onTouchEnd={end}></canvas>
+          <div style={{marginTop:10}}>
+            <label>Đối xứng: {symmetry} </label>
+            <input type="range" min="3" max="16" value={symmetry} onChange={e => setSymmetry(+e.target.value)} />
+          </div>
+          <div style={{display:'flex', flexWrap:'wrap', gap:5, justifyContent:'center', marginTop:10}}>
+            {COLORS.map(c => <button key={c} onClick={() => setColor(c)} style={{width:30, height:30, background:c, border: color===c?'3px solid #ff0':'1px solid #333'}}></button>)}
+          </div>
+          <button onClick={clear} style={{marginTop:10, padding:'5px 15px', background:'#e74c3c', color:'white', border:'none', borderRadius:5}}>Xóa</button>
+        </div>
+      );
+    }
+
+    // ===== 5. EMOJI =====
+    function EmojiArt() {
+      const EMOJIS = ['😀','😎','🥳','🐶','🐱','🦊','🌸','🌻','🌈','⭐','💎','🍕','🍔','🎈','🎁','❤️','🔥','⚡','🌙','☀️','🦄','🐼','🌮','🍦','🎮'];
+      const [items, setItems] = useState(() => loadArt('emoji') || []);
+      const [pick, setPick] = useState('😀');
+      const boardRef = useRef(null);
+
+      const add = (e) => {
+        const r = boardRef.current.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        const n = [...items, { e: pick, x: t.clientX - r.left, y: t.clientY - r.top, id: Date.now() }];
+        setItems(n);
+        saveArt('emoji', n);
+      };
+      const clear = () => { setItems([]); saveArt('emoji', []); };
+
+      return (
+        <div style={{padding:20, textAlign:'center'}}>
+          <h2>😀 Emoji Art</h2>
+          <div ref={boardRef} onClick={add} style={{position:'relative', width:400, height:400, background:'linear-gradient(135deg,#ffcce6,#cce6ff)', border:'3px solid #fff', maxWidth:'100%', margin:'10px auto', cursor:'crosshair', overflow:'hidden'}}>
+            {items.map(it => <span key={it.id} style={{position:'absolute', left:it.x-15, top:it.y-15, fontSize:30, userSelect:'none', pointerEvents:'none'}}>{it.e}</span>)}
+          </div>
+          <div style={{display:'flex', flexWrap:'wrap', gap:5, justifyContent:'center'}}>
+            {EMOJIS.map(e => <button key={e} onClick={() => setPick(e)} style={{fontSize:24, padding:5, background: pick===e?'#ff0':'white', border:'1px solid #333', borderRadius:5}}>{e}</button>)}
+          </div>
+          <button onClick={clear} style={{marginTop:10, padding:'5px 15px', background:'#e74c3c', color:'white', border:'none', borderRadius:5}}>Xóa</button>
+        </div>
+      );
+    }
+
+    // ===== 6. STORY =====
+    function Story() {
+      const TEMPLATES = [
+        { title: 'Cuộc phiêu lưu', slots: ['Tên nhân vật', 'Địa điểm', 'Con vật', 'Đồ vật ma thuật'], text: (s) => `Một ngày nọ, ${s[0]} đến ${s[1]} và gặp một ${s[2]} kỳ lạ. ${s[2]} tặng cho ${s[0]} một ${s[3]}. Với ${s[3]}, ${s[0]} đã có cuộc phiêu lưu tuyệt vời nhất đời mình!` },
+        { title: 'Truyện cổ tích', slots: ['Công chúa', 'Lâu đài', 'Rồng', 'Hoàng tử'], text: (s) => `Ngày xửa ngày xưa, công chúa ${s[0]} sống trong ${s[1]}. Một ngày, con ${s[2]} xuất hiện! May mắn thay, hoàng tử ${s[3]} đã dũng cảm cứu ${s[0]}. Họ sống hạnh phúc mãi mãi.` },
+        { title: 'Khoa học viễn tưởng', slots: ['Phi hành gia', 'Hành tinh', 'Người ngoài hành tinh', 'Công nghệ'], text: (s) => `Phi hành gia ${s[0]} đáp xuống ${s[1]}. ${s[0]} gặp ${s[2]} và học được bí mật về ${s[3]}. Cuộc gặp gỡ này thay đổi cả vũ trụ!` }
+      ];
+      const [idx, setIdx] = useState(0);
+      const [slots, setSlots] = useState(() => loadArt('story') || {});
+      const tpl = TEMPLATES[idx];
+      const cur = slots[idx] || tpl.slots.map(() => '');
+
+      const update = (i, v) => {
+        const n = [...cur];
+        n[i] = v;
+        const ns = { ...slots, [idx]: n };
+        setSlots(ns);
+        saveArt('story', ns);
+      };
+
+      return (
+        <div style={{padding:20, maxWidth:600, margin:'0 auto'}}>
+          <h2 style={{textAlign:'center'}}>📖 Viết Truyện</h2>
+          <div style={{display:'flex', gap:5, justifyContent:'center', margin:10, flexWrap:'wrap'}}>
+            {TEMPLATES.map((t, i) => <button key={i} onClick={() => setIdx(i)} style={{padding:'5px 10px', background:idx===i?'#e91e63':'#555', color:'white', border:'none', borderRadius:5}}>{t.title}</button>)}
+          </div>
+          {tpl.slots.map((s, i) => <div key={i} style={{margin:10}}>
+            <label>{s}: </label>
+            <input value={cur[i]} onChange={e => update(i, e.target.value)} style={{padding:5, borderRadius:5, border:'1px solid #888', width:'60%'}} />
+          </div>)}
+          <div style={{padding:20, background:'rgba(255,255,255,0.1)', borderRadius:10, marginTop:20, minHeight:100, fontSize:16, lineHeight:1.6}}>
+            {cur.every(x => x) ? tpl.text(cur) : 'Điền tất cả ô để xem truyện!'}
+          </div>
+        </div>
+      );
+    }
+
+    // ===== 7. COMIC =====
+    function Comic() {
+      const [panels, setPanels] = useState(() => loadArt('comic') || [{bg:'#ffeb3b', char:'😀', text:''},{bg:'#4caf50', char:'🐶', text:''},{bg:'#2196f3', char:'🌟', text:''}]);
+      const BGS = ['#ffeb3b','#ff9800','#f44336','#e91e63','#9c27b0','#3f51b5','#2196f3','#4caf50'];
+      const CHARS = ['😀','😎','🥳','😱','🐶','🐱','🦊','🌟','💥','❤️','🔥','⚡'];
+
+      const setP = (i, k, v) => {
+        const n = [...panels];
+        n[i] = { ...n[i], [k]: v };
+        setPanels(n);
+        saveArt('comic', n);
+      };
+
+      return (
+        <div style={{padding:20}}>
+          <h2 style={{textAlign:'center'}}>💬 Truyện Tranh 3 Khung</h2>
+          <div style={{display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap'}}>
+            {panels.map((p, i) => <div key={i} style={{width:180, background:'white', border:'3px solid #000'}}>
+              <div style={{height:150, background:p.bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:60}}>{p.char}</div>
+              <div style={{padding:5, minHeight:40, fontSize:12, color:'#000', background:'white'}}>{p.text || '...'}</div>
+            </div>)}
+          </div>
+          {panels.map((p, i) => <div key={i} style={{margin:10, padding:10, background:'rgba(255,255,255,0.1)', borderRadius:5}}>
+            <b>Khung {i+1}:</b>
+            <div style={{marginTop:5}}>Nền: {BGS.map(c => <button key={c} onClick={() => setP(i, 'bg', c)} style={{width:20, height:20, background:c, border:p.bg===c?'2px solid #fff':'1px solid #333', margin:2}}></button>)}</div>
+            <div style={{marginTop:5}}>Nhân vật: {CHARS.map(ch => <button key={ch} onClick={() => setP(i, 'char', ch)} style={{fontSize:20, background:p.char===ch?'#ff0':'white', border:'1px solid #333', margin:2, padding:2}}>{ch}</button>)}</div>
+            <input placeholder="Lời thoại..." value={p.text} onChange={e => setP(i, 'text', e.target.value)} style={{marginTop:5, padding:5, width:'100%', borderRadius:3}} />
+          </div>)}
+        </div>
+      );
+    }
+
+    // ===== 8. FLAG =====
+    function Flag() {
+      const [data, setData] = useState(() => loadArt('flag') || { stripes: 3, dir: 'h', colors: ['#ff0000','#ffffff','#0000ff'], symbol: '⭐', symColor: '#ffff00' });
+      const SYMBOLS = ['⭐','☀️','🌙','🦅','🦁','🐉','⚔️','🌺','🍀','♦','♣','♠','♥','✦','❂'];
+
+      const update = (k, v) => { const n = { ...data, [k]: v }; setData(n); saveArt('flag', n); };
+      const setStripes = (n) => {
+        const cols = Array(n).fill(0).map((_, i) => data.colors[i] || COLORS[i % COLORS.length]);
+        update('colors', cols);
+        update('stripes', n);
+      };
+      const setC = (i, c) => { const cols = [...data.colors]; cols[i] = c; update('colors', cols); };
+
+      return (
+        <div style={{padding:20, textAlign:'center'}}>
+          <h2>🏴 Thiết Kế Cờ</h2>
+          <div style={{width:360, height:240, border:'3px solid #fff', margin:'10px auto', display:'flex', flexDirection:data.dir==='h'?'column':'row', position:'relative', maxWidth:'95%'}}>
+            {Array(data.stripes).fill(0).map((_, i) => <div key={i} style={{flex:1, background:data.colors[i]}}></div>)}
+            <div style={{position:'absolute', top:0, left:0, right:0, bottom:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:70, color:data.symColor, textShadow:'0 0 5px #000'}}>{data.symbol}</div>
+          </div>
+          <div style={{margin:10}}>
+            <label>Sọc: {data.stripes} </label>
+            <input type="range" min="2" max="6" value={data.stripes} onChange={e => setStripes(+e.target.value)} />
+            <button onClick={() => update('dir', data.dir==='h'?'v':'h')} style={{marginLeft:10, padding:'5px 10px', background:'#3498db', color:'white', border:'none', borderRadius:5}}>Xoay</button>
+          </div>
+          <div>
+            {data.colors.map((c, i) => <div key={i} style={{display:'inline-block', margin:5}}>
+              <label>Sọc {i+1}:</label>
+              <div style={{display:'flex', gap:2, flexWrap:'wrap', maxWidth:200}}>
+                {COLORS.map(col => <button key={col} onClick={() => setC(i, col)} style={{width:16, height:16, background:col, border:c===col?'2px solid #ff0':'1px solid #333'}}></button>)}
+              </div>
+            </div>)}
+          </div>
+          <div style={{marginTop:10}}>
+            <div>Biểu tượng: {SYMBOLS.map(s => <button key={s} onClick={() => update('symbol', s)} style={{fontSize:20, margin:2, background:data.symbol===s?'#ff0':'white', border:'1px solid #333', padding:3}}>{s}</button>)}</div>
+            <div style={{marginTop:5}}>Màu: {COLORS.map(c => <button key={c} onClick={() => update('symColor', c)} style={{width:20, height:20, background:c, border:data.symColor===c?'2px solid #ff0':'1px solid #333'}}></button>)}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // ===== 9. LOGO =====
+    function Logo() {
+      const [data, setData] = useState(() => loadArt('logo') || { shape: 'circle', bg: '#3498db', text: 'LOGO', textColor: '#ffffff' });
+      const SHAPES = [
+        { id: 'circle', name: 'Tròn' },
+        { id: 'square', name: 'Vuông' },
+        { id: 'hex', name: 'Lục giác' },
+        { id: 'star', name: 'Sao' },
+        { id: 'shield', name: 'Khiên' }
+      ];
+      const update = (k, v) => { const n = { ...data, [k]: v }; setData(n); saveArt('logo', n); };
+
+      const renderShape = () => {
+        const s = 200;
+        if (data.shape === 'circle') return <circle cx="100" cy="100" r="90" fill={data.bg} />;
+        if (data.shape === 'square') return <rect x="10" y="10" width="180" height="180" fill={data.bg} rx="15" />;
+        if (data.shape === 'hex') return <polygon points="100,10 180,50 180,150 100,190 20,150 20,50" fill={data.bg} />;
+        if (data.shape === 'star') return <polygon points="100,15 120,75 185,75 135,115 155,180 100,140 45,180 65,115 15,75 80,75" fill={data.bg} />;
+        if (data.shape === 'shield') return <path d="M100,10 L180,40 L180,110 Q180,170 100,190 Q20,170 20,110 L20,40 Z" fill={data.bg} />;
+      };
+
+      return (
+        <div style={{padding:20, textAlign:'center'}}>
+          <h2>🎨 Tạo Logo</h2>
+          <svg viewBox="0 0 200 200" width="250" height="250" style={{background:'white', borderRadius:10}}>
+            {renderShape()}
+            <text x="100" y="110" textAnchor="middle" fontSize="28" fontWeight="bold" fill={data.textColor}>{data.text}</text>
+          </svg>
+          <div style={{margin:10}}>
+            {SHAPES.map(s => <button key={s.id} onClick={() => update('shape', s.id)} style={{margin:3, padding:'5px 10px', background:data.shape===s.id?'#e91e63':'#555', color:'white', border:'none', borderRadius:5}}>{s.name}</button>)}
+          </div>
+          <div>
+            <input value={data.text} onChange={e => update('text', e.target.value.slice(0,8))} maxLength={8} style={{padding:5, borderRadius:5, border:'1px solid #888', fontSize:16}} />
+          </div>
+          <div style={{marginTop:10}}>Nền: {COLORS.map(c => <button key={c} onClick={() => update('bg', c)} style={{width:25, height:25, background:c, border:data.bg===c?'3px solid #ff0':'1px solid #333', margin:2}}></button>)}</div>
+          <div style={{marginTop:10}}>Chữ: {COLORS.map(c => <button key={c} onClick={() => update('textColor', c)} style={{width:25, height:25, background:c, border:data.textColor===c?'3px solid #ff0':'1px solid #333', margin:2}}></button>)}</div>
+        </div>
+      );
+    }
+
+    // ===== 10. TATTOO =====
+    function Tattoo() {
+      const [tats, setTats] = useState(() => loadArt('tattoo') || []);
+      const [pick, setPick] = useState('🌹');
+      const [size, setSize] = useState(30);
+      const TATS = ['🌹','🐉','🦅','⭐','💀','❤️','⚔️','🌙','☀️','🔥','⚡','🦋','🐍','🕷️','🎵','👑','⚓','🗡️','🏹','🌸'];
+      const svgRef = useRef(null);
+
+      const add = (e) => {
+        const r = svgRef.current.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        const x = (t.clientX - r.left) * (200 / r.width);
+        const y = (t.clientY - r.top) * (400 / r.height);
+        const n = [...tats, { e: pick, x, y, s: size, id: Date.now() }];
+        setTats(n);
+        saveArt('tattoo', n);
+      };
+      const clear = () => { setTats([]); saveArt('tattoo', []); };
+
+      return (
+        <div style={{padding:20, textAlign:'center'}}>
+          <h2>✨ Thiết Kế Xăm</h2>
+          <svg ref={svgRef} viewBox="0 0 200 400" width={200} height={400} onClick={add} onTouchEnd={add} style={{background:'#fde5c8', border:'3px solid #fff', cursor:'crosshair'}}>
+            <ellipse cx="100" cy="50" rx="30" ry="35" fill="#fbc68f" />
+            <rect x="70" y="80" width="60" height="20" fill="#fbc68f" />
+            <path d="M50,100 L150,100 L160,220 L40,220 Z" fill="#fbc68f" />
+            <rect x="55" y="220" width="35" height="130" rx="5" fill="#fbc68f" />
+            <rect x="110" y="220" width="35" height="130" rx="5" fill="#fbc68f" />
+            <rect x="25" y="100" width="20" height="120" rx="8" fill="#fbc68f" />
+            <rect x="155" y="100" width="20" height="120" rx="8" fill="#fbc68f" />
+            {tats.map(t => <text key={t.id} x={t.x} y={t.y} fontSize={t.s} textAnchor="middle">{t.e}</text>)}
+          </svg>
+          <div style={{marginTop:10, display:'flex', flexWrap:'wrap', gap:3, justifyContent:'center'}}>
+            {TATS.map(t => <button key={t} onClick={() => setPick(t)} style={{fontSize:20, padding:5, background:pick===t?'#ff0':'white', border:'1px solid #333'}}>{t}</button>)}
+          </div>
+          <div style={{marginTop:10}}>
+            <label>Kích thước: {size}px </label>
+            <input type="range" min="15" max="60" value={size} onChange={e => setSize(+e.target.value)} />
+            <button onClick={clear} style={{marginLeft:10, padding:'5px 15px', background:'#e74c3c', color:'white', border:'none', borderRadius:5}}>Xóa</button>
+          </div>
+        </div>
+      );
+    }
+
+    // ===== HUB =====
+    function Hub({ go }) {
+      return (
+        <div style={{padding:20, maxWidth:900, margin:'0 auto'}}>
+          <h1 style={{textAlign:'center', fontSize:36, marginBottom:5}}>🎨 Sáng Tạo Hub</h1>
+          <p style={{textAlign:'center', opacity:0.8, marginBottom:20}}>10 trò chơi sáng tạo nghệ thuật</p>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))', gap:15}}>
+            {GAMES.map(g => <div key={g.id} onClick={() => go(g.id)} style={{background:'linear-gradient(135deg,#6a0572,#ab0764)', padding:20, borderRadius:15, cursor:'pointer', textAlign:'center', transition:'transform 0.2s', boxShadow:'0 4px 15px rgba(0,0,0,0.3)'}} onMouseOver={e => e.currentTarget.style.transform='translateY(-5px)'} onMouseOut={e => e.currentTarget.style.transform='translateY(0)'}>
+              <div style={{fontSize:48}}>{g.icon}</div>
+              <div style={{fontWeight:'bold', marginTop:8}}>{g.name}</div>
+              <div style={{fontSize:12, opacity:0.8, marginTop:5}}>{g.desc}</div>
+            </div>)}
+          </div>
+          <div style={{textAlign:'center', marginTop:25}}>
+            <a href="../index.html" style={{color:'#ffd', textDecoration:'none', padding:'10px 20px', background:'rgba(0,0,0,0.3)', borderRadius:20, display:'inline-block'}}>← Về Trang Chính</a>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [route, setRoute] = useState(window.location.hash.slice(1) || '');
+
+      useEffect(() => {
+        const onHash = () => setRoute(window.location.hash.slice(1) || '');
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+
+      const go = (id) => { window.location.hash = id; };
+      const back = () => { window.location.hash = ''; };
+
+      const GAME_MAP = { paint: Paint, pixel: Pixel, coloring: Coloring, mandala: Mandala, emoji: EmojiArt, story: Story, comic: Comic, flag: Flag, logo: Logo, tattoo: Tattoo };
+      const Game = GAME_MAP[route];
+
+      if (Game) {
+        return (
+          <div>
+            <button onClick={back} style={{position:'fixed', top:10, left:10, padding:'8px 15px', background:'#6a0572', color:'white', border:'none', borderRadius:20, cursor:'pointer', zIndex:100}}>← Hub</button>
+            <Game />
+          </div>
+        );
+      }
+      return <Hub go={go} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

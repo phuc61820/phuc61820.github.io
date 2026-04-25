@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚽ Thể Thao Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a2e1a; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const GAMES = [
+      { id:'soccer',     emoji:'⚽', name:'Đá Phạt',         desc:'Sút bóng vào khung thành' },
+      { id:'basketball', emoji:'🏀', name:'Ném Rổ',          desc:'Ném bóng vào rổ' },
+      { id:'tennis',     emoji:'🎾', name:'Tennis',          desc:'Đối đầu pong' },
+      { id:'golf',       emoji:'⛳', name:'Golf',            desc:'Đánh bóng vào lỗ' },
+      { id:'bowling',    emoji:'🎳', name:'Bowling',         desc:'Đổ ki' },
+      { id:'archery',    emoji:'🏹', name:'Bắn Cung',        desc:'Nhắm hồng tâm' },
+      { id:'pingpong',   emoji:'🏓', name:'Bóng Bàn',        desc:'Phản xạ trả bóng' },
+      { id:'badminton',  emoji:'🏸', name:'Cầu Lông',        desc:'Đập cầu 4 hướng' },
+      { id:'boxing',     emoji:'🥊', name:'Đấm Bốc',         desc:'QTE đấm né' },
+      { id:'swimming',   emoji:'🏊', name:'Bơi',             desc:'Nhịp tay đúng lúc' },
+    ];
+
+    const KEY='sportProgress';
+    const loadProg=()=>{ try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch{return{}} };
+    const saveBest=(id,sc)=>{ const p=loadProg(); if(sc>(p[id]||0)){p[id]=sc; localStorage.setItem(KEY,JSON.stringify(p));} };
+
+    // ============= 1. SOCCER (Đá Phạt) =============
+    function Soccer({onBack}){
+      const W=360,H=500;
+      const [angle,setAngle]=useState(45); // degrees, 0=right, 90=up
+      const [power,setPower]=useState(50);
+      const [phase,setPhase]=useState('aim'); // aim, shoot, result
+      const [ball,setBall]=useState({x:180,y:440});
+      const [score,setScore]=useState(0);
+      const [shots,setShots]=useState(5);
+      const [best,setBest]=useState(loadProg().soccer||0);
+      const [msg,setMsg]=useState('');
+      const reqRef=useRef();
+      const goal={x:120,y:80,w:120,h:50};
+      const keeper=useRef({x:160,dir:1});
+
+      useEffect(()=>{
+        if(phase!=='shoot') return;
+        const rad=angle*Math.PI/180;
+        let vx=Math.cos(rad)*power*0.15;
+        let vy=-Math.sin(rad)*power*0.15;
+        let x=180,y=440;
+        const step=()=>{
+          x+=vx; y+=vy; vy+=0.2;
+          setBall({x,y});
+          // keeper
+          keeper.current.x+=keeper.current.dir*2;
+          if(keeper.current.x<130||keeper.current.x>210)keeper.current.dir*=-1;
+          if(y<goal.y+goal.h && x>goal.x && x<goal.x+goal.w){
+            // check keeper
+            if(Math.abs(x-keeper.current.x)<25 && y>goal.y+10){
+              setMsg('Thủ môn cản!'); setPhase('result'); return;
+            }
+            setMsg('VÀOOO!!! +10'); setScore(s=>s+10); setPhase('result'); return;
+          }
+          if(y>H||x<0||x>W){ setMsg('Trượt!'); setPhase('result'); return; }
+          reqRef.current=requestAnimationFrame(step);
+        };
+        reqRef.current=requestAnimationFrame(step);
+        return ()=>cancelAnimationFrame(reqRef.current);
+      },[phase]);
+
+      const next=()=>{
+        const ns=shots-1;
+        if(ns<=0){ saveBest('soccer',score); setBest(Math.max(best,score)); setMsg('Hết lượt! Tổng: '+score); setPhase('end'); return; }
+        setShots(ns); setBall({x:180,y:440}); setPhase('aim'); setMsg('');
+      };
+      const reset=()=>{ setScore(0); setShots(5); setBall({x:180,y:440}); setPhase('aim'); setMsg(''); };
+
+      return (<div style={{padding:12,maxWidth:400,margin:'0 auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+          <button onClick={onBack} style={btnSty('#555')}>← Hub</button>
+          <div>Lượt: {shots} | Điểm: {score} | Best: {best}</div>
+        </div>
+        <svg width={W} height={H} style={{background:'#3a8a3a',borderRadius:8,display:'block',margin:'0 auto'}}>
+          <rect x={goal.x} y={goal.y} width={goal.w} height={goal.h} fill="none" stroke="white" strokeWidth="3"/>
+          <rect x={keeper.current.x-15} y={goal.y+15} width="30" height="30" fill="#ff0"/>
+          <circle cx={ball.x} cy={ball.y} r="10" fill="white" stroke="black" strokeWidth="2"/>
+          {phase==='aim' && <line x1={180} y1={440} x2={180+Math.cos(angle*Math.PI/180)*power} y2={440-Math.sin(angle*Math.PI/180)*power} stroke="red" strokeWidth="3"/>}
+        </svg>
+        {msg && <div style={{textAlign:'center',fontSize:20,margin:8}}>{msg}</div>}
+        {phase==='aim' && <div style={{padding:8}}>
+          <div>Góc: {angle}°</div>
+          <input type="range" min="20" max="160" value={angle} onChange={e=>setAngle(+e.target.value)} style={{width:'100%'}}/>
+          <div>Lực: {power}</div>
+          <input type="range" min="20" max="100" value={power} onChange={e=>setPower(+e.target.value)} style={{width:'100%'}}/>
+          <button onClick={()=>setPhase('shoot')} style={{...btnSty('#e74c3c'),width:'100%',padding:12,fontSize:18,marginTop:8}}>SÚT!</button>
+        </div>}
+        {phase==='result' && <button onClick={next} style={{...btnSty('#27ae60'),width:'100%',padding:12,fontSize:18}}>Tiếp</button>}
+        {phase==='end' && <button onClick={reset} style={{...btnSty('#3498db'),width:'100%',padding:12,fontSize:18}}>Chơi Lại</button>}
+      </div>);
+    }
+
+    // ============= 2. BASKETBALL =============
+    function Basketball({onBack}){
+      const W=360,H=500;
+      const [power,setPower]=useState(50);
+      const [phase,setPhase]=useState('aim');
+      const [ball,setBall]=useState({x:60,y:430});
+      const [score,setScore]=useState(0);
+      const [shots,setShots]=useState(8);
+      const [best,setBest]=useState(loadProg().basketball||0);
+      const [msg,setMsg]=useState('');
+      const [hoopX]=useState(280);
+      const reqRef=useRef();
+
+      useEffect(()=>{
+        if(phase!=='shoot')return;
+        const angle=70*Math.PI/180;
+        let vx=Math.cos(angle)*power*0.18;
+        let vy=-Math.sin(angle)*power*0.18;
+        let x=60,y=430;
+        const step=()=>{
+          x+=vx; y+=vy; vy+=0.25;
+          setBall({x,y});
+          if(y>200 && y<230 && x>hoopX-20 && x<hoopX+20){
+            setMsg('SCORE! +5'); setScore(s=>s+5); setPhase('result'); return;
+          }
+          if(y>H||x>W){ setMsg('Trượt!'); setPhase('result'); return; }
+          reqRef.current=requestAnimationFrame(step);
+        };
+        reqRef.current=requestAnimationFrame(step);
+        return ()=>cancelAnimationFrame(reqRef.current);
+      },[phase]);
+
+      const next=()=>{
+        const ns=shots-1;
+        if(ns<=0){saveBest('basketball',score); setBest(Math.max(best,score)); setPhase('end'); setMsg('Tổng: '+score); return;}
+        setShots(ns); setBall({x:60,y:430}); setPhase('aim'); setMsg('');
+      };
+      const reset=()=>{setScore(0);setShots(8);setBall({x:60,y:430});setPhase('aim');setMsg('');};
+
+      return (<div style={{padding:12,maxWidth:400,margin:'0 auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+          <button onClick={onBack} style={btnSty('#555')}>← Hub</button>
+          <div>Lượt: {shots} | Điểm: {score} | Best: {best}</div>
+        </div>
+        <svg width={W} height={H} style={{background:'#d2691e',borderRadius:8,display:'block',margin:'0 auto'}}>
+          <rect x={hoopX-25} y={180} width="50" height="6" fill="white"/>
+          <rect x={hoopX-3} y={150} width="6" height="35" fill="#888"/>
+          <line x1={hoopX-22} y1={186} x2={hoopX-22} y2={210} stroke="white" strokeWidth="2"/>
+          <line x1={hoopX+22} y1={186} x2={hoopX+22} y2={210} stroke="white" strokeWidth="2"/>
+          <circle cx={ball.x} cy={ball.y} r="12" fill="#ff8c00" stroke="black" strokeWidth="2"/>
+        </svg>
+        {msg && <div style={{textAlign:'center',fontSize:20,margin:8}}>{msg}</div>}
+        {phase==='aim' && <div style={{padding:8}}>
+          <div>Lực: {power}</div>
+          <input type="range" min="40" max="80" value={power} onChange={e=>setPower(+e.target.value)} style={{width:'100%'}}/>
+          <button onClick={()=>setPhase('shoot')} style={{...btnSty('#e67e22'),width:'100%',padding:12,fontSize:18,marginTop:8}}>NÉM!</button>
+        </div>}
+        {phase==='result' && <button onClick={next} style={{...btnSty('#27ae60'),width:'100%',padding:12,fontSize:18}}>Tiếp</button>}
+        {phase==='end' && <button onClick={reset} style={{...btnSty('#3498db'),width:'100%',padding:12,fontSize:18}}>Chơi Lại</button>}
+      </div>);
+    }
+
+    // ============= 3. TENNIS (Pong) =============
+    function Tennis({onBack}){
+      const W=360,H=500;
+      const [py,setPy]=useState(220);
+      const [ay,setAy]=useState(220);
+      const [ball,setBall]=useState({x:180,y:250,vx:3,vy:2});
+      const [score,setScore]=useState(0);
+      const [lives,setLives]=useState(3);
+      const [over,setOver]=useState(false);
+      const [best,setBest]=useState(loadProg().tennis||0);
+      const reqRef=useRef();
+
+      useEffect(()=>{
+        if(over)return;
+        const tick=()=>{
+          setBall(b=>{
+            let {x,y,vx,vy}=b;
+            x+=vx;y+=vy;
+            if(y<10||y>H-10)vy=-vy;
+            // player paddle (right)
+            if(x>W-25 && y>py && y<py+60){vx=-Math.abs(vx)*1.05; vy+=(y-(py+30))*0.05;}
+            // AI paddle (left)
+            if(x<25 && y>ay && y<ay+60){vx=Math.abs(vx)*1.05;}
+            if(x<0){ setLives(l=>l-1); return {x:180,y:250,vx:3,vy:2};}
+            if(x>W){ setScore(s=>s+1); return {x:180,y:250,vx:-3,vy:2};}
+            return {x,y,vx,vy};
+          });
+          setAy(a=>{
+            const target=ball.y-30;
+            return a+Math.max(-2.5,Math.min(2.5,target-a));
+          });
+          reqRef.current=requestAnimationFrame(tick);
+        };
+        reqRef.current=requestAnimationFrame(tick);
+        return ()=>cancelAnimationFrame(reqRef.current);
+      },[over,ball.y]);
+
+      useEffect(()=>{ if(lives<=0){ setOver(true); saveBest('tennis',score); setBest(Math.max(best,score)); }},[lives]);
+
+      const move=e=>{
+        const r=e.currentTarget.getBoundingClientRect();
+        const t=e.touches?e.touches[0]:e;
+        setPy(Math.max(0,Math.min(H-60,t.clientY-r.top-30)));
+      };
+      const reset=()=>{setScore(0);setLives(3);setOver(false);setBall({x:180,y:250,vx:3,vy:2});};
+
+      return (<div style={{padding:12,maxWidth:400,margin:'0 auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+          <button onClick={onBack} style={btnSty('#555')}>← Hub</button>
+          <div>♥{lives} | {score} | Best:{best}</div>
+        </div>
+        <svg width={W} height={H} onMouseMove={move} onTouchMove={move}
+          style={{background:'#2c5530',borderRadius:8,display:'block',margin:'0 auto',touchAction:'none'}}>
+          <line x1={W/2} y1={0} x2={W/2} y2={H} stroke="white" strokeDasharray="5,5"/>
+          <rect x={10} y={ay} width="10" height="60" fill="white"/>
+          <rect x={W-20} y={py} width="10" height="60" fill="yellow"/>
+          <circle cx={ball.x} cy={ball.y} r="8" fill="#cfc"/>
+        </svg>
+        <div style={{textAlign:'center',marginTop:8}}>Di chuột/chạm để di vợt</div>
+        {over && <div style={{textAlign:'center'}}>
+          <div style={{fontSize:20,margin:8}}>Game Over! Score: {score}</div>
+          <button onClick={reset} style={{...btnSty('#3498db'),padding:12,fontSize:18}}>Chơi Lại</button>
+        </div>}
+      </div>);
+    }
+
+    // ============= 4. GOLF =============
+    function Golf({onBack}){
+      const W=360,H=500;
+      const [angle,setAngle]=useState(45);
+      const [power,setPower]=useState(50);
+      const [phase,setPhase]=useState('aim');
+      const [ball,setBall]=useState({x:60,y:440});
+      const [score,setScore]=useState(0);
+      const [hole,setHole]=useState(1);
+      const [strokes,setStrokes]=useState(0);
+      const [best,setBest]=useState(loadProg().golf||0);
+      const [msg,setMsg]=useState('');
+      const reqRef=useRef();
+      const target={x:300,y:100,r:15};
+      const obstacles=[{x:160,y:250,r:35},{x:230,y:180,r:25}];
+
+      useEffect(()=>{
+        if(phase!=='shoot')return;
+        const rad=angle*Math.PI/180;
+        let vx=Math.cos(rad)*power*0.13;
+        let vy=-Math.sin(rad)*power*0.13;
+        let x=ball.x,y=ball.y;
+        const step=()=>{
+          x+=vx;y+=vy;vy+=0.15; vx*=0.99;
+          setBall({x,y});
+          for(const o of obstacles){
+            const dx=x-o.x,dy=y-o.y;
+            if(dx*dx+dy*dy<o.r*o.r){ setMsg('Va chướng ngại!'); setPhase('result'); return; }
+          }
+          const dx=x-target.x,dy=y-target.y;
+          if(dx*dx+dy*dy<target.r*target.r){
+            const pts=Math.max(20-strokes*5,5);
+            setMsg('Vào lỗ! +'+pts); setScore(s=>s+pts); setPhase('hole');return;
+          }
+          if(y>H-20){ setMsg('Đánh tiếp!'); setBall({x,y:H-20}); setStrokes(s=>s+1); if(strokes>=4){setMsg('Hết lượt!');setPhase('hole');} else setPhase('aim');return;}
+          if(x<0||x>W){setMsg('Out!');setStrokes(s=>s+1);setPhase('aim');setBall({x:60,y:440});return;}
+          reqRef.current=requestAnimationFrame(step);
+        };
+        reqRef.current=requestAnimationFrame(step);
+        return ()=>cancelAnimationFrame(reqRef.current);
+      },[phase]);
+
+      const nextHole=()=>{
+        if(hole>=5){saveBest('golf',score);setBest(Math.max(best,score));setMsg('Hoàn tất! '+score);setPhase('end');return;}
+        setHole(h=>h+1);setStrokes(0);setBall({x:60,y:440});setPhase('aim');setMsg('');
+      };
+      const reset=()=>{setScore(0);setHole(1);setStrokes(0);setBall({x:60,y:440});setPhase('aim');setMsg('');};
+
+      return (<div style={{padding:12,maxWidth:400,margin:'0 auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+          <button onClick={onBack} style={btnSty('#555')}>← Hub</button>
+          <div>Hố:{hole}/5 G:{strokes} ⭐{score} B:{best}</div>
+        </div>
+        <svg width={W} height={H} style={{background:'#5fa85f',borderRadius:8,display:'block',margin:'0 auto'}}>
+          {obstacles.map((o,i)=><circle key={i} cx={o.x} cy={o.y} r={o.r} fill="#654321"/>)}
+          <circle cx={target.x} cy={target.y} r={target.r} fill="black"/>
+          <line x1={target.x} y1={target.y} x2={target.x} y2={target.y-30} stroke="red" strokeWidth="2"/>
+          <circle cx={ball.x} cy={ball.y} r="7" fill="white" stroke="black"/>
+          {phase==='aim' && <line x1={ball.x} y1={ball.y} x2={ball.x+Math.cos(angle*Math.PI/180)*power} y2={ball.y-Math.sin(angle*Math.PI/180)*power} stroke="red" strokeWidth="2"/>}
+        </svg>
+        {msg && <div style={{textAlign:'center',fontSize:18,margin:8}}>{msg}</div>}
+        {phase==='aim' && <div style={{padding:8}}>
+          <div>Góc: {angle}°</div>
+          <input type="range" min="10" max="170" value={angle} onChange={e=>setAngle(+e.target.value)} style={{width:'100%'}}/>
+          <div>Lực: {power}</div>
+          <input type="range" min="30" max="100" value={power} onChange={e=>setPower(+e.target.value)} style={{width:'100%'}}/>
+          <button onClick={()=>setPhase('shoot')} style={{...btnSty('#27ae60'),width:'100%',padding:12,fontSize:18,marginTop:8}}>ĐÁNH!</button>
+        </div>}
+        {phase==='result' && <button onClick={()=>{setStrokes(s=>s+1);setPhase('aim');setMsg('');}} style={{...btnSty('#27ae60'),width:'100%',padding:12,fontSize:18}}>Đánh Tiếp</button>}
+        {phase==='hole' && <button onClick={nextHole} style={{...btnSty('#3498db'),width:'100%',padding:12,fontSize:18}}>Hố Kế</button>}
+        {phase==='end' && <button onClick={reset} style={{...btnSty('#3498db'),width:'100%',padding:12,fontSize:18}}>Chơi Lại</button>}
+      </div>);
+    }
+
+    // ============= 5. BOWLING =============
+    function Bowling({onBack}){
+      const W=360,H=500;
+      const [aim,setAim]=useState(0); // -50..50
+      const [phase,setPhase]=useState('aim');
+      const [ball,setBall]=useState({x:180,y:450});
+      const [pins,setPins]=useState(()=>genPins());
+      const [score,setScore]=useState(0);
+      const [frame,setFrame]=useState(1);
+      const [best,setBest]=useState(loadProg().bowling||0);
+      const [msg,setMsg]=useState('');
+      const reqRef=useRef();
+
+      function genPins(){
+        const arr=[];
+        for(let r=0;r<4;r++){
+          for(let c=0;c<=r;c++){
+            arr.push({x:180+(c-r/2)*22,y:120+r*22,hit:false});
+          }
+        }
+        return arr;
+      }
+
+      useEffect(()=>{
+        if(phase!=='roll')return;
+        let x=180,y=450,vx=aim*0.05,vy=-6;
+        const step=()=>{
+          x+=vx;y+=vy;
+          setBall({x,y});
+          setPins(ps=>ps.map(p=>{
+            if(p.hit)return p;
+            const dx=x-p.x,dy=y-p.y;
+            if(dx*dx+dy*dy<200) return {...p,hit:true};
+            return p;
+          }));
+          if(y<50||x<0||x>W){
+            setTimeout(()=>{
+              setPins(ps=>{
+                const knocked=ps.filter(p=>p.hit).length;
+                setMsg('Đổ '+knocked+' ki! +'+knocked);
+                setScore(s=>s+knocked);
+                return ps;
+              });
+              setPhase('result');
+            },300);
+            return;
+          }
+          reqRef.current=requestAnimationFrame(step);
+        };
+        reqRef.current=requestAnimationFrame(step);
+        return ()=>cancelAnimationFrame(reqRef.current);
+      },[phase]);
+
+      const next=()=>{
+        if(frame>=5){saveBest('bowling',score);setBest(Math.max(best,score));setPhase('end');setMsg('Tổng: '+score);return;}
+        setFrame(f=>f+1);setPins(genPins());setBall({x:180,y:450});setPhase('aim');setMsg('');setAim(0);
+      };
+      const reset=()=>{setScore(0);setFrame(1);setPins(genPins());setBall({x:180,y:450});setPhase('aim');setMsg('');};
+
+      return (<div style={{padding:12,maxWidth:400,margin:'0 auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+          <button onClick={onBack} style={btnSty('#555')}>← Hub</button>
+          <div>Lượt:{frame}/5 | {score} | Best:{best}</div>
+        </div>
+        <svg width={W} height={H} style={{background:'#8b6f47',borderRadius:8,display:'block',margin:'0 auto'}}>
+          <rect x={80} y={50} width={200} height={420} fill="#d4a574"/>
+          {pins.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r="7" fill={p.hit?'#666':'white'} stroke="black"/>)}
+          <circle cx={ball.x} cy={ball.y} r="11" fill="#222"/>
+          {phase==='aim' && <line x1={180} y1={450} x2={180+aim*2} y2={350} stroke="red" strokeWidth="2"/>}
+        </svg>
+        {msg && <div style={{textAlign:'center',fontSize:18,margin:8}}>{msg}</div>}
+        {phase==='aim' && <div style={{padding:8}}>
+          <div>Hướng: {aim}</div>
+          <input type="range" min="-40" max="40" value={aim} onChange={e=>setAim(+e.target.value)} style={{width:'100%'}}/>
+          <button onClick={()=>setPhase('roll')} style={{...btnSty('#e67e22'),width:'100%',padding:12,fontSize:18,marginTop:8}}>LĂN!</button>
+        </div>}
+        {phase==='result' && <button onClick={next} style={{...btnSty('#27ae60'),width:'100%',padding:12,fontSize:18}}>Tiếp</button>}
+        {phase==='end' && <button onClick={reset} style={{...btnSty('#3498db'),width:'100%',padding:12,fontSize:18}}>Chơi Lại</button>}
+      </div>);
+    }
+
+    // ============= 6. ARCHERY =============
+    function Archery({onBack}){
+      const W=360,H=500;
+      const [aimX,setAimX]=useState(180);
+      const [aimY,setAimY]=useState(250);
+      const [wind,setWind]=useState(0);
+      const [phase,setPhase]=useState('aim');
+      const [arrow,setArrow]=useState(null);
+      const [score,setScore]=useState(0);
+      const [shots,setShots]=useState(6);
+      const [best,setBest]=useState(loadProg().archery||0);
+      const [msg,setMsg]=useState('');
+      const target={x:180,y:200,r:80};
+
+      useEffect(()=>{ setWind((Math.random()-0.5)*40); },[shots]);
+
+      const shoot=()=>{
+        const fx=aimX+wind;
+        const fy=aimY;
+        const dx=fx-target.x,dy=fy-target.y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        let pts=0,m='';
+        if(d<10){pts=10;m='BULLSEYE! +10';}
+        else if(d<25){pts=8;m='+8';}
+        else if(d<45){pts=5;m='+5';}
+        else if(d<70){pts=2;m='+2';}
+        else {pts=0;m='Trượt!';}
+        setArrow({x:fx,y:fy});
+        setScore(s=>s+pts);
+        setMsg(m);
+        setPhase('result');
+      };
+      const next=()=>{
+        const ns=shots-1;
+        if(ns<=0){saveBest('archery',score);setBest(Math.max(best,score));setPhase('end');setMsg('Tổng: '+score);return;}
+        setShots(ns);setArrow(null);setPhase('aim');setMsg('');
+      };
+      const reset=()=>{setScore(0);setShots(6);setArrow(null);setPhase('aim');setMsg('');};
+
+      return (<div style={{padding:12,maxWidth:400,margin:'0 auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+          <button onClick={onBack} style={btnSty('#555')}>← Hub</button>
+          <div>Mũi:{shots} | {score} | Best:{best}</div>
+        </div>
+        <svg width={W} height={H} style={{background:'#87ceeb',borderRadius:8,display:'block',margin:'0 auto'}}>
+          <circle cx={target.x} cy={target.y} r="80" fill="white" stroke="black"/>
+          <circle cx={target.x} cy={target.y} r="60" fill="#3498db"/>
+          <circle cx={target.x} cy={target.y} r="45" fill="#e74c3c"/>
+          <circle cx={target.x} cy={target.y} r="25" fill="#f1c40f"/>
+          <circle cx={target.x} cy={target.y} r="10" fill="#e74c3c"/>
+          {phase==='aim' && <g>
+            <line x1={aimX-15} y1={aimY} x2={aimX+15} y2={aimY} stroke="red" strokeWidth="2"/>
+            <line x1={aimX} y1={aimY-15} x2={aimX} y2={aimY+15} stroke="red" strokeWidth="2"/>
+          </g>}
+          {arrow && <g>
+            <line x1={arrow.x-10} y1={arrow.y} x2={arrow.x+10} y2={arrow.y} stroke="brown" strokeWidth="3"/>
+            <circle cx={arrow.x} cy={arrow.y} r="3" fill="black"/>
+          </g>}
+        </svg>
+        <div style={{textAlign:'center',margin:6}}>Gió: {wind>0?'→':'←'} {Math.abs(wind).toFixed(0)}</div>
+        {msg && <div style={{textAlign:'center',fontSize:20,margin:8}}>{msg}</div>}
+        {phase==='aim' && <div style={{padding:8}}>
+          <div>X: {aimX}</div>
+          <input type="range" min="50" max="310" value={aimX} onChange={e=>setAimX(+e.target.value)} style={{width:'100%'}}/>
+          <div>Y: {aimY}</div>
+          <input type="range" min="120" max="280" value={aimY} onChange={e=>setAimY(+e.target.value)} style={{width:'100%'}}/>
+          <button onClick={shoot} style={{...btnSty('#e74c3c'),width:'100%',padding:12,fontSize:18,marginTop:8}}>BẮN!</button>
+        </div>}
+        {phase==='result' && <button onClick={next} style={{...btnSty('#27ae60'),width:'100%',padding:12,fontSize:18}}>Tiếp</button>}
+        {phase==='end' && <button onClick={reset} style={{...btnSty('#3498db'),width:'100%',padding:12,fontSize:18}}>Chơi Lại</button>}
+      </div>);
+    }
+
+    // ============= 7. PINGPONG =============
+    function PingPong({onBack}){
+      const [ballSide,setBallSide]=useState('left'); // ball is at left = ai serving toward us
+      const [waiting,setWaiting]=useState(true);
+      const [windowOpen,setWindowOpen]=useState(false);
+      const [score,setScore]=useState(0);
+      const [lives,setLives]=useState(3);
+      const [over,setOver]=useState(false);
+      const [best,setBest]=useState(loadProg().pingpong||0);
+      const [streak,setStreak]=useState(0);
+
+      useEffect(()=>{
+        if(over)return;
+        const delay=Math.max(400,1500-streak*60);
+        const t=setTimeout(()=>{
+          setWindowOpen(true);
+          setBallSide('right');
+          const closeT=setTimeout(()=>{
+            setWindowOpen(false);
+            setLives(l=>l-1);
+            setStreak(0);
+            setBallSide('left');
+          },Math.max(300,800-streak*20));
+          return ()=>clearTimeout(closeT);
+        },delay);
+        return ()=>clearTimeout(t);
+      },[streak,lives]);
+
+      useEffect(()=>{ if(lives<=0){setOver(true);saveBest('pingpong',score);setBest(Math.max(best,score));} },[lives]);
+
+      const hit=()=>{
+        if(!windowOpen)return;
+        setWindowOpen(false);
+        setScore(s=>s+1);
+        setStreak(s=>s+1);
+        setBallSide('left');
+      };
+      const reset=()=>{setScore(0);setLives(3);setOver(false);setStreak(0);setBallSide('left');};
+
+      return (<div style={{padding:12,maxWidth:400,margin:'0 auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+          <button onClick={onBack} style={btnSty('#555')}>← Hub</button>
+          <div>♥{lives} | {score} | Best:{best}</div>
+        </div>
+        <div style={{background:'#1e3a5f',height:380,borderRadius:8,position:'relative',overflow:'hidden'}}>
+          <div style={{position:'absolute',top:0,bottom:0,left:'50%',width:2,background:'white'}}/>
+          <div style={{position:'absolute',left:30,top:'50%',width:10,height:60,background:'red',transform:'translateY(-50%)'}}/>
+          <div style={{position:'absolute',right:30,top:'50%',width:10,height:60,background:'#0f0',transform:'translateY(-50%)'}}/>
+          <div style={{position:'absolute',top:'50%',left:ballSide==='left'?'15%':'80%',width:20,height:20,background:'white',borderRadius:'50%',transition:'left 0.4s',transform:'translateY(-50%)'}}/>
+          {windowOpen && <div style={{position:'absolute',right:50,top:'40%',color:'yellow',fontSize:30,fontWeight:'bold'}}>!</div>}
+        </div>
+        <button onClick={hit} disabled={over} style={{...btnSty('#e67e22'),width:'100%',padding:18,fontSize:22,marginTop:8}}>ĐÁNH!</button>
+        {over && <div style={{textAlign:'center',marginTop:8}}>
+          <div style={{fontSize:20}}>Game Over! {score}</div>
+          <button onClick={reset} style={{...btnSty('#3498db'),padding:12,fontSize:18,marginTop:6}}>Chơi Lại</button>
+        </div>}
+      </div>);
+    }
+
+    // ============= 8. BADMINTON =============
+    function Badminton({onBack}){
+      const [target,setTarget]=useState('up');
+      const [score,setScore]=useState(0);
+      const [lives,setLives]=useState(3);
+      const [over,setOver]=useState(false);
+      const [timer,setTimer]=useState(2000);
+      const [best,setBest]=useState(loadProg().badminton||0);
+      const dirs=['up','down','left','right'];
+      const arrows={up:'⬆',down:'⬇',left:'⬅',right:'➡'};
+
+      useEffect(()=>{
+        if(over)return;
+        const t=setTimeout(()=>{ setLives(l=>l-1); newTarget();},timer);
+        return ()=>clearTimeout(t);
+      },[target,over]);
+
+      useEffect(()=>{ if(lives<=0){setOver(true);saveBest('badminton',score);setBest(Math.max(best,score));}},[lives]);
+
+      const newTarget=()=>{
+        setTarget(dirs[Math.floor(Math.random()*4)]);
+        setTimer(t=>Math.max(700,t-50));
+      };
+      const hit=(d)=>{
+        if(over)return;
+        if(d===target){setScore(s=>s+1);}
+        else {setLives(l=>l-1);}
+        newTarget();
+      };
+      const reset=()=>{setScore(0);setLives(3);setOver(false);setTimer(2000);newTarget();};
+
+      return (<div style={{padding:12,maxWidth:400,margin:'0 auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+          <button onClick={onBack} style={btnSty('#555')}>← Hub</button>
+          <div>♥{lives} | {score} | Best:{best}</div>
+        </div>
+        <div style={{background:'#1e6b3a',height:300,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
+          <div style={{fontSize:120}}>{arrows[target]}</div>
+          <div style={{position:'absolute',bottom:8,left:0,right:0,textAlign:'center',color:'#ccc'}}>Đập theo hướng!</div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginTop:12}}>
+          <div></div>
+          <button onClick={()=>hit('up')} style={{...btnSty('#3498db'),padding:18,fontSize:24}}>⬆</button>
+          <div></div>
+          <button onClick={()=>hit('left')} style={{...btnSty('#3498db'),padding:18,fontSize:24}}>⬅</button>
+          <button onClick={()=>hit('down')} style={{...btnSty('#3498db'),padding:18,fontSize:24}}>⬇</button>
+          <button onClick={()=>hit('right')} style={{...btnSty('#3498db'),padding:18,fontSize:24}}>➡</button>
+        </div>
+        {over && <div style={{textAlign:'center',marginTop:12}}>
+          <div style={{fontSize:20}}>Game Over! {score}</div>
+          <button onClick={reset} style={{...btnSty('#3498db'),padding:12,fontSize:18,marginTop:6}}>Chơi Lại</button>
+        </div>}
+      </div>);
+    }
+
+    // ============= 9. BOXING =============
+    function Boxing({onBack}){
+      const [action,setAction]=useState('idle'); // idle, punch_left, punch_right, dodge_left, dodge_right
+      const [score,setScore]=useState(0);
+      const [hp,setHp]=useState(5);
+      const [over,setOver]=useState(false);
+      const [best,setBest]=useState(loadProg().boxing||0);
+      const [msg,setMsg]=useState('Sẵn sàng!');
+
+      useEffect(()=>{
+        if(over)return;
+        const t=setTimeout(()=>{
+          const acts=['punch_left','punch_right','dodge_left','dodge_right'];
+          setAction(acts[Math.floor(Math.random()*4)]);
+          setMsg('');
+          const limit=setTimeout(()=>{
+            setHp(h=>h-1); setMsg('Trễ! -HP');
+            setAction('idle');
+          },1200);
+          return ()=>clearTimeout(limit);
+        },800);
+        return ()=>clearTimeout(t);
+      },[action==='idle',over]);
+
+      useEffect(()=>{if(hp<=0){setOver(true);saveBest('boxing',score);setBest(Math.max(best,score));}},[hp]);
+
+      const press=(btn)=>{
+        if(over||action==='idle')return;
+        if(action===btn){ setScore(s=>s+2); setMsg('+2!');}
+        else { setHp(h=>h-1); setMsg('Sai! -HP');}
+        setAction('idle');
+      };
+      const reset=()=>{setScore(0);setHp(5);setOver(false);setAction('idle');setMsg('Sẵn sàng!');};
+
+      const cmd={
+        idle:'Chờ...',
+        punch_left:'👊 ĐẤM TRÁI!',
+        punch_right:'👊 ĐẤM PHẢI!',
+        dodge_left:'🛡 NÉ TRÁI!',
+        dodge_right:'🛡 NÉ PHẢI!',
+      };
+
+      return (<div style={{padding:12,maxWidth:400,margin:'0 auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+          <button onClick={onBack} style={btnSty('#555')}>← Hub</button>
+          <div>♥{hp} | {score} | Best:{best}</div>
+        </div>
+        <div style={{background:'#5a2828',height:280,borderRadius:8,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+          <div style={{fontSize:80}}>🥊</div>
+          <div style={{fontSize:32,fontWeight:'bold',color:'yellow',minHeight:50}}>{cmd[action]}</div>
+          <div style={{fontSize:18,marginTop:8}}>{msg}</div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:12}}>
+          <button onClick={()=>press('punch_left')} style={{...btnSty('#e74c3c'),padding:16,fontSize:18}}>👊 Đấm Trái</button>
+          <button onClick={()=>press('punch_right')} style={{...btnSty('#e74c3c'),padding:16,fontSize:18}}>👊 Đấm Phải</button>
+          <button onClick={()=>press('dodge_left')} style={{...btnSty('#3498db'),padding:16,fontSize:18}}>🛡 Né Trái</button>
+          <button onClick={()=>press('dodge_right')} style={{...btnSty('#3498db'),padding:16,fontSize:18}}>🛡 Né Phải</button>
+        </div>
+        {over && <div style={{textAlign:'center',marginTop:12}}>
+          <div style={{fontSize:20}}>K.O! {score}</div>
+          <button onClick={reset} style={{...btnSty('#27ae60'),padding:12,fontSize:18,marginTop:6}}>Đấu Lại</button>
+        </div>}
+      </div>);
+    }
+
+    // ============= 10. SWIMMING =============
+    function Swimming({onBack}){
+      const [pos,setPos]=useState(0); // 0..100
+      const [side,setSide]=useState('L'); // expected next stroke
+      const [score,setScore]=useState(0);
+      const [time,setTime]=useState(30);
+      const [over,setOver]=useState(false);
+      const [best,setBest]=useState(loadProg().swimming||0);
+      const [msg,setMsg]=useState('');
+
+      useEffect(()=>{
+        if(over)return;
+        const t=setInterval(()=>{
+          setTime(tt=>{
+            if(tt<=1){clearInterval(t); setOver(true); saveBest('swimming',score); setBest(Math.max(best,score)); return 0;}
+            return tt-1;
+          });
+          setPos(p=>Math.max(0,p-0.5));
+        },1000);
+        return ()=>clearInterval(t);
+      },[over,score]);
+
+      const stroke=(s)=>{
+        if(over)return;
+        if(s===side){
+          setPos(p=>Math.min(100,p+3));
+          setScore(sc=>sc+1);
+          setSide(s==='L'?'R':'L');
+          setMsg('+1');
+        } else {
+          setMsg('Sai bên!');
+        }
+        setTimeout(()=>setMsg(''),300);
+      };
+      const reset=()=>{setPos(0);setSide('L');setScore(0);setTime(30);setOver(false);setMsg('');};
+
+      return (<div style={{padding:12,maxWidth:400,margin:'0 auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+          <button onClick={onBack} style={btnSty('#555')}>← Hub</button>
+          <div>⏱{time} | {score} | Best:{best}</div>
+        </div>
+        <div style={{background:'#1e90ff',height:300,borderRadius:8,position:'relative',overflow:'hidden'}}>
+          <div style={{position:'absolute',top:10,left:0,right:0,textAlign:'center',color:'white'}}>Tiến: {pos.toFixed(0)}%</div>
+          <div style={{position:'absolute',bottom:0,left:0,right:`${100-pos}%`,height:20,background:'rgba(255,255,255,0.4)'}}/>
+          <div style={{position:'absolute',top:'40%',left:`${pos*0.85}%`,fontSize:60,transition:'left 0.2s'}}>🏊</div>
+          <div style={{position:'absolute',bottom:30,left:0,right:0,textAlign:'center',fontSize:32,fontWeight:'bold'}}>Đến lượt: {side}</div>
+          {msg && <div style={{position:'absolute',top:'20%',left:0,right:0,textAlign:'center',fontSize:24,color:'yellow'}}>{msg}</div>}
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:12}}>
+          <button onClick={()=>stroke('L')} style={{...btnSty('#e67e22'),padding:24,fontSize:24}}>🫲 TRÁI</button>
+          <button onClick={()=>stroke('R')} style={{...btnSty('#e67e22'),padding:24,fontSize:24}}>PHẢI 🫱</button>
+        </div>
+        {over && <div style={{textAlign:'center',marginTop:12}}>
+          <div style={{fontSize:20}}>Hết giờ! Score: {score}</div>
+          <button onClick={reset} style={{...btnSty('#3498db'),padding:12,fontSize:18,marginTop:6}}>Chơi Lại</button>
+        </div>}
+      </div>);
+    }
+
+    // helper
+    const btnSty=(bg)=>({background:bg,color:'white',border:'none',borderRadius:8,padding:'8px 14px',fontSize:14,cursor:'pointer',fontWeight:'bold'});
+
+    // HUB
+    function Hub({onPick}){
+      const prog=loadProg();
+      return (<div style={{padding:16,maxWidth:600,margin:'0 auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+          <a href="../index.html" style={{color:'white',textDecoration:'none',fontSize:16,background:'#444',padding:'8px 14px',borderRadius:8}}>← Trang Chủ</a>
+          <h1 style={{fontSize:22}}>⚽ Thể Thao Hub</h1>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:12}}>
+          {GAMES.map(g=>(
+            <button key={g.id} onClick={()=>onPick(g.id)}
+              style={{background:'#1a4a2e',border:'2px solid #2d6e4a',borderRadius:12,padding:16,color:'white',cursor:'pointer',textAlign:'center'}}>
+              <div style={{fontSize:42}}>{g.emoji}</div>
+              <div style={{fontWeight:'bold',marginTop:6}}>{g.name}</div>
+              <div style={{fontSize:11,color:'#aaa',marginTop:4}}>{g.desc}</div>
+              <div style={{fontSize:12,color:'#ffd700',marginTop:6}}>★ {prog[g.id]||0}</div>
+            </button>
+          ))}
+        </div>
+      </div>);
+    }
+
+    function App(){
+      const [route,setRoute]=useState(()=>window.location.hash.replace('#','')||'');
+      useEffect(()=>{
+        const h=()=>setRoute(window.location.hash.replace('#','')||'');
+        window.addEventListener('hashchange',h);
+        return ()=>window.removeEventListener('hashchange',h);
+      },[]);
+      const go=(id)=>{ window.location.hash=id; setRoute(id); };
+      const back=()=>{ window.location.hash=''; setRoute(''); };
+      const map={
+        soccer:Soccer, basketball:Basketball, tennis:Tennis, golf:Golf, bowling:Bowling,
+        archery:Archery, pingpong:PingPong, badminton:Badminton, boxing:Boxing, swimming:Swimming
+      };
+      const G=map[route];
+      if(G) return <G onBack={back}/>;
+      return <Hub onPick={go}/>;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

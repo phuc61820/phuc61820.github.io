@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🃏 Bài Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a2e2e; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const SUITS = ['♠','♥','♦','♣'];
+    const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+    const RED = ['♥','♦'];
+    const cardVal = (r) => r==='A'?1 : r==='J'?11 : r==='Q'?12 : r==='K'?13 : parseInt(r);
+    const bjVal = (r) => r==='A'?11 : ['J','Q','K'].includes(r)?10 : parseInt(r);
+
+    function makeDeck() {
+      const d = [];
+      for (const s of SUITS) for (const r of RANKS) d.push({s,r});
+      return d.sort(()=>Math.random()-0.5);
+    }
+
+    function Card({card, hidden, small}) {
+      const size = small ? {w:44,h:60,f:14} : {w:60,h:82,f:18};
+      if (hidden) return <div style={{width:size.w,height:size.h,background:'linear-gradient(135deg,#1e40af,#312e81)',borderRadius:6,border:'2px solid #fff',display:'inline-block',margin:3}}/>;
+      const red = RED.includes(card.s);
+      return <div style={{width:size.w,height:size.h,background:'white',color:red?'#dc2626':'#111',borderRadius:6,border:'2px solid #fff',display:'inline-flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:size.f,fontWeight:'bold',margin:3,lineHeight:1.1}}>
+        <div>{card.r}</div><div style={{fontSize:size.f+4}}>{card.s}</div>
+      </div>;
+    }
+
+    function loadProgress() {
+      try { return JSON.parse(localStorage.getItem('cardProgress')||'{}'); } catch { return {}; }
+    }
+    function saveWin(id) {
+      const p = loadProgress();
+      p[id] = (p[id]||0) + 1;
+      localStorage.setItem('cardProgress', JSON.stringify(p));
+    }
+
+    // ============ 1. SOLITAIRE (Simplified) ============
+    function Solitaire({onBack}) {
+      const [deck, setDeck] = useState(() => makeDeck());
+      const [foundation, setFoundation] = useState({'♠':0,'♥':0,'♦':0,'♣':0});
+      const [pile, setPile] = useState([]);
+      const [msg, setMsg] = useState('Rút lá → xếp theo suit từ A→K');
+      const [won, setWon] = useState(false);
+
+      const draw = () => {
+        if (deck.length === 0) { setMsg('Hết bài!'); return; }
+        const card = deck[0];
+        const need = foundation[card.s] + 1;
+        const wantedRank = need===1?'A':need===11?'J':need===12?'Q':need===13?'K':''+need;
+        if (card.r === wantedRank) {
+          setFoundation({...foundation, [card.s]: need});
+          setMsg(`✓ ${card.r}${card.s} lên foundation!`);
+          const nf = {...foundation, [card.s]: need};
+          if (Object.values(nf).every(v => v===13)) { setWon(true); saveWin('solitaire'); }
+        } else {
+          setPile([card, ...pile]);
+          setMsg(`${card.r}${card.s} vào pile (cần ${wantedRank}${card.s})`);
+        }
+        setDeck(deck.slice(1));
+      };
+      const tryPile = () => {
+        if (pile.length === 0) return;
+        const card = pile[0];
+        const need = foundation[card.s] + 1;
+        const wantedRank = need===1?'A':need===11?'J':need===12?'Q':need===13?'K':''+need;
+        if (card.r === wantedRank) {
+          setFoundation({...foundation, [card.s]: need});
+          setPile(pile.slice(1));
+          setMsg(`✓ ${card.r}${card.s} từ pile!`);
+          const nf = {...foundation, [card.s]: need};
+          if (Object.values(nf).every(v => v===13)) { setWon(true); saveWin('solitaire'); }
+        } else setMsg('Không khớp');
+      };
+      const reset = () => { setDeck(makeDeck()); setFoundation({'♠':0,'♥':0,'♦':0,'♣':0}); setPile([]); setMsg('Mới!'); setWon(false); };
+
+      return <div style={{padding:20,textAlign:'center'}}>
+        <button onClick={onBack} style={{position:'absolute',top:20,left:20,padding:'8px 16px',background:'#16a34a',color:'white',border:'none',borderRadius:8,cursor:'pointer'}}>← Hub</button>
+        <h2>🃏 Solitaire Đơn Giản</h2>
+        <p style={{margin:'10px 0'}}>{msg}</p>
+        <div style={{margin:'15px 0'}}>Foundation:
+          {SUITS.map(s => <span key={s} style={{margin:'0 8px',fontSize:20}}>{s}:{foundation[s]}</span>)}
+        </div>
+        <div style={{margin:'15px 0'}}>Bài còn: {deck.length} | Pile: {pile.length}</div>
+        <div style={{margin:'15px 0',minHeight:90}}>
+          {pile.slice(0,5).map((c,i) => <Card key={i} card={c}/>)}
+        </div>
+        <button onClick={draw} disabled={won||deck.length===0} style={{padding:'12px 24px',margin:6,background:'#2563eb',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Rút lá</button>
+        <button onClick={tryPile} disabled={won||pile.length===0} style={{padding:'12px 24px',margin:6,background:'#9333ea',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Dùng Pile</button>
+        <button onClick={reset} style={{padding:'12px 24px',margin:6,background:'#dc2626',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Ván mới</button>
+        {won && <div style={{fontSize:24,color:'gold',margin:20}}>🎉 Thắng rồi!</div>}
+      </div>;
+    }
+
+    // ============ 2. WAR ============
+    function War({onBack}) {
+      const [deck1, setDeck1] = useState([]);
+      const [deck2, setDeck2] = useState([]);
+      const [c1, setC1] = useState(null);
+      const [c2, setC2] = useState(null);
+      const [msg, setMsg] = useState('Nhấn để bắt đầu');
+      const [winner, setWinner] = useState('');
+
+      const start = () => {
+        const d = makeDeck();
+        setDeck1(d.slice(0,26)); setDeck2(d.slice(26));
+        setC1(null); setC2(null); setMsg('Nhấn "Đánh"!'); setWinner('');
+      };
+      useEffect(() => { start(); }, []);
+
+      const play = () => {
+        if (deck1.length===0 || deck2.length===0) return;
+        const a = deck1[0], b = deck2[0];
+        const va = cardVal(a.r), vb = cardVal(b.r);
+        setC1(a); setC2(b);
+        let nd1 = deck1.slice(1), nd2 = deck2.slice(1);
+        if (va > vb) { nd1 = [...nd1, a, b]; setMsg('Bạn thắng vòng!'); }
+        else if (vb > va) { nd2 = [...nd2, a, b]; setMsg('Máy thắng vòng!'); }
+        else { setMsg('Hòa — bỏ 2 lá'); }
+        setDeck1(nd1); setDeck2(nd2);
+        if (nd1.length===0) { setWinner('Máy'); setMsg('Máy thắng cả ván!'); }
+        else if (nd2.length===0) { setWinner('Bạn'); setMsg('🎉 Bạn thắng!'); saveWin('war'); }
+      };
+
+      return <div style={{padding:20,textAlign:'center'}}>
+        <button onClick={onBack} style={{position:'absolute',top:20,left:20,padding:'8px 16px',background:'#16a34a',color:'white',border:'none',borderRadius:8,cursor:'pointer'}}>← Hub</button>
+        <h2>⚔️ War — Chiến Bài</h2>
+        <p style={{margin:'10px 0'}}>{msg}</p>
+        <div style={{display:'flex',justifyContent:'space-around',margin:'20px 0'}}>
+          <div><div>Bạn ({deck1.length})</div>{c1 && <Card card={c1}/>}</div>
+          <div><div>Máy ({deck2.length})</div>{c2 && <Card card={c2}/>}</div>
+        </div>
+        <button onClick={play} disabled={!!winner||deck1.length===0||deck2.length===0} style={{padding:'12px 24px',margin:6,background:'#dc2626',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Đánh!</button>
+        <button onClick={start} style={{padding:'12px 24px',margin:6,background:'#2563eb',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Ván mới</button>
+      </div>;
+    }
+
+    // ============ 3. BLACKJACK ============
+    function Blackjack({onBack}) {
+      const [deck, setDeck] = useState([]);
+      const [player, setPlayer] = useState([]);
+      const [dealer, setDealer] = useState([]);
+      const [stand, setStand] = useState(false);
+      const [msg, setMsg] = useState('');
+      const [over, setOver] = useState(false);
+
+      const sum = (h) => {
+        let t = h.reduce((a,c)=>a+bjVal(c.r),0);
+        let aces = h.filter(c=>c.r==='A').length;
+        while (t>21 && aces>0) { t-=10; aces--; }
+        return t;
+      };
+      const start = () => {
+        const d = makeDeck();
+        setDeck(d.slice(4)); setPlayer([d[0],d[2]]); setDealer([d[1],d[3]]);
+        setStand(false); setMsg(''); setOver(false);
+      };
+      useEffect(() => { start(); }, []);
+
+      const hit = () => {
+        const nh = [...player, deck[0]];
+        setPlayer(nh); setDeck(deck.slice(1));
+        if (sum(nh) > 21) { setMsg('💥 Bust! Thua'); setOver(true); setStand(true); }
+      };
+      const doStand = () => {
+        let dh = [...dealer], dd = [...deck];
+        while (sum(dh) < 17) { dh.push(dd[0]); dd = dd.slice(1); }
+        setDealer(dh); setDeck(dd); setStand(true);
+        const ps = sum(player), ds = sum(dh);
+        if (ds>21 || ps>ds) { setMsg('🎉 Thắng!'); saveWin('blackjack'); }
+        else if (ps===ds) setMsg('Hòa');
+        else setMsg('😢 Thua');
+        setOver(true);
+      };
+
+      return <div style={{padding:20,textAlign:'center'}}>
+        <button onClick={onBack} style={{position:'absolute',top:20,left:20,padding:'8px 16px',background:'#16a34a',color:'white',border:'none',borderRadius:8,cursor:'pointer'}}>← Hub</button>
+        <h2>🎰 Blackjack 21</h2>
+        <div style={{margin:'15px 0'}}>
+          <h3>Dealer ({stand?sum(dealer):'?'})</h3>
+          <div>{dealer.map((c,i)=><Card key={i} card={c} hidden={!stand && i===1}/>)}</div>
+        </div>
+        <div style={{margin:'15px 0'}}>
+          <h3>Bạn ({sum(player)})</h3>
+          <div>{player.map((c,i)=><Card key={i} card={c}/>)}</div>
+        </div>
+        <p style={{fontSize:20,margin:10,color:'gold'}}>{msg}</p>
+        <button onClick={hit} disabled={over} style={{padding:'12px 24px',margin:6,background:'#2563eb',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Hit</button>
+        <button onClick={doStand} disabled={over} style={{padding:'12px 24px',margin:6,background:'#f59e0b',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Stand</button>
+        <button onClick={start} style={{padding:'12px 24px',margin:6,background:'#dc2626',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Ván mới</button>
+      </div>;
+    }
+
+    // ============ 4. WAR21 (Closest to 21) ============
+    function War21({onBack}) {
+      const [deck, setDeck] = useState([]);
+      const [hand, setHand] = useState([]);
+      const [ai, setAi] = useState([]);
+      const [aiStand, setAiStand] = useState(false);
+      const [msg, setMsg] = useState('');
+      const [over, setOver] = useState(false);
+
+      const sumH = (h) => h.reduce((a,c)=>a+bjVal(c.r),0);
+      const start = () => {
+        const d = makeDeck();
+        setDeck(d.slice(2)); setHand([d[0]]); setAi([d[1]]); setAiStand(false); setMsg(''); setOver(false);
+      };
+      useEffect(() => { start(); }, []);
+
+      const hit = () => {
+        const nh = [...hand, deck[0]];
+        setHand(nh); setDeck(deck.slice(1));
+        if (sumH(nh) > 21) { setMsg('Quá 21!'); finish(nh, ai, true); }
+      };
+      const finish = (h1, h2, busted) => {
+        let ah = [...h2], dd = deck.slice(busted?0:1);
+        while (sumH(ah) < 18 && dd.length) { ah.push(dd[0]); dd = dd.slice(1); }
+        setAi(ah); setAiStand(true); setOver(true);
+        const s1 = sumH(h1), s2 = sumH(ah);
+        const d1 = s1>21 ? 99 : 21-s1;
+        const d2 = s2>21 ? 99 : 21-s2;
+        if (d1 < d2) { setMsg('🎉 Gần 21 hơn!'); saveWin('war21'); }
+        else if (d2 < d1) setMsg('😢 AI gần hơn');
+        else setMsg('Hòa');
+      };
+      const doStand = () => finish(hand, ai, false);
+
+      return <div style={{padding:20,textAlign:'center'}}>
+        <button onClick={onBack} style={{position:'absolute',top:20,left:20,padding:'8px 16px',background:'#16a34a',color:'white',border:'none',borderRadius:8,cursor:'pointer'}}>← Hub</button>
+        <h2>🎯 Gần 21 Nhất</h2>
+        <div><h3>AI ({aiStand?sumH(ai):'?'}): {ai.map((c,i)=><Card key={i} card={c} hidden={!aiStand && i>0}/>)}</h3></div>
+        <div><h3>Bạn ({sumH(hand)}): {hand.map((c,i)=><Card key={i} card={c}/>)}</h3></div>
+        <p style={{fontSize:20,margin:10,color:'gold'}}>{msg}</p>
+        <button onClick={hit} disabled={over} style={{padding:'12px 24px',margin:6,background:'#2563eb',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Rút</button>
+        <button onClick={doStand} disabled={over} style={{padding:'12px 24px',margin:6,background:'#f59e0b',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Dừng</button>
+        <button onClick={start} style={{padding:'12px 24px',margin:6,background:'#dc2626',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Ván mới</button>
+      </div>;
+    }
+
+    // ============ 5. SPEED ============
+    function Speed({onBack}) {
+      const [target, setTarget] = useState(null);
+      const [hand, setHand] = useState([]);
+      const [score, setScore] = useState(0);
+      const [time, setTime] = useState(30);
+      const [running, setRunning] = useState(false);
+
+      const newRound = () => {
+        const d = makeDeck();
+        setTarget(d[0]);
+        setHand(d.slice(1,6));
+      };
+      const start = () => {
+        setScore(0); setTime(30); setRunning(true); newRound();
+      };
+      useEffect(() => {
+        if (!running) return;
+        if (time <= 0) {
+          setRunning(false);
+          if (score >= 10) saveWin('speed');
+          return;
+        }
+        const t = setTimeout(() => setTime(time-1), 1000);
+        return () => clearTimeout(t);
+      }, [time, running]);
+
+      const play = (c) => {
+        if (!target) return;
+        const diff = Math.abs(cardVal(c.r) - cardVal(target.r));
+        if (diff === 1 || diff === 12) {
+          setScore(s=>s+1);
+          newRound();
+        } else {
+          setTime(t => Math.max(0,t-3));
+        }
+      };
+
+      return <div style={{padding:20,textAlign:'center'}}>
+        <button onClick={onBack} style={{position:'absolute',top:20,left:20,padding:'8px 16px',background:'#16a34a',color:'white',border:'none',borderRadius:8,cursor:'pointer'}}>← Hub</button>
+        <h2>⚡ Speed</h2>
+        <p>Chọn lá ±1 giá trị so với lá đích (A↔K vòng)</p>
+        <div style={{fontSize:20,margin:10}}>⏱️ {time}s | 🏆 {score} (cần 10 để thắng)</div>
+        {target && <div><h3>Đích:</h3><Card card={target}/></div>}
+        <div style={{margin:'15px 0'}}>
+          {hand.map((c,i) => <span key={i} onClick={()=>running && play(c)} style={{cursor:running?'pointer':'default'}}><Card card={c}/></span>)}
+        </div>
+        <button onClick={start} style={{padding:'12px 24px',margin:6,background:'#dc2626',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>{running?'Đang chơi':'Bắt đầu'}</button>
+      </div>;
+    }
+
+    // ============ 6. SNAP ============
+    function Snap({onBack}) {
+      const [prev, setPrev] = useState(null);
+      const [cur, setCur] = useState(null);
+      const [score, setScore] = useState(0);
+      const [miss, setMiss] = useState(0);
+      const [running, setRunning] = useState(false);
+      const [speed, setSpeed] = useState(1500);
+
+      useEffect(() => {
+        if (!running) return;
+        const t = setTimeout(() => {
+          const d = makeDeck();
+          setPrev(cur);
+          setCur(d[0]);
+          if (cur && cur.r === d[0].r) {
+            // match — must be slapped
+          }
+        }, speed);
+        return () => clearTimeout(t);
+      }, [cur, running]);
+
+      const slap = () => {
+        if (!running || !prev || !cur) return;
+        if (prev.r === cur.r) {
+          setScore(s => { const ns=s+1; if (ns>=5) { saveWin('snap'); setRunning(false); } return ns; });
+          setSpeed(s => Math.max(500, s-100));
+        } else {
+          setMiss(m => { const nm=m+1; if (nm>=3) setRunning(false); return nm; });
+        }
+      };
+      const start = () => {
+        const d = makeDeck();
+        setPrev(null); setCur(d[0]); setScore(0); setMiss(0); setSpeed(1500); setRunning(true);
+      };
+
+      return <div style={{padding:20,textAlign:'center'}}>
+        <button onClick={onBack} style={{position:'absolute',top:20,left:20,padding:'8px 16px',background:'#16a34a',color:'white',border:'none',borderRadius:8,cursor:'pointer'}}>← Hub</button>
+        <h2>🫰 Snap</h2>
+        <p>Nhấn SNAP khi 2 lá cùng giá trị (cần 5 để thắng, 3 sai thua)</p>
+        <div style={{fontSize:20,margin:10}}>🏆 {score} | ❌ {miss}/3</div>
+        <div style={{display:'flex',justifyContent:'center',gap:20,margin:'20px 0'}}>
+          <div><small>Trước</small><div>{prev ? <Card card={prev}/> : <Card hidden/>}</div></div>
+          <div><small>Hiện tại</small><div>{cur ? <Card card={cur}/> : <Card hidden/>}</div></div>
+        </div>
+        <button onClick={slap} disabled={!running} style={{padding:'16px 32px',margin:6,background:'#dc2626',color:'white',border:'none',borderRadius:8,fontSize:20,cursor:'pointer',fontWeight:'bold'}}>SNAP!</button>
+        <br/>
+        <button onClick={start} style={{padding:'12px 24px',margin:6,background:'#2563eb',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Bắt đầu</button>
+      </div>;
+    }
+
+    // ============ 7. HIGHER OR LOWER ============
+    function Higher({onBack}) {
+      const [deck, setDeck] = useState([]);
+      const [cur, setCur] = useState(null);
+      const [score, setScore] = useState(0);
+      const [msg, setMsg] = useState('Cao hơn hay thấp hơn?');
+      const [over, setOver] = useState(false);
+
+      const start = () => {
+        const d = makeDeck();
+        setCur(d[0]); setDeck(d.slice(1)); setScore(0); setMsg('Bắt đầu!'); setOver(false);
+      };
+      useEffect(() => { start(); }, []);
+
+      const guess = (hi) => {
+        if (deck.length===0) return;
+        const next = deck[0];
+        const correct = hi ? cardVal(next.r) > cardVal(cur.r) : cardVal(next.r) < cardVal(cur.r);
+        setCur(next); setDeck(deck.slice(1));
+        if (correct) {
+          setScore(s=>{const ns=s+1; if (ns>=5) { saveWin('higher'); setMsg(`🎉 Đúng 5 liên tiếp!`); setOver(true);} else setMsg(`✓ Đúng! ${ns}/5`); return ns;});
+        } else {
+          setMsg(`❌ Sai! Được ${score}`); setOver(true);
+        }
+      };
+
+      return <div style={{padding:20,textAlign:'center'}}>
+        <button onClick={onBack} style={{position:'absolute',top:20,left:20,padding:'8px 16px',background:'#16a34a',color:'white',border:'none',borderRadius:8,cursor:'pointer'}}>← Hub</button>
+        <h2>⬆️ Cao Thấp</h2>
+        <p style={{margin:10}}>{msg}</p>
+        <div style={{fontSize:20,margin:10}}>🏆 {score}/5</div>
+        {cur && <div style={{margin:20}}><Card card={cur}/></div>}
+        <button onClick={()=>guess(true)} disabled={over} style={{padding:'12px 24px',margin:6,background:'#16a34a',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>⬆️ Cao hơn</button>
+        <button onClick={()=>guess(false)} disabled={over} style={{padding:'12px 24px',margin:6,background:'#dc2626',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>⬇️ Thấp hơn</button>
+        <br/>
+        <button onClick={start} style={{padding:'12px 24px',margin:6,background:'#2563eb',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Ván mới</button>
+      </div>;
+    }
+
+    // ============ 8. MEMORY (sequence) ============
+    function Memory({onBack}) {
+      const [seq, setSeq] = useState([]);
+      const [input, setInput] = useState([]);
+      const [showing, setShowing] = useState(false);
+      const [showIdx, setShowIdx] = useState(-1);
+      const [level, setLevel] = useState(0);
+      const [msg, setMsg] = useState('Nhớ thứ tự các lá!');
+      const [over, setOver] = useState(false);
+
+      const start = () => {
+        setSeq([]); setInput([]); setLevel(0); setMsg('Ấn Bắt đầu'); setOver(false);
+        addCard([]);
+      };
+      const addCard = (prev) => {
+        const d = makeDeck();
+        const ns = [...prev, d[0]];
+        setSeq(ns); setInput([]); setLevel(ns.length);
+        setShowing(true); setShowIdx(0);
+        let i = 0;
+        const interval = setInterval(() => {
+          i++;
+          if (i >= ns.length) {
+            clearInterval(interval);
+            setShowing(false); setShowIdx(-1);
+            setMsg('Đến lượt bạn! Chọn theo thứ tự');
+          } else setShowIdx(i);
+        }, 800);
+      };
+
+      const pick = (card) => {
+        if (showing || over) return;
+        const ni = [...input, card];
+        setInput(ni);
+        const idx = ni.length - 1;
+        if (ni[idx].r !== seq[idx].r || ni[idx].s !== seq[idx].s) {
+          setMsg(`❌ Sai! Đạt level ${level-1}`); setOver(true);
+          return;
+        }
+        if (ni.length === seq.length) {
+          setMsg(`✓ Level ${level}!`);
+          if (level >= 5) { saveWin('memory'); setMsg('🎉 Thắng level 5!'); setOver(true); }
+          else setTimeout(() => addCard(seq), 1000);
+        }
+      };
+
+      const choices = seq.length > 0 ? [...seq, ...makeDeck().slice(0, 4)].sort(() => Math.random()-0.5).slice(0,8) : [];
+
+      return <div style={{padding:20,textAlign:'center'}}>
+        <button onClick={onBack} style={{position:'absolute',top:20,left:20,padding:'8px 16px',background:'#16a34a',color:'white',border:'none',borderRadius:8,cursor:'pointer'}}>← Hub</button>
+        <h2>🧠 Nhớ Thứ Tự Bài</h2>
+        <p>{msg}</p>
+        <div style={{fontSize:18,margin:10}}>Level {level}/5</div>
+        <div style={{minHeight:100,margin:20}}>
+          {showing && showIdx >= 0 && <Card card={seq[showIdx]}/>}
+          {!showing && seq.length > 0 && <div>
+            <div>Thứ tự cần chọn: {input.length}/{seq.length}</div>
+            <div style={{marginTop:15,display:'flex',flexWrap:'wrap',justifyContent:'center'}}>
+              {choices.map((c,i) => <span key={i} onClick={()=>pick(c)} style={{cursor:'pointer'}}><Card card={c}/></span>)}
+            </div>
+          </div>}
+        </div>
+        <button onClick={start} style={{padding:'12px 24px',margin:6,background:'#2563eb',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Bắt đầu</button>
+      </div>;
+    }
+
+    // ============ 9. PAIRS ============
+    function Pairs({onBack}) {
+      const [board, setBoard] = useState([]);
+      const [flipped, setFlipped] = useState([]);
+      const [matched, setMatched] = useState([]);
+      const [time, setTime] = useState(60);
+      const [running, setRunning] = useState(false);
+      const [moves, setMoves] = useState(0);
+
+      const start = () => {
+        const cards = [];
+        const d = makeDeck().slice(0,8);
+        d.forEach((c,i) => { cards.push({...c, id:i*2}); cards.push({...c, id:i*2+1}); });
+        cards.sort(() => Math.random()-0.5);
+        setBoard(cards); setFlipped([]); setMatched([]); setTime(60); setMoves(0); setRunning(true);
+      };
+
+      useEffect(() => {
+        if (!running) return;
+        if (time <= 0) { setRunning(false); return; }
+        const t = setTimeout(() => setTime(time-1), 1000);
+        return () => clearTimeout(t);
+      }, [time, running]);
+
+      useEffect(() => {
+        if (matched.length === 16 && running) {
+          setRunning(false);
+          saveWin('pairs');
+        }
+      }, [matched, running]);
+
+      const flip = (idx) => {
+        if (!running || flipped.includes(idx) || matched.includes(idx) || flipped.length >= 2) return;
+        const nf = [...flipped, idx];
+        setFlipped(nf);
+        if (nf.length === 2) {
+          setMoves(m=>m+1);
+          const [a,b] = nf;
+          if (board[a].r === board[b].r && board[a].s !== board[b].s ? true : board[a].r === board[b].r) {
+            if (board[a].r === board[b].r) {
+              setTimeout(() => { setMatched(m=>[...m,a,b]); setFlipped([]); }, 500);
+            } else {
+              setTimeout(() => setFlipped([]), 800);
+            }
+          } else setTimeout(() => setFlipped([]), 800);
+        }
+      };
+
+      return <div style={{padding:20,textAlign:'center'}}>
+        <button onClick={onBack} style={{position:'absolute',top:20,left:20,padding:'8px 16px',background:'#16a34a',color:'white',border:'none',borderRadius:8,cursor:'pointer'}}>← Hub</button>
+        <h2>👯 Tìm Cặp</h2>
+        <div style={{fontSize:18,margin:10}}>⏱️ {time}s | 🎯 {moves} | ✅ {matched.length/2}/8</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4, 1fr)',gap:8,maxWidth:300,margin:'20px auto'}}>
+          {board.map((c,i) => (
+            <div key={i} onClick={()=>flip(i)} style={{cursor:'pointer'}}>
+              <Card card={c} hidden={!flipped.includes(i) && !matched.includes(i)} small/>
+            </div>
+          ))}
+        </div>
+        {matched.length===16 && <div style={{color:'gold',fontSize:22,margin:10}}>🎉 Hoàn thành!</div>}
+        {time===0 && matched.length<16 && <div style={{color:'#f87171',fontSize:22,margin:10}}>⏰ Hết giờ!</div>}
+        <button onClick={start} style={{padding:'12px 24px',margin:6,background:'#dc2626',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Chơi mới</button>
+      </div>;
+    }
+
+    // ============ 10. CRAZY 8 ============
+    function Crazy8({onBack}) {
+      const [deck, setDeck] = useState([]);
+      const [hand, setHand] = useState([]);
+      const [ai, setAi] = useState([]);
+      const [top, setTop] = useState(null);
+      const [activeSuit, setActiveSuit] = useState(null);
+      const [turn, setTurn] = useState('p');
+      const [msg, setMsg] = useState('');
+
+      const start = () => {
+        const d = makeDeck();
+        setHand(d.slice(0,5)); setAi(d.slice(5,10));
+        setTop(d[10]); setActiveSuit(d[10].s); setDeck(d.slice(11));
+        setTurn('p'); setMsg('Lượt của bạn');
+      };
+      useEffect(() => { start(); }, []);
+
+      const canPlay = (c) => c.r === '8' || c.r === top.r || c.s === activeSuit;
+
+      const playCard = (c, isAi) => {
+        if (isAi) setAi(ai.filter(x => x!==c));
+        else setHand(hand.filter(x => x!==c));
+        setTop(c);
+        if (c.r === '8') {
+          const suits = ['♠','♥','♦','♣'];
+          const chosen = isAi ? suits[Math.floor(Math.random()*4)] : prompt('Chọn suit (♠♥♦♣):', '♠') || '♠';
+          setActiveSuit(suits.includes(chosen) ? chosen : '♠');
+        } else setActiveSuit(c.s);
+      };
+
+      const play = (c) => {
+        if (turn !== 'p' || !canPlay(c)) { setMsg('Không thể đánh lá này'); return; }
+        playCard(c, false);
+        const nh = hand.filter(x => x!==c);
+        if (nh.length === 0) { setMsg('🎉 Bạn thắng!'); saveWin('crazy8'); setTurn('end'); return; }
+        setTurn('a');
+        setTimeout(aiTurn, 900);
+      };
+
+      const draw = () => {
+        if (turn !== 'p' || deck.length===0) return;
+        setHand([...hand, deck[0]]);
+        setDeck(deck.slice(1));
+        setTurn('a');
+        setMsg('AI đi...');
+        setTimeout(aiTurn, 900);
+      };
+
+      const aiTurn = () => {
+        let cur = ai.slice();
+        let curDeck = deck.slice();
+        let played = null;
+        for (const c of cur) {
+          if (c.r === '8' || c.r === top.r || c.s === activeSuit) { played = c; break; }
+        }
+        if (played) {
+          playCard(played, true);
+          const na = cur.filter(x => x!==played);
+          if (na.length === 0) { setMsg('😢 AI thắng'); setTurn('end'); return; }
+        } else if (curDeck.length > 0) {
+          setAi([...cur, curDeck[0]]);
+          setDeck(curDeck.slice(1));
+          setMsg('AI rút bài');
+        } else setMsg('AI bỏ lượt');
+        setTurn('p');
+      };
+
+      if (!top) return null;
+      return <div style={{padding:20,textAlign:'center'}}>
+        <button onClick={onBack} style={{position:'absolute',top:20,left:20,padding:'8px 16px',background:'#16a34a',color:'white',border:'none',borderRadius:8,cursor:'pointer'}}>← Hub</button>
+        <h2>🎪 Crazy Eights</h2>
+        <p>8 = đổi suit | khớp suit/số. Hết bài = thắng.</p>
+        <p style={{margin:10}}>{msg}</p>
+        <div>AI có {ai.length} lá</div>
+        <div style={{margin:20}}>
+          <h3>Đống: (suit hiện tại: {activeSuit})</h3>
+          <Card card={top}/>
+        </div>
+        <div>Bài bạn ({hand.length}):</div>
+        <div style={{margin:'10px 0',display:'flex',flexWrap:'wrap',justifyContent:'center'}}>
+          {hand.map((c,i) => (
+            <span key={i} onClick={()=>play(c)} style={{cursor:'pointer',opacity:canPlay(c)?1:0.5}}>
+              <Card card={c} small/>
+            </span>
+          ))}
+        </div>
+        <button onClick={draw} disabled={turn!=='p'||deck.length===0} style={{padding:'12px 24px',margin:6,background:'#2563eb',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Rút ({deck.length})</button>
+        <button onClick={start} style={{padding:'12px 24px',margin:6,background:'#dc2626',color:'white',border:'none',borderRadius:8,fontSize:16,cursor:'pointer'}}>Ván mới</button>
+      </div>;
+    }
+
+    // ============ HUB ============
+    const GAMES = [
+      { id:'solitaire', emoji:'🃏', name:'Solitaire Đơn Giản', desc:'Xếp bài A→K theo suit', Comp:Solitaire, color:'#059669' },
+      { id:'war', emoji:'⚔️', name:'Chiến Bài (War)', desc:'Lá cao hơn thắng', Comp:War, color:'#dc2626' },
+      { id:'blackjack', emoji:'🎰', name:'Blackjack 21', desc:'Gần 21 nhất vs dealer', Comp:Blackjack, color:'#7c3aed' },
+      { id:'war21', emoji:'🎯', name:'Gần 21 Nhất', desc:'Đấu AI — gần 21 thắng', Comp:War21, color:'#f59e0b' },
+      { id:'speed', emoji:'⚡', name:'Speed', desc:'Chọn lá ±1 thật nhanh', Comp:Speed, color:'#0284c7' },
+      { id:'snap', emoji:'🫰', name:'Snap', desc:'Nhấn khi 2 lá khớp', Comp:Snap, color:'#e11d48' },
+      { id:'higher', emoji:'⬆️', name:'Cao Thấp', desc:'Đoán lá tiếp theo', Comp:Higher, color:'#16a34a' },
+      { id:'memory', emoji:'🧠', name:'Nhớ Thứ Tự', desc:'Nhớ sequence của bài', Comp:Memory, color:'#8b5cf6' },
+      { id:'pairs', emoji:'👯', name:'Tìm Cặp', desc:'Lật tìm cặp đôi 60s', Comp:Pairs, color:'#ec4899' },
+      { id:'crazy8', emoji:'🎪', name:'Crazy Eights', desc:'Đấu AI — 8 đổi suit', Comp:Crazy8, color:'#f97316' }
+    ];
+
+    function Hub({onPick}) {
+      const progress = loadProgress();
+      return <div style={{padding:20,maxWidth:1000,margin:'0 auto'}}>
+        <div style={{textAlign:'center',marginBottom:25}}>
+          <h1 style={{fontSize:38,marginBottom:8}}>🃏 Bài Hub</h1>
+          <p style={{opacity:0.8}}>10 game bài mini — lưu thắng theo game</p>
+          <a href="../index.html" style={{display:'inline-block',marginTop:12,padding:'8px 20px',background:'#16a34a',color:'white',textDecoration:'none',borderRadius:8}}>← Trang chủ</a>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))',gap:15}}>
+          {GAMES.map(g => (
+            <div key={g.id} onClick={()=>onPick(g.id)} style={{background:g.color,padding:20,borderRadius:12,cursor:'pointer',textAlign:'center',boxShadow:'0 4px 12px rgba(0,0,0,0.3)'}}>
+              <div style={{fontSize:48,marginBottom:8}}>{g.emoji}</div>
+              <div style={{fontSize:18,fontWeight:'bold',marginBottom:6}}>{g.name}</div>
+              <div style={{fontSize:13,opacity:0.9,marginBottom:8}}>{g.desc}</div>
+              <div style={{fontSize:14,background:'rgba(0,0,0,0.25)',padding:'4px 10px',borderRadius:12,display:'inline-block'}}>
+                🏆 Thắng: {progress[g.id]||0}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>;
+    }
+
+    function App() {
+      const [route, setRoute] = useState(() => window.location.hash.replace('#','') || '');
+
+      useEffect(() => {
+        const handler = () => setRoute(window.location.hash.replace('#',''));
+        window.addEventListener('hashchange', handler);
+        return () => window.removeEventListener('hashchange', handler);
+      }, []);
+
+      const pick = (id) => { window.location.hash = id; setRoute(id); };
+      const back = () => { window.location.hash = ''; setRoute(''); };
+
+      const game = GAMES.find(g => g.id === route);
+      if (game) { const C = game.Comp; return <C onBack={back}/>; }
+      return <Hub onPick={pick}/>;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

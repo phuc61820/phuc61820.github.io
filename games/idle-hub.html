@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>👆 Idle Hub — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #2e0a1a; min-height: 100vh; color: white; }
+    #root { min-height: 100vh; }
+    button { transition: all 0.15s; }
+    button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+    button:active:not(:disabled) { transform: scale(0.95); }
+  </style>
+  <script src="../js/theme.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const GAMES = [
+      { id: 'cookie',  emoji: '🍪', name: 'Cookie Clicker',  unit: 'bánh',   bg: 'linear-gradient(160deg,#3d1f0a,#6b3a13)', btn: '#d4922b', label: 'Bấm Bánh' },
+      { id: 'coin',    emoji: '💰', name: 'Coin Stacker',    unit: 'xu',     bg: 'linear-gradient(160deg,#1a1a0a,#3d3a13)', btn: '#e8c547', label: 'Hứng Xu' },
+      { id: 'tree',    emoji: '🌳', name: 'Plant Tree',       unit: 'hạt',    bg: 'linear-gradient(160deg,#0a2e1a,#1f5e3a)', btn: '#3fa860', label: 'Trồng Cây' },
+      { id: 'taco',    emoji: '🌮', name: 'Taco Shop',        unit: 'taco',   bg: 'linear-gradient(160deg,#3d0a1a,#8b2c1c)', btn: '#e85a3c', label: 'Làm Taco' },
+      { id: 'bitcoin', emoji: '₿',  name: 'Crypto Mining',    unit: 'BTC',    bg: 'linear-gradient(160deg,#0a1a3d,#1c3a8b)', btn: '#f7931a', label: 'Đào Coin' },
+      { id: 'robot',   emoji: '🤖', name: 'Robot Army',       unit: 'bot',    bg: 'linear-gradient(160deg,#1a1a1a,#3a3a3d)', btn: '#7da7d9', label: 'Lắp Robot' },
+      { id: 'factory', emoji: '🏭', name: 'Factory',          unit: 'sp',     bg: 'linear-gradient(160deg,#1a1a2e,#3d3a5e)', btn: '#a0a0c0', label: 'Sản Xuất' },
+      { id: 'gem',     emoji: '💎', name: 'Gem Collector',    unit: 'đá',     bg: 'linear-gradient(160deg,#0a1a3d,#3a1c8b)', btn: '#7ec8ff', label: 'Nhặt Đá' },
+      { id: 'magic',   emoji: '🔮', name: 'Magic Mana',       unit: 'mana',   bg: 'linear-gradient(160deg,#2e0a3d,#5e1c8b)', btn: '#c47de8', label: 'Tụ Mana' },
+      { id: 'farm',    emoji: '🚜', name: 'Farm Harvest',     unit: 'lúa',    bg: 'linear-gradient(160deg,#3d2e0a,#8b6c1c)', btn: '#e8c84a', label: 'Thu Hoạch' }
+    ];
+
+    const UPGRADES = [
+      { name: 'Click +1',    type: 'click', baseCost: 15,    val: 1,    growth: 1.15 },
+      { name: 'Auto Helper', type: 'auto',  baseCost: 100,   val: 1,    growth: 1.2 },
+      { name: 'Click +5',    type: 'click', baseCost: 500,   val: 5,    growth: 1.18 },
+      { name: 'Mega Auto',   type: 'auto',  baseCost: 3000,  val: 10,   growth: 1.25 },
+      { name: 'Ultra Boost', type: 'auto',  baseCost: 25000, val: 100,  growth: 1.3 }
+    ];
+
+    const loadAll = () => {
+      try { return JSON.parse(localStorage.getItem('idleProgress')) || {}; } catch { return {}; }
+    };
+
+    const saveAll = (data) => {
+      try { localStorage.setItem('idleProgress', JSON.stringify(data)); } catch {}
+    };
+
+    const fmt = (n) => {
+      if (n < 1000) return Math.floor(n).toString();
+      if (n < 1e6) return (n/1000).toFixed(1) + 'K';
+      if (n < 1e9) return (n/1e6).toFixed(2) + 'M';
+      if (n < 1e12) return (n/1e9).toFixed(2) + 'B';
+      return (n/1e12).toFixed(2) + 'T';
+    };
+
+    function Hub({ go }) {
+      const all = loadAll();
+      return (
+        <div style={{padding:'20px',maxWidth:'1200px',margin:'0 auto'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px',flexWrap:'wrap',gap:'10px'}}>
+            <h1 style={{fontSize:'2em'}}>👆 Idle Hub</h1>
+            <a href="../index.html" style={{background:'#fff',color:'#2e0a1a',padding:'10px 20px',borderRadius:'10px',textDecoration:'none',fontWeight:'bold'}}>← Trang Chính</a>
+          </div>
+          <p style={{marginBottom:'20px',opacity:0.85}}>10 game idle bấm liên tục — thu thập tài nguyên, mua nâng cấp, tự động sinh!</p>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:'15px'}}>
+            {GAMES.map(g => {
+              const p = all[g.id] || { count: 0 };
+              return (
+                <div key={g.id} onClick={() => go(g.id)} style={{background:g.bg,padding:'20px',borderRadius:'15px',cursor:'pointer',border:'2px solid rgba(255,255,255,0.15)'}}>
+                  <div style={{fontSize:'3em',textAlign:'center'}}>{g.emoji}</div>
+                  <h3 style={{textAlign:'center',marginTop:'10px'}}>{g.name}</h3>
+                  <p style={{textAlign:'center',marginTop:'8px',fontSize:'0.9em',opacity:0.85}}>{fmt(p.count)} {g.unit}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function Game({ gameId, back }) {
+      const cfg = GAMES.find(g => g.id === gameId);
+      const all = loadAll();
+      const init = all[gameId] || { count: 0, upgrades: [0,0,0,0,0] };
+      const [count, setCount] = useState(init.count || 0);
+      const [ups, setUps] = useState(init.upgrades || [0,0,0,0,0]);
+      const [pop, setPop] = useState([]);
+
+      const clickPower = 1 + UPGRADES.reduce((s, u, i) => s + (u.type==='click' ? u.val * ups[i] : 0), 0);
+      const autoRate = UPGRADES.reduce((s, u, i) => s + (u.type==='auto' ? u.val * ups[i] : 0), 0);
+
+      useEffect(() => {
+        const data = loadAll();
+        data[gameId] = { count, upgrades: ups };
+        saveAll(data);
+      }, [count, ups, gameId]);
+
+      useEffect(() => {
+        if (autoRate <= 0) return;
+        const t = setInterval(() => setCount(c => c + autoRate/10), 100);
+        return () => clearInterval(t);
+      }, [autoRate]);
+
+      const cost = (i) => Math.floor(UPGRADES[i].baseCost * Math.pow(UPGRADES[i].growth, ups[i]));
+
+      const buy = (i) => {
+        const c = cost(i);
+        if (count >= c) {
+          setCount(count - c);
+          const nu = [...ups]; nu[i]++; setUps(nu);
+        }
+      };
+
+      const click = (e) => {
+        setCount(count + clickPower);
+        const id = Date.now() + Math.random();
+        const x = e.nativeEvent ? e.nativeEvent.offsetX : 50;
+        const y = e.nativeEvent ? e.nativeEvent.offsetY : 50;
+        setPop(p => [...p, {id, x, y, v: clickPower}]);
+        setTimeout(() => setPop(p => p.filter(it => it.id !== id)), 800);
+      };
+
+      return (
+        <div style={{minHeight:'100vh',background:cfg.bg,padding:'15px'}}>
+          <div style={{maxWidth:'900px',margin:'0 auto'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'15px',flexWrap:'wrap',gap:'10px'}}>
+              <button onClick={back} style={{background:'rgba(255,255,255,0.2)',color:'white',border:'none',padding:'10px 18px',borderRadius:'10px',cursor:'pointer',fontWeight:'bold'}}>← Hub</button>
+              <h2 style={{fontSize:'1.4em'}}>{cfg.emoji} {cfg.name}</h2>
+              <a href="../index.html" style={{background:'rgba(255,255,255,0.2)',color:'white',padding:'10px 18px',borderRadius:'10px',textDecoration:'none',fontWeight:'bold'}}>🏠</a>
+            </div>
+
+            <div style={{background:'rgba(0,0,0,0.4)',padding:'20px',borderRadius:'15px',textAlign:'center',marginBottom:'15px'}}>
+              <div style={{fontSize:'2.5em',fontWeight:'bold'}}>{fmt(count)}</div>
+              <div style={{opacity:0.8,marginTop:'4px'}}>{cfg.unit} đã có</div>
+              <div style={{marginTop:'8px',fontSize:'0.95em',opacity:0.85}}>+{clickPower}/click · {autoRate.toFixed(1)}/giây</div>
+            </div>
+
+            <div style={{position:'relative',textAlign:'center',marginBottom:'20px'}}>
+              <button onClick={click} style={{background:cfg.btn,border:'none',width:'200px',height:'200px',borderRadius:'50%',fontSize:'5em',cursor:'pointer',boxShadow:'0 8px 25px rgba(0,0,0,0.4)',color:'white'}}>
+                {cfg.emoji}
+              </button>
+              <div style={{marginTop:'10px',fontWeight:'bold'}}>{cfg.label}</div>
+              {pop.map(p => (
+                <div key={p.id} style={{position:'absolute',left:'50%',top:'50%',transform:`translate(${p.x-100}px,${p.y-100}px)`,color:'#fff',fontWeight:'bold',fontSize:'1.5em',pointerEvents:'none',animation:'none',textShadow:'0 0 8px rgba(0,0,0,0.8)'}}>+{p.v}</div>
+              ))}
+            </div>
+
+            <h3 style={{marginBottom:'10px'}}>🛒 Nâng Cấp</h3>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:'10px'}}>
+              {UPGRADES.map((u, i) => {
+                const c = cost(i);
+                const can = count >= c;
+                return (
+                  <button key={i} onClick={() => buy(i)} disabled={!can} style={{background:can?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.3)',border:'2px solid rgba(255,255,255,0.2)',color:'white',padding:'12px',borderRadius:'10px',cursor:can?'pointer':'not-allowed',opacity:can?1:0.5,textAlign:'left'}}>
+                    <div style={{fontWeight:'bold'}}>{u.name}</div>
+                    <div style={{fontSize:'0.85em',opacity:0.85,marginTop:'4px'}}>Cấp: {ups[i]}</div>
+                    <div style={{fontSize:'0.85em',marginTop:'4px'}}>💵 {fmt(c)}</div>
+                    <div style={{fontSize:'0.8em',opacity:0.8,marginTop:'4px'}}>{u.type==='click'?`+${u.val}/click`:`+${u.val}/s`}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [route, setRoute] = useState(() => (location.hash || '#').slice(1));
+
+      useEffect(() => {
+        const onHash = () => setRoute((location.hash || '#').slice(1));
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+
+      const go = (id) => { location.hash = id; };
+      const back = () => { location.hash = ''; };
+
+      const valid = GAMES.some(g => g.id === route);
+      if (valid) return <Game gameId={route} back={back} />;
+      return <Hub go={go} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
