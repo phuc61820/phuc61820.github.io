@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧱 Xếp Lego Bảng Lớn — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #0f0723, #1e0a3c);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #root { min-height: 100vh; }
+    canvas { display: block; image-rendering: pixelated; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 4px; }
+  </style>
+  <script src="../js/theme.js"></script>
+  <script src="../js/analytics.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect, useCallback } = React;
+
+    // Bảng 100×150
+    const GRID_W = 100;
+    const GRID_H = 150;
+    const BASE_CELL = 10; // pixel mỗi ô ở zoom 1x
+
+    // Mảnh Lego (giữ công thức từ lego.html, thêm vài mảnh lớn hơn cho bảng to)
+    const LEGO_PIECES = [
+      { id:'1x1',  name:'1×1',  icon:'🟥', w:1, h:1, color:'#ef4444', cost:5    },
+      { id:'1x2',  name:'1×2',  icon:'🟧', w:2, h:1, color:'#f97316', cost:8    },
+      { id:'1x4',  name:'1×4',  icon:'🟨', w:4, h:1, color:'#eab308', cost:14   },
+      { id:'2x2',  name:'2×2',  icon:'🟩', w:2, h:2, color:'#22c55e', cost:18   },
+      { id:'2x4',  name:'2×4',  icon:'🟦', w:4, h:2, color:'#3b82f6', cost:28   },
+      { id:'2x2r', name:'2×2 Đỏ',icon:'🔴',w:2, h:2, color:'#dc2626', cost:20   },
+      { id:'arch', name:'Vòm',  icon:'🌈', w:3, h:2, color:'#a855f7', cost:25   },
+      { id:'window',name:'Cửa Sổ',icon:'🪟',w:2,h:2, color:'#60a5fa', cost:22   },
+      { id:'door', name:'Cửa',  icon:'🚪', w:1, h:3, color:'#78716c', cost:30   },
+      { id:'roof', name:'Mái',  icon:'🔺', w:4, h:2, color:'#b45309', cost:35   },
+      { id:'star', name:'Sao',  icon:'⭐', w:2, h:2, color:'#fbbf24', cost:50   },
+      // Mảnh siêu lớn dành riêng cho bảng lớn
+      { id:'wall',  name:'Tường', icon:'🧱', w:8, h:2, color:'#9a3412', cost:80  },
+      { id:'floor', name:'Sàn',   icon:'🟫', w:10,h:1, color:'#57534e', cost:60  },
+      { id:'tower', name:'Tháp',  icon:'🗼', w:4, h:8, color:'#7c3aed', cost:180 },
+      { id:'castle',name:'Lâu Đài',icon:'🏰',w:10,h:10,color:'#f43f5e', cost:500 },
+    ];
+
+    // Thử thách scale lên cho bảng 15.000 ô
+    const LEGO_CHALLENGES = [
+      { name:'Nhà Nhỏ',     target:100,   reward:1000,    desc:'100 ô' },
+      { name:'Biệt Thự',    target:500,   reward:8000,    desc:'500 ô' },
+      { name:'Lâu Đài',     target:2000,  reward:50000,   desc:'2.000 ô' },
+      { name:'Thành Phố',   target:5000,  reward:300000,  desc:'5.000 ô' },
+      { name:'Siêu Đại Đô', target:10000, reward:2000000, desc:'10.000 ô — bậc thầy!' },
+    ];
+
+    function LegoBigGame({ onBack }) {
+      // Lưới: mảng 2D, mỗi ô null hoặc { color, pieceId, anchorR, anchorC }
+      const gridRef = useRef(null);
+      if (gridRef.current === null) {
+        gridRef.current = Array.from({length: GRID_H}, () => Array(GRID_W).fill(null));
+      }
+      const canvasRef = useRef(null);
+      const wrapRef = useRef(null);
+
+      const [selected, setSelected] = useState(LEGO_PIECES[0]);
+      const [score, setScore]       = useState(0);
+      const [best, setBest]         = useState(0);
+      const [total, setTotal]       = useState(0);
+      const [completed, setCompleted] = useState([]);
+      const [msg, setMsg]           = useState('');
+      const [zoom, setZoom]         = useState(1);
+      const [hover, setHover]       = useState(null); // {r,c}
+      const [mode, setMode]         = useState('place'); // 'place' | 'erase'
+
+      const showMsg = (t) => { setMsg(t); setTimeout(()=>setMsg(''), 2200); };
+
+      // ===== Vẽ canvas =====
+      const draw = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const cell = BASE_CELL * zoom;
+        canvas.width  = GRID_W * cell;
+        canvas.height = GRID_H * cell;
+        const ctx = canvas.getContext('2d');
+
+        // Nền checker
+        for (let r=0; r<GRID_H; r++) {
+          for (let c=0; c<GRID_W; c++) {
+            ctx.fillStyle = (r+c)%2===0 ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.05)';
+            ctx.fillRect(c*cell, r*cell, cell, cell);
+          }
+        }
+
+        // Lưới mảnh đã đặt
+        const g = gridRef.current;
+        for (let r=0; r<GRID_H; r++) {
+          for (let c=0; c<GRID_W; c++) {
+            const cellData = g[r][c];
+            if (!cellData) continue;
+            ctx.fillStyle = cellData.color;
+            ctx.fillRect(c*cell, r*cell, cell, cell);
+            // hiệu ứng nút Lego (chấm tròn) nếu cell đủ lớn
+            if (cell >= 6) {
+              ctx.fillStyle = 'rgba(255,255,255,0.22)';
+              ctx.beginPath();
+              ctx.arc(c*cell + cell/2, r*cell + cell/2, cell*0.28, 0, Math.PI*2);
+              ctx.fill();
+            }
+            // viền tối nhẹ
+            ctx.fillStyle = 'rgba(0,0,0,0.18)';
+            ctx.fillRect(c*cell, r*cell + cell - Math.max(1, cell*0.12), cell, Math.max(1, cell*0.12));
+          }
+        }
+
+        // Khung
+        ctx.strokeStyle = 'rgba(240,171,252,0.4)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+        // Hover preview
+        if (hover && mode==='place' && selected) {
+          const {r, c} = hover;
+          const fits = r + selected.h <= GRID_H && c + selected.w <= GRID_W;
+          let conflict = !fits;
+          if (fits) {
+            for (let dr=0; dr<selected.h && !conflict; dr++)
+              for (let dc=0; dc<selected.w && !conflict; dc++)
+                if (g[r+dr][c+dc]) conflict = true;
+          }
+          ctx.fillStyle = conflict ? 'rgba(239,68,68,0.35)' : `${selected.color}66`;
+          ctx.fillRect(c*cell, r*cell, selected.w*cell, selected.h*cell);
+          ctx.strokeStyle = conflict ? '#ef4444' : '#fff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(c*cell+1, r*cell+1, selected.w*cell-2, selected.h*cell-2);
+        }
+      }, [zoom, hover, selected, mode]);
+
+      useEffect(() => { draw(); }, [draw, total]);
+
+      // ===== Click / hover =====
+      const eventToCell = (e) => {
+        const canvas = canvasRef.current;
+        const rect = canvas.getBoundingClientRect();
+        const cell = BASE_CELL * zoom;
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const c = Math.floor(x / cell);
+        const r = Math.floor(y / cell);
+        if (r<0||r>=GRID_H||c<0||c>=GRID_W) return null;
+        return {r, c};
+      };
+
+      const canPlace = (r, c, piece) => {
+        if (r+piece.h>GRID_H || c+piece.w>GRID_W) return false;
+        const g = gridRef.current;
+        for (let dr=0; dr<piece.h; dr++)
+          for (let dc=0; dc<piece.w; dc++)
+            if (g[r+dr][c+dc]) return false;
+        return true;
+      };
+
+      const placePiece = (r, c) => {
+        if (!selected) return;
+        if (!canPlace(r, c, selected)) { showMsg('❌ Không đặt được ở đây!'); return; }
+        const g = gridRef.current;
+        for (let dr=0; dr<selected.h; dr++)
+          for (let dc=0; dc<selected.w; dc++)
+            g[r+dr][c+dc] = { color: selected.color, pieceId: selected.id, anchorR: r, anchorC: c };
+        const pts = selected.w * selected.h * 2;
+        const cells = selected.w * selected.h;
+        const newTotal = total + cells;
+        setTotal(newTotal);
+        setScore(p => { const np = p + pts; setBest(b => Math.max(b, np)); return np; });
+
+        LEGO_CHALLENGES.forEach(ch => {
+          if (!completed.includes(ch.name) && newTotal >= ch.target) {
+            setCompleted(p => [...p, ch.name]);
+            showMsg(`🏆 Hoàn thành: ${ch.name}! +${ch.reward.toLocaleString('vi-VN')}đ`);
+          }
+        });
+      };
+
+      const removePieceAt = (r, c) => {
+        const g = gridRef.current;
+        const cellData = g[r][c];
+        if (!cellData) return;
+        const { anchorR, anchorC, pieceId } = cellData;
+        const piece = LEGO_PIECES.find(p => p.id === pieceId);
+        if (!piece) { g[r][c] = null; setTotal(t=>t-1); return; }
+        let removed = 0;
+        for (let dr=0; dr<piece.h; dr++)
+          for (let dc=0; dc<piece.w; dc++) {
+            const rr = anchorR+dr, cc = anchorC+dc;
+            if (rr<GRID_H && cc<GRID_W && g[rr][cc] && g[rr][cc].anchorR===anchorR && g[rr][cc].anchorC===anchorC) {
+              g[rr][cc] = null;
+              removed++;
+            }
+          }
+        setTotal(t => t - removed);
+      };
+
+      const onCanvasClick = (e) => {
+        const pos = eventToCell(e);
+        if (!pos) return;
+        if (mode === 'erase' || gridRef.current[pos.r][pos.c]) {
+          removePieceAt(pos.r, pos.c);
+        } else {
+          placePiece(pos.r, pos.c);
+        }
+      };
+
+      const onCanvasMove = (e) => {
+        const pos = eventToCell(e);
+        setHover(pos);
+      };
+
+      const resetGrid = () => {
+        if (!confirm('Xoá toàn bộ công trình?')) return;
+        gridRef.current = Array.from({length: GRID_H}, () => Array(GRID_W).fill(null));
+        setTotal(0); setScore(0); setCompleted([]);
+      };
+
+      // ===== UI =====
+      return (
+        <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',padding:8,gap:6,color:'#e9d5ff'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button onClick={onBack} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'4px 10px',color:'#cbd5e1',cursor:'pointer',fontSize:12}}>← Hub</button>
+            <h3 style={{margin:0,color:'#f0abfc',fontSize:14,fontWeight:900}}>🧱 Lego Bảng Lớn 100×150</h3>
+            <div style={{textAlign:'right'}}>
+              <div style={{color:'#fbbf24',fontWeight:900,fontSize:13}}>⭐ {score}</div>
+              <div style={{fontSize:9,color:'#94a3b8'}}>🧱 {total.toLocaleString('vi-VN')} ô</div>
+            </div>
+          </div>
+
+          {msg && <div style={{textAlign:'center',background:'rgba(240,171,252,0.15)',border:'1px solid rgba(240,171,252,0.3)',borderRadius:8,padding:'5px',color:'#f0abfc',fontSize:12,fontWeight:700}}>{msg}</div>}
+
+          {/* Chọn mảnh */}
+          <div style={{display:'flex',gap:4,overflowX:'auto',paddingBottom:4}}>
+            {LEGO_PIECES.map(p => (
+              <button key={p.id} onClick={()=>{setSelected(p); setMode('place');}} style={{
+                flexShrink:0,
+                background: (mode==='place' && selected?.id===p.id) ? `${p.color}44` : 'rgba(255,255,255,0.04)',
+                border: `2px solid ${(mode==='place' && selected?.id===p.id) ? p.color : 'rgba(255,255,255,0.08)'}`,
+                borderRadius:8, padding:'5px 8px', cursor:'pointer', textAlign:'center', minWidth:52,
+              }}>
+                <div style={{fontSize:18}}>{p.icon}</div>
+                <div style={{fontSize:8,color:p.color,fontWeight:700}}>{p.name}</div>
+                <div style={{fontSize:8,color:'#94a3b8'}}>{p.w}×{p.h}</div>
+              </button>
+            ))}
+            <button onClick={()=>setMode('erase')} style={{
+              flexShrink:0,
+              background: mode==='erase' ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.04)',
+              border: `2px solid ${mode==='erase' ? '#ef4444' : 'rgba(255,255,255,0.08)'}`,
+              borderRadius:8, padding:'5px 8px', cursor:'pointer', textAlign:'center', minWidth:52, color:'#fca5a5',
+            }}>
+              <div style={{fontSize:18}}>🧹</div>
+              <div style={{fontSize:8,fontWeight:700}}>Xoá</div>
+            </button>
+          </div>
+
+          {/* Thanh điều khiển zoom */}
+          <div style={{display:'flex',gap:6,alignItems:'center',justifyContent:'space-between',fontSize:11}}>
+            <div style={{display:'flex',gap:4,alignItems:'center'}}>
+              <button onClick={()=>setZoom(z=>Math.max(0.4, +(z-0.2).toFixed(2)))} style={btnSm}>➖</button>
+              <span style={{minWidth:48,textAlign:'center',color:'#cbd5e1'}}>🔍 {Math.round(zoom*100)}%</span>
+              <button onClick={()=>setZoom(z=>Math.min(3, +(z+0.2).toFixed(2)))} style={btnSm}>➕</button>
+              <button onClick={()=>setZoom(1)} style={btnSm}>↺</button>
+            </div>
+            <button onClick={resetGrid} style={{...btnSm, background:'rgba(239,68,68,0.18)', borderColor:'rgba(239,68,68,0.4)', color:'#fca5a5'}}>🗑️ Xoá tất</button>
+          </div>
+
+          {/* Canvas bảng lớn — scroll cả 2 chiều */}
+          <div ref={wrapRef} style={{
+            flex:1, minHeight:380, maxHeight:'62vh',
+            overflow:'auto', border:'2px solid rgba(240,171,252,0.2)',
+            borderRadius:10, background:'rgba(0,0,0,0.4)', padding:4,
+          }}>
+            <canvas
+              ref={canvasRef}
+              onClick={onCanvasClick}
+              onMouseMove={onCanvasMove}
+              onMouseLeave={()=>setHover(null)}
+              style={{cursor: mode==='erase' ? 'crosshair' : 'pointer'}}
+            />
+          </div>
+
+          {/* Thử thách */}
+          <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+            {LEGO_CHALLENGES.map(ch => (
+              <span key={ch.name} style={{
+                fontSize:10, padding:'3px 8px', borderRadius:8,
+                background: completed.includes(ch.name) ? 'rgba(251,191,36,0.18)' : 'rgba(255,255,255,0.04)',
+                color: completed.includes(ch.name) ? '#fbbf24' : '#94a3b8',
+                border: `1px solid ${completed.includes(ch.name) ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                fontWeight: 700,
+              }}>
+                {completed.includes(ch.name) ? '✅ ' : ''}{ch.name}: {ch.target.toLocaleString('vi-VN')}ô
+              </span>
+            ))}
+          </div>
+          <div style={{fontSize:9,color:'#64748b',textAlign:'center'}}>
+            🏆 Kỷ lục: {best} | Tip: click ô trống để đặt, click ô gạch để xoá. Dùng ➕➖ để zoom bảng 15.000 ô.
+          </div>
+        </div>
+      );
+    }
+
+    const btnSm = {
+      background:'rgba(255,255,255,0.06)',
+      border:'1px solid rgba(255,255,255,0.12)',
+      borderRadius:6, padding:'4px 10px', color:'#e2e8f0',
+      cursor:'pointer', fontSize:11, fontWeight:700,
+    };
+
+    function App() {
+      const handleBack = () => { window.location.href = '../index.html'; };
+      return <LegoBigGame onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

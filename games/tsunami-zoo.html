@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🌊 Vườn Thú Sóng Thần — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(180deg, #082f49, #0c4a6e);
+      min-height: 100vh; color: #e0f2fe;
+      user-select: none; -webkit-user-select: none; overflow-x: hidden;
+    }
+    #root { min-height: 100vh; }
+    button { font-family: inherit; cursor: pointer; }
+    @keyframes wavePulse {
+      0%, 100% { opacity: 0.75; }
+      50%      { opacity: 1; }
+    }
+    @keyframes pop {
+      0%   { transform: translate(-50%,0) scale(0.6); opacity: 1; }
+      100% { transform: translate(-50%,-50px) scale(1.3); opacity: 0; }
+    }
+    @keyframes warningBlink {
+      0%, 100% { background: rgba(239,68,68,0.45); }
+      50%      { background: rgba(239,68,68,0.8); }
+    }
+    @keyframes coinPop {
+      0%   { transform: scale(0.6); opacity: 0; }
+      40%  { transform: scale(1.25); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-4px); }
+    }
+  </style>
+  <script src="../js/theme.js"></script>
+  <script src="../js/analytics.js"></script>
+  <script src="../js/save.js?v=1"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ============================
+    // CẤU HÌNH
+    // ============================
+    const SAVE_ID        = 'tsunami-zoo';
+    // Migrate save cũ (key 'tsunamiZoo_v4') sang chuẩn 'gamehub_save_tsunami-zoo'
+    if (window.GameSave) GameSave.migrate('tsunamiZoo_v4', SAVE_ID);
+    const NUM_MAPS       = 10;
+    const MAP_WIDTH      = 2400;
+    const VIEW_HEIGHT    = 340;
+    const PLAYER_W       = 36;
+    const PLAYER_SPEED   = 4;
+    const MAX_SPEED_LEVEL = 1000;
+    const SPEED_UPGRADE_COST = (level) => (level + 1) * 500;
+    const TICK_MS        = 50;
+    const TICKS_PER_SEC  = 20;
+    const DOOR_W         = 70;
+    const SAFE_ZONE_X    = 240;
+    const WAREHOUSE_X    = 90;          // vị trí kho trong vùng an toàn
+    const WAREHOUSE_W    = 80;
+    const PICKUP_RANGE   = 45;          // px gần thú để nhặt được
+    const DEPOSIT_RANGE  = 60;          // px gần kho để cất
+    const ANIMALS_PER_MAP = 100;
+    const CARRY_BASE     = 50;          // sức chứa cơ bản (cấp 0)
+    const CARRY_PER_LEVEL = 30;         // mỗi cấp túi +30 con
+    const MAX_CARRY_LEVEL = 100;        // cấp tối đa
+    const CARRY_UPGRADE_COST = (level) => (level + 1) * 1000;
+    const getCarryMax = (level) => CARRY_BASE + (level || 0) * CARRY_PER_LEVEL;
+
+    const TSUNAMI_PERIOD_SEC = 25;
+    const TSUNAMI_WARN_SEC   = 5;
+    const TSUNAMI_SWEEP_SEC  = 4;
+
+    // CHẾ ĐỘ BÍ MẬT
+    const GOD_PASSWORD       = 'tienphuc';   // click nhân vật → nhập mật khẩu
+    const MAGNET_RANGE       = 250;          // px hút thú khi bật nam châm
+    const MAGNET_SPEED       = 6;            // px / tick thú bay về player
+    const FREEZE_DURATION_SEC = 5;           // ngừng thời gian 5s
+    const TORNADO_DURATION_SEC = 12;         // lốc xoáy chặn sóng 12s
+
+    const ANIMALS = [
+      '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯',
+      '🦁','🐮','🐷','🐸','🐵','🐒','🐔','🐧','🐦','🐤',
+      '🐣','🐥','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄',
+      '🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🦂',
+      '🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀',
+      '🐡','🐠','🐟','🐬','🐳','🐋','🦈','🦭','🐊','🐅',
+      '🐆','🦓','🦍','🦧','🐘','🦣','🦛','🦏','🐪','🐫',
+      '🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑',
+      '🦙','🐐','🦌','🐕','🐩','🦮','🐈','🪶','🐓','🦃',
+      '🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🐀'
+    ];
+
+    const animalPriceBase = (mapId) => 10 + mapId * 5;
+
+    // Sinh ngẫu nhiên thú rải khắp danger zone
+    function genAnimals(mapId) {
+      const count = ANIMALS_PER_MAP;
+      const startX = SAFE_ZONE_X + 60;
+      const endX = MAP_WIDTH - DOOR_W - 60;
+      const result = [];
+      // Seed pseudo-random theo mapId để mỗi map khác nhau
+      let seed = mapId * 9999;
+      const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return (seed >>> 8) / 0x7fffff; };
+
+      for (let i = 0; i < count; i++) {
+        const x = startX + rnd() * (endX - startX);
+        const dist = (x - startX) / (endX - startX);   // 0..1
+        const rarity = Math.round((1 + dist * 9) * 10) / 10; // 1..10
+        const species = ANIMALS[Math.floor(rnd() * ANIMALS.length)];
+        const price = Math.round(animalPriceBase(mapId) * rarity);
+        const income = Math.max(1, Math.floor(price / 5));
+        result.push({ id: i, x, species, rarity, price, income });
+      }
+      // Sort by x for visual
+      result.sort((a, b) => a.x - b.x);
+      return result;
+    }
+
+    const defaultState = () => ({
+      map: 1,
+      money: 200,
+      income: 0,
+      playerX: 80,
+      animals: genAnimals(1),
+      carrying: [],              // mảng thú đang cầm (max CARRY_MAX)
+      gameOver: false,
+      mapClear: false,
+      highMap: 1,
+      collection: {},
+      speedLevel: 0,
+      carryLevel: 0,
+      tickCount: 0,
+      tsunamiPhase: 'idle',
+      tsunamiTimer: TSUNAMI_PERIOD_SEC,
+      tsunamiSweepFront: MAP_WIDTH,
+      showCollection: false,
+      godMode: false,
+      showPwdModal: false,
+      showGodPanel: false,
+      autoMagnet: false,
+      tornadoTicksLeft: 0,
+      freezeTicksLeft: 0,
+      immortal: false,    // 🛡️ chế độ bất tử — sóng không giết được
+    });
+
+    const btn = (color, extra = {}) => ({
+      padding: '8px 14px', borderRadius: 10, border: 'none',
+      background: color, color: '#fff', fontWeight: 700, fontSize: 13,
+      cursor: 'pointer', ...extra,
+    });
+
+    // ============================
+    // GAME CHÍNH
+    // ============================
+    function TsunamiZoo() {
+      const [state, setState] = useState(() => {
+        const def = defaultState();
+        const saved = (window.GameSave && GameSave.load(SAVE_ID)) || null;
+        return {
+          ...def,
+          highMap:    (saved && saved.highMap)    || 1,
+          collection: (saved && saved.collection) || {},
+          speedLevel: (saved && saved.speedLevel) || 0,
+          carryLevel: (saved && saved.carryLevel) || 0,
+        };
+      });
+
+      const [popups, setPopups] = useState([]);
+      const popIdRef = useRef(0);
+      const keysRef = useRef({ left: false, right: false });
+      const viewRef = useRef(null);
+
+      // Lưu tiến trình — throttle 500ms để không ghi liên tục khi nhặt thú
+      useEffect(() => {
+        if (!window.GameSave) return;
+        GameSave.saveThrottled(SAVE_ID, {
+          highMap:    state.highMap,
+          collection: state.collection,
+          speedLevel: state.speedLevel,
+          carryLevel: state.carryLevel,
+        }, 500);
+      }, [state.highMap, state.collection, state.speedLevel, state.carryLevel]);
+
+      // Bàn phím
+      useEffect(() => {
+        const down = (e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keysRef.current.left = true;
+          if (e.key === 'ArrowRight'|| e.key === 'd' || e.key === 'D') keysRef.current.right = true;
+          if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); doAction(); }
+        };
+        const up = (e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keysRef.current.left = false;
+          if (e.key === 'ArrowRight'|| e.key === 'd' || e.key === 'D') keysRef.current.right = false;
+        };
+        window.addEventListener('keydown', down);
+        window.addEventListener('keyup', up);
+        return () => {
+          window.removeEventListener('keydown', down);
+          window.removeEventListener('keyup', up);
+        };
+      });
+
+      // Vòng lặp game
+      useEffect(() => {
+        if (state.gameOver || state.mapClear) return;
+        const id = setInterval(() => {
+          setState(prev => {
+            if (prev.gameOver || prev.mapClear) return prev;
+
+            let { playerX, money, income, tickCount, tsunamiPhase, tsunamiTimer, tsunamiSweepFront } = prev;
+            let { tornadoTicksLeft, freezeTicksLeft } = prev;
+            let animals = prev.animals;
+            let carrying = prev.carrying || [];
+            let collection = prev.collection;
+
+            const speed = PLAYER_SPEED + (prev.speedLevel || 0);
+            const dx = (keysRef.current.right ? speed : 0) - (keysRef.current.left ? speed : 0);
+            playerX = Math.max(0, Math.min(MAP_WIDTH - PLAYER_W, playerX + dx));
+
+            tickCount += 1;
+            const onceASec = tickCount % TICKS_PER_SEC === 0;
+            if (onceASec) money += income;
+
+            // === Đếm ngược freeze/tornado ===
+            const isFrozen = freezeTicksLeft > 0;
+            if (isFrozen) freezeTicksLeft = Math.max(0, freezeTicksLeft - 1);
+            if (tornadoTicksLeft > 0) tornadoTicksLeft = Math.max(0, tornadoTicksLeft - 1);
+
+            // === Nam châm thú: thú bay về player ===
+            if (prev.autoMagnet && animals.length > 0) {
+              const px = playerX + PLAYER_W / 2;
+              animals = animals.map(a => {
+                const dist = Math.abs(a.x - px);
+                if (dist > MAGNET_RANGE) return a;
+                const dir = a.x < px ? 1 : -1;
+                const step = Math.min(MAGNET_SPEED, dist);
+                return { ...a, x: a.x + dir * step };
+              });
+            }
+
+            // === Nhặt + cất tự động (chung công tắc autoMagnet) ===
+            if (prev.autoMagnet) {
+              const playerCenter = playerX + PLAYER_W / 2;
+              const whCenter = WAREHOUSE_X + WAREHOUSE_W / 2;
+              const nearWh = Math.abs(whCenter - playerCenter) < DEPOSIT_RANGE;
+              const carryMax = getCarryMax(prev.carryLevel);
+
+              // Auto-cất khi gần kho và đang cầm thú
+              if (nearWh && carrying.length > 0) {
+                const totalPrice = carrying.reduce((s, a) => s + a.price, 0);
+                const totalIncome = carrying.reduce((s, a) => s + a.income, 0);
+                const newCol = { ...collection };
+                carrying.forEach(a => {
+                  newCol[a.species] = (newCol[a.species] || 0) + 1;
+                });
+                money += totalPrice;
+                income += totalIncome;
+                collection = newCol;
+                carrying = [];
+              }
+
+              // Auto-nhặt mọi thú trong PICKUP_RANGE đến khi đầy tay
+              if (carrying.length < carryMax && animals.length > 0) {
+                const room = carryMax - carrying.length;
+                const inRange = [];
+                const remaining = [];
+                for (const a of animals) {
+                  if (inRange.length < room && Math.abs(a.x - playerCenter) <= PICKUP_RANGE) {
+                    inRange.push(a);
+                  } else {
+                    remaining.push(a);
+                  }
+                }
+                if (inRange.length > 0) {
+                  carrying = [...carrying, ...inRange];
+                  animals = remaining;
+                }
+              }
+            }
+
+            // === Sóng thần — bỏ qua nếu đang freeze hoặc có tornado ===
+            const tsunamiBlocked = isFrozen || tornadoTicksLeft > 0;
+            if (tsunamiBlocked && tsunamiPhase === 'sweep') {
+              // Tornado/freeze giữa lúc quét: đẩy sóng về cuối
+              tsunamiSweepFront = MAP_WIDTH;
+              tsunamiPhase = 'idle';
+              tsunamiTimer = TSUNAMI_PERIOD_SEC;
+            }
+
+            if (!tsunamiBlocked) {
+              if (onceASec && tsunamiPhase === 'idle') {
+                tsunamiTimer -= 1;
+                if (tsunamiTimer <= TSUNAMI_WARN_SEC) tsunamiPhase = 'warning';
+              } else if (onceASec && tsunamiPhase === 'warning') {
+                tsunamiTimer -= 1;
+                if (tsunamiTimer <= 0) {
+                  tsunamiPhase = 'sweep';
+                  tsunamiTimer = TSUNAMI_SWEEP_SEC;
+                  tsunamiSweepFront = MAP_WIDTH;
+                }
+              } else if (tsunamiPhase === 'sweep') {
+                const totalDist = MAP_WIDTH - SAFE_ZONE_X;
+                const pxPerTick = totalDist / (TSUNAMI_SWEEP_SEC * TICKS_PER_SEC);
+                tsunamiSweepFront -= pxPerTick;
+                const playerCenter = playerX + PLAYER_W / 2;
+                if (playerCenter > tsunamiSweepFront && playerCenter > SAFE_ZONE_X) {
+                  if (prev.immortal) {
+                    // Bất tử — bỏ qua sát thương, không gameOver
+                  } else {
+                    return { ...prev, playerX, tickCount, gameOver: true };
+                  }
+                }
+                if (tsunamiSweepFront <= SAFE_ZONE_X) {
+                  tsunamiPhase = 'idle';
+                  tsunamiTimer = TSUNAMI_PERIOD_SEC;
+                  tsunamiSweepFront = MAP_WIDTH;
+                }
+              }
+            }
+
+            // Chạm cửa
+            const doorX = MAP_WIDTH - DOOR_W;
+            if (playerX + PLAYER_W >= doorX) {
+              return { ...prev, mapClear: true, playerX, money, income, tickCount, animals, carrying, collection };
+            }
+
+            return {
+              ...prev, playerX, money, income, tickCount, animals,
+              carrying, collection,
+              tsunamiPhase, tsunamiTimer, tsunamiSweepFront,
+              tornadoTicksLeft, freezeTicksLeft,
+            };
+          });
+        }, TICK_MS);
+        return () => clearInterval(id);
+      }, [state.gameOver, state.mapClear]);
+
+      // Camera theo player
+      useEffect(() => {
+        if (!viewRef.current) return;
+        const viewWidth = viewRef.current.clientWidth;
+        const target = state.playerX - viewWidth / 2 + PLAYER_W / 2;
+        viewRef.current.scrollLeft = Math.max(0, Math.min(MAP_WIDTH - viewWidth, target));
+      }, [state.playerX]);
+
+      const showPop = (text, color, offsetX = 0) => {
+        const id = popIdRef.current++;
+        setPopups(prev => [...prev, { id, text, color, offsetX }]);
+        setTimeout(() => setPopups(prev => prev.filter(p => p.id !== id)), 800);
+      };
+
+      // ===== ACTIONS =====
+      const findNearestAnimal = (px, animals) => {
+        const playerCenter = px + PLAYER_W / 2;
+        let best = null; let bestDist = PICKUP_RANGE;
+        animals.forEach(a => {
+          const d = Math.abs(a.x - playerCenter);
+          if (d < bestDist) { bestDist = d; best = a; }
+        });
+        return best;
+      };
+
+      const pickupAnimal = () => {
+        setState(prev => {
+          const carryMax = getCarryMax(prev.carryLevel);
+          if ((prev.carrying || []).length >= carryMax) {
+            showPop(`✋ Đầy tay! Cất trước`, '#fca5a5');
+            return prev;
+          }
+          const target = findNearestAnimal(prev.playerX, prev.animals);
+          if (!target) return prev;
+          showPop(`🤚 ${target.species}`, '#86efac');
+          return {
+            ...prev,
+            animals: prev.animals.filter(a => a.id !== target.id),
+            carrying: [...prev.carrying, target],
+          };
+        });
+      };
+
+      const depositAll = () => {
+        setState(prev => {
+          if (!prev.carrying || prev.carrying.length === 0) return prev;
+          const playerCenter = prev.playerX + PLAYER_W / 2;
+          const whCenter = WAREHOUSE_X + WAREHOUSE_W / 2;
+          if (Math.abs(whCenter - playerCenter) > DEPOSIT_RANGE) return prev;
+
+          const totalPrice = prev.carrying.reduce((s, a) => s + a.price, 0);
+          const totalIncome = prev.carrying.reduce((s, a) => s + a.income, 0);
+          const newCollection = { ...prev.collection };
+          prev.carrying.forEach(a => {
+            newCollection[a.species] = (newCollection[a.species] || 0) + 1;
+          });
+          showPop(`📦 +${totalPrice}💰 +${totalIncome}/s`, '#fde047');
+
+          return {
+            ...prev,
+            money: prev.money + totalPrice,
+            income: prev.income + totalIncome,
+            collection: newCollection,
+            carrying: [],
+          };
+        });
+      };
+
+      const doAction = () => {
+        // Ưu tiên cất nếu đang mang + gần kho, ngược lại nhặt
+        const playerCenter = state.playerX + PLAYER_W / 2;
+        const nearWh = Math.abs(WAREHOUSE_X + WAREHOUSE_W/2 - playerCenter) < DEPOSIT_RANGE;
+        if ((state.carrying || []).length > 0 && nearWh) {
+          depositAll();
+        } else {
+          pickupAnimal();
+        }
+      };
+
+      const nextMap = () => {
+        setState(prev => {
+          if (prev.map >= NUM_MAPS) return { ...prev, gameOver: true, win: true };
+          const nextId = prev.map + 1;
+          return {
+            ...prev,
+            map: nextId,
+            playerX: 80,
+            animals: genAnimals(nextId),
+            carrying: [],   // mất số thú đang cầm (chưa cất)
+            mapClear: false,
+            highMap: Math.max(prev.highMap, nextId),
+            tsunamiPhase: 'idle',
+            tsunamiTimer: TSUNAMI_PERIOD_SEC,
+            tsunamiSweepFront: MAP_WIDTH,
+            tickCount: 0,
+          };
+        });
+      };
+
+      const restart = () => {
+        setState(prev => ({
+          ...defaultState(),
+          highMap: prev.highMap,
+          collection: prev.collection,
+          speedLevel: prev.speedLevel,
+        }));
+      };
+
+      const upgradeSpeed = () => {
+        setState(prev => {
+          if (prev.speedLevel >= MAX_SPEED_LEVEL) return prev;
+          const cost = SPEED_UPGRADE_COST(prev.speedLevel);
+          if (prev.money < cost) return prev;
+          showPop(`🚀 +1 tốc độ!`, '#fde047');
+          return { ...prev, money: prev.money - cost, speedLevel: prev.speedLevel + 1 };
+        });
+      };
+
+      const upgradeCarry = () => {
+        setState(prev => {
+          if (prev.carryLevel >= MAX_CARRY_LEVEL) return prev;
+          const cost = CARRY_UPGRADE_COST(prev.carryLevel);
+          if (prev.money < cost) return prev;
+          showPop(`🎒 +${CARRY_PER_LEVEL} sức chứa!`, '#fde047');
+          return { ...prev, money: prev.money - cost, carryLevel: prev.carryLevel + 1 };
+        });
+      };
+
+      const toggleCollection = () => setState(prev => ({ ...prev, showCollection: !prev.showCollection }));
+      const onBack = () => { window.location.href = '../index.html'; };
+      const press = (side, pressed) => { keysRef.current[side] = pressed; };
+
+      // ===== CHẾ ĐỘ BÍ MẬT =====
+      const clickPlayer = () => {
+        if (state.godMode) {
+          setState(prev => ({ ...prev, showGodPanel: true }));
+        } else {
+          setState(prev => ({ ...prev, showPwdModal: true }));
+        }
+      };
+      const tryGodPassword = (pwd) => {
+        if (pwd.trim().toLowerCase() === GOD_PASSWORD) {
+          showPop('🔓 GOD MODE!', '#fde047');
+          setState(prev => ({ ...prev, godMode: true, showPwdModal: false, showGodPanel: true }));
+          return true;
+        }
+        return false;
+      };
+      const closePwdModal = () => setState(prev => ({ ...prev, showPwdModal: false }));
+      const closeGodPanel = () => setState(prev => ({ ...prev, showGodPanel: false }));
+
+      const godSet = (patch) => setState(prev => ({ ...prev, ...patch }));
+      const toggleMagnet = () => setState(prev => ({ ...prev, autoMagnet: !prev.autoMagnet }));
+      const toggleImmortal = () => setState(prev => {
+        const next = !prev.immortal;
+        showPop(next ? '🛡️ BẤT TỬ!' : '💀 Hết bất tử', next ? '#fde047' : '#94a3b8');
+        return { ...prev, immortal: next };
+      });
+      const activateTornado = () => {
+        showPop('🌪️ LỐC XOÁY!', '#a78bfa');
+        setState(prev => ({ ...prev, tornadoTicksLeft: TORNADO_DURATION_SEC * TICKS_PER_SEC }));
+      };
+      const activateFreeze = () => {
+        showPop('⏸️ NGỪNG THỜI GIAN!', '#22d3ee');
+        setState(prev => ({ ...prev, freezeTicksLeft: FREEZE_DURATION_SEC * TICKS_PER_SEC }));
+      };
+
+      // ===== Derived =====
+      const playerCenter = state.playerX + PLAYER_W / 2;
+      const inSafeZone = playerCenter <= SAFE_ZONE_X;
+      const distToDoor = Math.round((MAP_WIDTH - DOOR_W) - (state.playerX + PLAYER_W));
+      const distToSafe = Math.round(playerCenter - SAFE_ZONE_X);
+      const collectionSpecies = Object.keys(state.collection).length;
+      const collectionTotal = Object.values(state.collection).reduce((a, b) => a + b, 0);
+      const nearestAnimal = findNearestAnimal(state.playerX, state.animals);
+      const nearWh = Math.abs(WAREHOUSE_X + WAREHOUSE_W/2 - playerCenter) < DEPOSIT_RANGE;
+      const canDeposit = (state.carrying || []).length > 0 && nearWh;
+      const carryMax = getCarryMax(state.carryLevel);
+      const canPickup = nearestAnimal && (state.carrying || []).length < carryMax;
+      const carryCount = (state.carrying || []).length;
+
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          {/* Top bar */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '8px 12px', background: 'rgba(0,0,0,0.55)', gap: 8, flexWrap: 'wrap',
+          }}>
+            <button onClick={onBack} style={btn('#0c4a6e')}>← Hub</button>
+            <div style={{ display: 'flex', gap: 8, fontSize: 13, fontWeight: 700, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <span>🗺️ Map {state.map}/{NUM_MAPS}</span>
+              <span>💰 <span style={{ color: '#fde047' }}>{state.money.toLocaleString('vi-VN')}</span></span>
+              <span>💵 +{state.income}/s</span>
+              <span>✋ {carryCount}/{carryMax}</span>
+              <span>🦴 còn {state.animals.length}</span>
+              <span style={{ color: inSafeZone ? '#86efac' : '#fff' }}>
+                {inSafeZone ? '✅ An toàn' : `🏃 ${distToSafe}px`}
+              </span>
+              <button
+                onClick={upgradeSpeed}
+                disabled={state.speedLevel >= MAX_SPEED_LEVEL || state.money < SPEED_UPGRADE_COST(state.speedLevel)}
+                style={{
+                  ...btn(state.speedLevel >= MAX_SPEED_LEVEL ? '#3f3f46' : '#f59e0b'),
+                  opacity: state.speedLevel >= MAX_SPEED_LEVEL || state.money < SPEED_UPGRADE_COST(state.speedLevel) ? 0.5 : 1,
+                }}
+              >
+                🚀 Lv{state.speedLevel}{state.speedLevel < MAX_SPEED_LEVEL && ` (${SPEED_UPGRADE_COST(state.speedLevel)}💰)`}
+              </button>
+              <button
+                onClick={upgradeCarry}
+                disabled={state.carryLevel >= MAX_CARRY_LEVEL || state.money < CARRY_UPGRADE_COST(state.carryLevel)}
+                style={{
+                  ...btn(state.carryLevel >= MAX_CARRY_LEVEL ? '#3f3f46' : '#16a34a'),
+                  opacity: state.carryLevel >= MAX_CARRY_LEVEL || state.money < CARRY_UPGRADE_COST(state.carryLevel) ? 0.5 : 1,
+                }}
+                title={state.carryLevel >= MAX_CARRY_LEVEL ? 'Đã max' : `+${CARRY_PER_LEVEL} sức chứa`}
+              >
+                🎒 Lv{state.carryLevel}{state.carryLevel < MAX_CARRY_LEVEL && ` (${CARRY_UPGRADE_COST(state.carryLevel)}💰)`}
+              </button>
+              <button onClick={toggleCollection} style={btn('#7c3aed')}>📖 Sổ ({collectionSpecies})</button>
+            </div>
+          </div>
+
+          {/* Cảnh báo */}
+          {state.tsunamiPhase === 'warning' && (
+            <div style={{
+              padding: 6, textAlign: 'center', fontSize: 14, fontWeight: 900,
+              color: '#fff', animation: 'warningBlink 0.4s infinite',
+            }}>
+              ⚠️ SÓNG THẦN TRONG {state.tsunamiTimer}s — VỀ SAU VẠCH ĐỎ NGAY!
+            </div>
+          )}
+          {state.tsunamiPhase === 'sweep' && (
+            <div style={{
+              padding: 6, textAlign: 'center', fontSize: 14, fontWeight: 900,
+              background: 'rgba(14,116,144,0.6)', color: '#fff',
+            }}>
+              🌊 SÓNG ĐANG QUÉT! {inSafeZone ? '✅ Bạn đang an toàn' : '💀 CHẠY VỀ VẠCH ĐỎ!'}
+            </div>
+          )}
+          {state.freezeTicksLeft > 0 && (
+            <div style={{ padding: 6, textAlign: 'center', fontSize: 13, fontWeight: 900, background: 'rgba(34,211,238,0.4)', color: '#fff' }}>
+              ⏸️ NGỪNG THỜI GIAN — còn {Math.ceil(state.freezeTicksLeft / TICKS_PER_SEC)}s
+            </div>
+          )}
+          {state.tornadoTicksLeft > 0 && (
+            <div style={{ padding: 6, textAlign: 'center', fontSize: 13, fontWeight: 900, background: 'rgba(167,139,250,0.4)', color: '#fff' }}>
+              🌪️ LỐC XOÁY ĐANG CHẶN SÓNG — còn {Math.ceil(state.tornadoTicksLeft / TICKS_PER_SEC)}s
+            </div>
+          )}
+
+          {/* Khung game */}
+          <div ref={viewRef} style={{
+            flex: '0 0 auto', height: VIEW_HEIGHT, overflowX: 'hidden', overflowY: 'hidden',
+            position: 'relative', background: 'linear-gradient(180deg,#7dd3fc,#bae6fd 60%,#84cc16 60%,#65a30d)',
+          }}>
+            <div style={{ position: 'relative', width: MAP_WIDTH, height: '100%' }}>
+              {/* VÙNG AN TOÀN */}
+              <div style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0, width: SAFE_ZONE_X,
+                background: 'linear-gradient(180deg,#bbf7d0 0%,#86efac 60%,#22c55e 60%,#16a34a)',
+              }}>
+                <div style={{ position: 'absolute', top: 8, left: 8, fontSize: 11, color: '#064e3b', fontWeight: 800, background: 'rgba(255,255,255,0.7)', padding: '2px 6px', borderRadius: 4 }}>
+                  🏠 AN TOÀN
+                </div>
+                <div style={{ position: 'absolute', top: 30, left: 8, fontSize: 10, color: '#064e3b', background: 'rgba(255,255,255,0.6)', padding: '2px 6px', borderRadius: 4 }}>
+                  📖 {collectionSpecies} loài • {collectionTotal} con
+                </div>
+
+                {/* KHO trong vùng an toàn */}
+                <div style={{
+                  position: 'absolute', left: WAREHOUSE_X, bottom: 30, width: WAREHOUSE_W, height: 110,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
+                }}>
+                  <div style={{
+                    fontSize: 10, color: '#1e293b', fontWeight: 800, marginBottom: 2,
+                    background: 'rgba(255,255,255,0.85)', padding: '1px 6px', borderRadius: 4,
+                  }}>📦 KHO</div>
+                  <div style={{ fontSize: 64, lineHeight: 1, animation: canDeposit ? 'bounce 0.5s infinite' : 'none' }}>🏛️</div>
+                </div>
+              </div>
+
+              {/* VẠCH ĐỎ */}
+              <div style={{
+                position: 'absolute', left: SAFE_ZONE_X - 2, top: 0, bottom: 0,
+                width: 4, background: '#ef4444',
+                boxShadow: '0 0 14px #ef4444, 0 0 28px rgba(239,68,68,0.5)',
+                zIndex: 5,
+              }}>
+                <div style={{ position: 'absolute', top: 8, left: -10, fontSize: 18 }}>🚧</div>
+              </div>
+
+              {/* Sóng */}
+              {state.tsunamiPhase === 'sweep' && (
+                <div style={{
+                  position: 'absolute', left: state.tsunamiSweepFront, top: 0, bottom: 0,
+                  width: MAP_WIDTH - state.tsunamiSweepFront,
+                  background: 'linear-gradient(90deg,#0ea5e9,#0369a1,#082f49)',
+                  animation: 'wavePulse 0.5s infinite',
+                  zIndex: 4,
+                }}>
+                  <div style={{ position: 'absolute', left: 6, top: '40%', fontSize: 40 }}>🌊</div>
+                </div>
+              )}
+
+              {/* THÚ rải khắp danger zone */}
+              {state.animals.map(a => {
+                const isNearest = nearestAnimal && nearestAnimal.id === a.id;
+                return (
+                  <div key={a.id} style={{
+                    position: 'absolute', left: a.x - 16, bottom: 30, width: 36,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  }}>
+                    {isNearest && (
+                      <div style={{
+                        fontSize: 10, background: '#16a34a', color: '#fff',
+                        padding: '1px 5px', borderRadius: 4, marginBottom: 2, fontWeight: 800,
+                        whiteSpace: 'nowrap',
+                      }}>★{a.rarity} • {a.price}💰</div>
+                    )}
+                    <div style={{
+                      fontSize: 28, lineHeight: 1,
+                      filter: isNearest ? 'drop-shadow(0 0 6px #fde047)' : 'none',
+                      animation: isNearest ? 'bounce 0.5s infinite' : 'none',
+                    }}>{a.species}</div>
+                  </div>
+                );
+              })}
+
+              {/* Cửa */}
+              <div style={{
+                position: 'absolute', right: 0, bottom: 30, width: DOOR_W, height: 110,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
+              }}>
+                <div style={{ fontSize: 14, color: '#1e293b', fontWeight: 700, background: '#fde047', padding: '2px 6px', borderRadius: 6, marginBottom: 4 }}>
+                  Map {state.map + 1}
+                </div>
+                <div style={{ fontSize: 60 }}>🚪</div>
+              </div>
+
+              {/* Player + carrying stack */}
+              <div
+                onClick={clickPlayer}
+                style={{
+                  position: 'absolute', left: state.playerX, bottom: 30,
+                  width: PLAYER_W, height: 60,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  zIndex: 6, cursor: 'pointer',
+                }}
+                title={state.godMode ? 'Mở bảng God Mode' : '???'}
+              >
+                {/* Stack thú đang cầm trên đầu */}
+                {state.carrying && state.carrying.length > 0 && (
+                  <div style={{
+                    position: 'absolute', bottom: 56, display: 'flex', gap: -4,
+                  }}>
+                    {state.carrying.slice(0, 5).map((a, i) => (
+                      <span key={a.id} style={{ fontSize: 14, marginLeft: i ? -6 : 0 }}>{a.species}</span>
+                    ))}
+                    {state.carrying.length > 5 && (
+                      <span style={{ fontSize: 10, color: '#fde047' }}>+{state.carrying.length-5}</span>
+                    )}
+                  </div>
+                )}
+                <div style={{ fontSize: 36, lineHeight: 1, filter: state.godMode ? 'drop-shadow(0 0 8px #fde047)' : 'none' }}>
+                  {state.godMode ? '🦸' : '🧑'}
+                </div>
+                {/* Hiệu ứng nam châm */}
+                {state.autoMagnet && (
+                  <div style={{ position: 'absolute', top: -20, fontSize: 16 }}>🧲</div>
+                )}
+                {/* Lốc xoáy */}
+                {state.tornadoTicksLeft > 0 && (
+                  <div style={{
+                    position: 'absolute', bottom: -10, fontSize: 50, opacity: 0.85,
+                    animation: 'bounce 0.3s infinite',
+                  }}>🌪️</div>
+                )}
+              </div>
+
+              {/* Popup */}
+              {popups.map(p => (
+                <div key={p.id} style={{
+                  position: 'absolute', left: state.playerX + 18 + (p.offsetX || 0), bottom: 100,
+                  fontSize: 18, fontWeight: 900, color: p.color,
+                  textShadow: '0 2px 8px rgba(0,0,0,0.8)',
+                  animation: 'pop 0.8s forwards', pointerEvents: 'none', zIndex: 20,
+                }}>{p.text}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* Điều khiển */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: 12, gap: 8, background: 'rgba(0,0,0,0.3)', flexWrap: 'wrap',
+          }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onMouseDown={() => press('left', true)}  onMouseUp={() => press('left', false)}
+                onMouseLeave={() => press('left', false)}
+                onTouchStart={(e) => { e.preventDefault(); press('left', true); }}
+                onTouchEnd={() => press('left', false)}
+                style={{ ...btn('#0c4a6e'), fontSize: 24, padding: '14px 20px' }}>←</button>
+              <button
+                onMouseDown={() => press('right', true)} onMouseUp={() => press('right', false)}
+                onMouseLeave={() => press('right', false)}
+                onTouchStart={(e) => { e.preventDefault(); press('right', true); }}
+                onTouchEnd={() => press('right', false)}
+                style={{ ...btn('#0c4a6e'), fontSize: 24, padding: '14px 20px' }}>→</button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={pickupAnimal}
+                disabled={!canPickup}
+                style={{
+                  ...btn(canPickup ? '#16a34a' : 'rgba(255,255,255,0.15)'),
+                  fontSize: 15, padding: '14px 18px',
+                  opacity: canPickup ? 1 : 0.5,
+                }}>🤚 Nhặt</button>
+              <button
+                onClick={depositAll}
+                disabled={!canDeposit}
+                style={{
+                  ...btn(canDeposit ? '#7c3aed' : 'rgba(255,255,255,0.15)'),
+                  fontSize: 15, padding: '14px 18px',
+                  opacity: canDeposit ? 1 : 0.5,
+                }}>📦 Cất ({carryCount})</button>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 11, opacity: 0.65, textAlign: 'center', padding: '4px 12px 12px' }}>
+            ←/→ hoặc A/D di chuyển • <strong>Space/Enter</strong> nhặt/cất • Cầm tối đa {carryMax} thú • Cất ở kho 🏛️ trong vùng an toàn • 🚪 sang map kế tiếp
+          </div>
+
+          {/* Modal mật khẩu bí mật */}
+          {state.showPwdModal && (
+            <PasswordModal onClose={closePwdModal} onSubmit={tryGodPassword} />
+          )}
+
+          {/* Bảng God Mode */}
+          {state.showGodPanel && state.godMode && (
+            <GodPanel
+              state={state}
+              onClose={closeGodPanel}
+              onSet={godSet}
+              onMagnet={toggleMagnet}
+              onTornado={activateTornado}
+              onFreeze={activateFreeze}
+              onImmortal={toggleImmortal}
+            />
+          )}
+
+          {/* Modal sổ thú */}
+          {state.showCollection && (
+            <CollectionModal collection={state.collection} onClose={toggleCollection} />
+          )}
+
+          {/* Modal qua map */}
+          {state.mapClear && (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 20, zIndex: 100,
+            }}>
+              <div style={{
+                background: 'linear-gradient(160deg,#15803d,#064e3b)', padding: 28, borderRadius: 20,
+                textAlign: 'center', maxWidth: 360, width: '100%',
+                animation: 'coinPop 0.4s', border: '2px solid #4ade80',
+              }}>
+                <div style={{ fontSize: 64 }}>🎉</div>
+                <h2>QUA MAP!</h2>
+                <p style={{ marginTop: 8, opacity: 0.9 }}>Bạn vừa thoát map {state.map}!</p>
+                {carryCount > 0 && (
+                  <p style={{ marginTop: 6, fontSize: 12, color: '#fca5a5' }}>
+                    ⚠️ Bạn còn cầm {carryCount} thú chưa cất → sẽ bị mất!
+                  </p>
+                )}
+                {state.map >= NUM_MAPS ? (
+                  <React.Fragment>
+                    <p style={{ marginTop: 12, color: '#fde047', fontWeight: 900 }}>🏆 ĐÃ THẮNG GAME!</p>
+                    <button onClick={restart} style={{ ...btn('#16a34a'), marginTop: 18, width: '100%', padding: '12px' }}>🔄 Chơi lại</button>
+                  </React.Fragment>
+                ) : (
+                  <button onClick={nextMap} style={{ ...btn('#16a34a'), marginTop: 18, width: '100%', padding: '12px', fontSize: 16 }}>
+                    ➡ Vào Map {state.map + 1}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Modal chết */}
+          {state.gameOver && !state.mapClear && (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 20, zIndex: 100,
+            }}>
+              <div style={{
+                background: 'linear-gradient(160deg,#7f1d1d,#450a0a)', padding: 28, borderRadius: 20,
+                textAlign: 'center', maxWidth: 360, width: '100%',
+                animation: 'coinPop 0.4s', border: '2px solid #fca5a5',
+              }}>
+                <div style={{ fontSize: 72 }}>💀</div>
+                <h2>BỊ SÓNG CUỐN!</h2>
+                <p style={{ marginTop: 8, opacity: 0.9 }}>Bạn đã ở ngoài vùng an toàn khi sóng quét.</p>
+                <div style={{ marginTop: 14, fontSize: 13 }}>
+                  Tiền cuối: <strong style={{ color: '#fde047' }}>{state.money.toLocaleString('vi-VN')}</strong><br />
+                  Map cao nhất: <strong style={{ color: '#fde047' }}>{state.highMap}/{NUM_MAPS}</strong>
+                </div>
+                <button onClick={restart} style={{ ...btn('#16a34a'), marginTop: 20, width: '100%', padding: '14px', fontSize: 16 }}>
+                  🔄 Chơi Lại
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ============================
+    // MODAL SỔ THÚ
+    // ============================
+    function CollectionModal({ collection, onClose }) {
+      const entries = Object.entries(collection).sort((a, b) => b[1] - a[1]);
+      const totalSpecies = entries.length;
+      const totalCount = entries.reduce((a, [, c]) => a + c, 0);
+
+      return (
+        <div onClick={onClose} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 12, zIndex: 110,
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: 'linear-gradient(160deg,#064e3b,#15803d)', padding: 18, borderRadius: 16,
+            maxWidth: 520, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+            border: '2px solid #4ade80',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <h3 style={{ fontSize: 17 }}>📖 Sổ Thú Đã Thu Thập</h3>
+              <button onClick={onClose} style={btn('#dc2626')}>✕</button>
+            </div>
+            <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 10 }}>
+              <strong style={{ color: '#fde047' }}>{totalSpecies}</strong> loài •
+              <strong style={{ color: '#fde047' }}> {totalCount.toLocaleString('vi-VN')}</strong> con tổng cộng
+            </div>
+            {entries.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 30, opacity: 0.8 }}>
+                <div style={{ fontSize: 48 }}>🦴</div>
+                <p style={{ marginTop: 10 }}>Chưa thu thập loài nào!</p>
+                <p style={{ marginTop: 4, fontSize: 12, opacity: 0.7 }}>Nhặt thú trong danger zone → cất vào kho 🏛️</p>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 6,
+                overflow: 'auto', flex: 1,
+              }}>
+                {entries.map(([animal, count]) => (
+                  <div key={animal} style={{
+                    background: 'rgba(0,0,0,0.3)', padding: 8, borderRadius: 8,
+                    textAlign: 'center', border: '1px solid rgba(255,255,255,0.15)',
+                  }}>
+                    <div style={{ fontSize: 28 }}>{animal}</div>
+                    <div style={{ fontSize: 12, color: '#fde047', fontWeight: 800 }}>×{count}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ============================
+    // MODAL MẬT KHẨU BÍ MẬT
+    // ============================
+    function PasswordModal({ onClose, onSubmit }) {
+      const [pwd, setPwd] = useState('');
+      const [err, setErr] = useState('');
+
+      const submit = () => {
+        const ok = onSubmit(pwd);
+        if (!ok) {
+          setErr('❌ Sai mật khẩu!');
+          setTimeout(() => setErr(''), 1500);
+        }
+      };
+
+      return (
+        <div onClick={onClose} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 14, zIndex: 200,
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: 'linear-gradient(160deg,#1e1b4b,#4c1d95)', padding: 24, borderRadius: 18,
+            maxWidth: 340, width: '100%', border: '2px solid #fde047',
+            boxShadow: '0 0 32px rgba(253,224,71,0.4)',
+          }}>
+            <div style={{ textAlign: 'center', fontSize: 48 }}>🔐</div>
+            <h3 style={{ textAlign: 'center', marginTop: 6 }}>Mật Khẩu Bí Mật</h3>
+            <p style={{ textAlign: 'center', fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+              Mở chế độ chỉnh sửa bất cứ thứ gì
+            </p>
+            <input
+              type="text"
+              autoFocus
+              value={pwd}
+              onChange={(e) => setPwd(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submit()}
+              placeholder="..."
+              style={{
+                width: '100%', padding: '12px 14px', marginTop: 16,
+                border: `2px solid ${err ? '#ef4444' : 'rgba(254,243,199,0.25)'}`,
+                borderRadius: 10, background: 'rgba(0,0,0,0.4)',
+                color: '#fff', fontSize: 16, textAlign: 'center',
+                outline: 'none', fontFamily: 'inherit',
+              }}
+            />
+            {err && <div style={{ marginTop: 8, fontSize: 12, color: '#fca5a5', textAlign: 'center' }}>{err}</div>}
+            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+              <button onClick={onClose} style={{ ...btn('rgba(0,0,0,0.5)'), flex: 1, padding: '12px' }}>Hủy</button>
+              <button onClick={submit} style={{ ...btn('#fde047'), flex: 1, padding: '12px', color: '#451a03' }}>Mở khóa</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ============================
+    // GOD PANEL — chỉnh bất cứ thứ gì
+    // ============================
+    function GodPanel({ state, onClose, onSet, onMagnet, onTornado, onFreeze, onImmortal }) {
+      const NumberRow = ({ label, value, field, suggested }) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <div style={{ flex: 1, fontSize: 13 }}>{label}</div>
+          <input
+            type="number"
+            value={value}
+            onChange={(e) => onSet({ [field]: Number(e.target.value) || 0 })}
+            style={{
+              width: 130, padding: '6px 8px', borderRadius: 6,
+              background: 'rgba(0,0,0,0.4)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.2)',
+              fontFamily: 'inherit', fontSize: 13, textAlign: 'right',
+            }}
+          />
+          {suggested && (
+            <button onClick={() => onSet({ [field]: suggested })} style={btn('#16a34a', { padding: '4px 10px', fontSize: 11 })}>
+              Max
+            </button>
+          )}
+        </div>
+      );
+
+      return (
+        <div onClick={onClose} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 12, zIndex: 200,
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: 'linear-gradient(160deg,#1e1b4b,#312e81)', padding: 18, borderRadius: 16,
+            maxWidth: 460, width: '100%', maxHeight: '90vh', overflow: 'auto',
+            border: '2px solid #fde047', boxShadow: '0 0 32px rgba(253,224,71,0.4)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <h3 style={{ fontSize: 16 }}>🦸 GOD MODE</h3>
+              <button onClick={onClose} style={btn('#dc2626')}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>📊 Chỉnh chỉ số</div>
+              <NumberRow label="💰 Tiền"        value={state.money}       field="money"      suggested={999999999} />
+              <NumberRow label="💵 Thu nhập /s" value={state.income}      field="income"     suggested={100000} />
+              <NumberRow label="🚀 Cấp tốc độ"  value={state.speedLevel}  field="speedLevel" suggested={MAX_SPEED_LEVEL} />
+              <NumberRow label="🎒 Cấp túi"     value={state.carryLevel}  field="carryLevel" suggested={MAX_CARRY_LEVEL} />
+              <NumberRow label="🗺️ Map hiện tại" value={state.map}         field="map"        suggested={NUM_MAPS} />
+              <NumberRow label="🏆 Map cao nhất"value={state.highMap}     field="highMap"    suggested={NUM_MAPS} />
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>✨ Năng lực bí mật</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+                <button onClick={onImmortal} style={{
+                  ...btn(state.immortal ? '#dc2626' : '#16a34a'),
+                  padding: '10px', fontSize: 13, textAlign: 'left',
+                }}>
+                  🛡️ Bất tử (sóng không giết): <strong>{state.immortal ? 'ĐANG BẬT (bấm tắt)' : 'TẮT (bấm bật)'}</strong>
+                </button>
+                <button onClick={onMagnet} style={{
+                  ...btn(state.autoMagnet ? '#dc2626' : '#0891b2'),
+                  padding: '10px', fontSize: 13, textAlign: 'left',
+                }}>
+                  🧲 Nam châm + nhặt tự động: <strong>{state.autoMagnet ? 'ĐANG BẬT (bấm tắt)' : 'TẮT (bấm bật)'}</strong>
+                </button>
+                <button onClick={onTornado} disabled={state.tornadoTicksLeft > 0} style={{
+                  ...btn(state.tornadoTicksLeft > 0 ? '#3f3f46' : '#7c3aed'),
+                  padding: '10px', fontSize: 13, textAlign: 'left',
+                  opacity: state.tornadoTicksLeft > 0 ? 0.6 : 1,
+                }}>
+                  🌪️ Lốc xoáy chặn sóng ({TORNADO_DURATION_SEC}s)
+                  {state.tornadoTicksLeft > 0 && ` — còn ${Math.ceil(state.tornadoTicksLeft / TICKS_PER_SEC)}s`}
+                </button>
+                <button onClick={onFreeze} disabled={state.freezeTicksLeft > 0} style={{
+                  ...btn(state.freezeTicksLeft > 0 ? '#3f3f46' : '#0e7490'),
+                  padding: '10px', fontSize: 13, textAlign: 'left',
+                  opacity: state.freezeTicksLeft > 0 ? 0.6 : 1,
+                }}>
+                  ⏸️ Ngừng thời gian ({FREEZE_DURATION_SEC}s)
+                  {state.freezeTicksLeft > 0 && ` — còn ${Math.ceil(state.freezeTicksLeft / TICKS_PER_SEC)}s`}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 10, opacity: 0.5, textAlign: 'center', marginTop: 8 }}>
+              Click ra ngoài để đóng • Click nhân vật 🦸 để mở lại
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<TsunamiZoo />);
+  </script>
+</body>
+</html>

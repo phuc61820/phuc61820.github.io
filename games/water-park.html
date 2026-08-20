@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏖️ Công Viên Nước — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(170deg, #082f49, #0c4a6e 40%, #f59e0b 100%);
+      min-height: 100vh; color:#e0f2fe;
+    }
+    #root { min-height:100vh; }
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background:rgba(255,255,255,0.05); }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.25); border-radius:3px; }
+  </style>
+  <script src="../js/theme.js"></script>
+  <script src="../js/analytics.js"></script>
+  <script src="../js/save.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    // ====== CẤU HÌNH GỐC ======
+    const TICKET_PRICE = 10000;          // 10K mỗi vé
+    const START_MONEY  = 20_000_000;     // 20 triệu vốn ban đầu
+    const BASE_CAPACITY = 1e18;          // sức chứa nền: 1 tỷ tỷ người (≈ vô hạn)
+    const SAVE_ID      = 'water-park';
+
+    // 10 loại danh mục → mỗi loại 10 tier = 100 món
+    const CATS = [
+      // id        name         icon  tint     role
+      { id:'pool',    name:'Hồ Bơi',     icon:'🏊', tint:'#0ea5e9', desc:'Sức chứa lớn' },
+      { id:'slide',   name:'Cầu Trượt',  icon:'🎢', tint:'#f97316', desc:'Sức hút cực cao' },
+      { id:'ride',    name:'Trò Chơi Nước',icon:'🌊',tint:'#22d3ee', desc:'Sức hút + chứa' },
+      { id:'food',    name:'Quầy Ăn',    icon:'🍔', tint:'#fbbf24', desc:'Thu trực tiếp' },
+      { id:'drink',   name:'Quầy Uống',  icon:'🥤', tint:'#a3e635', desc:'Thu trực tiếp' },
+      { id:'deco',    name:'Trang Trí',  icon:'🎨', tint:'#f472b6', desc:'Tăng hấp dẫn' },
+      { id:'util',    name:'Tiện Ích',   icon:'🚿', tint:'#94a3b8', desc:'Tăng sức chứa' },
+      { id:'lounge',  name:'Khu Nghỉ',   icon:'⛱️', tint:'#fcd34d', desc:'Cân bằng' },
+      { id:'nature',  name:'Cây Cối',    icon:'🌴', tint:'#34d399', desc:'Giảm 1% lương/cây' },
+      { id:'vip',     name:'Đặc Biệt VIP',icon:'⭐', tint:'#e879f9', desc:'Siêu hút khách' },
+    ];
+
+    // Tên riêng cho từng tier (10 cái mỗi danh mục) — kể chuyện đẹp hơn auto
+    const NAMES = {
+      pool:   ['Hồ Cạn','Hồ Trẻ Em','Hồ Sóng Nhẹ','Hồ Bơi Lớn','Hồ Sóng Thần','Hồ Vô Cực','Hồ Pha Lê','Hồ Nhiệt Đới','Hồ Biển Khơi','Hồ Đại Dương'],
+      slide:  ['Trượt Ống Mini','Trượt Cầu Vồng','Trượt Xoáy','Trượt Đôi','Trượt Phi Thuyền','Trượt Tử Thần','Trượt Mây Trời','Trượt Vũ Trụ','Trượt Hắc Động','Trượt Vô Cực'],
+      ride:   ['Phao Bơi','Lốp Cao Su','Bè Gia Đình','Sông Lười','Sông Dữ','Bão Xoáy','Xoáy Nước','Quái Vật Biển','Lốc Đại Dương','Cuồng Phong'],
+      food:   ['Xe Bắp Rang','Quầy Hot Dog','Tiệm Bánh Mì','Quán Pizza','Buffet Hải Sản','Nhà Hàng Sushi','Tiệm Steak','Nhà Hàng VIP','Sky Restaurant','Michelin'],
+      drink:  ['Xe Nước Ngọt','Quầy Trà Sữa','Quầy Sinh Tố','Bar Cocktail','Bar Mojito','Bar VIP','Tiki Bar','Sky Bar','Champagne Lounge','Pháo Sáng Bar'],
+      deco:   ['Bức Tượng','Cờ Lễ Hội','Đài Phun Nước','Biển Báo Vui','Cầu Vồng Neon','Pháo Hoa Mini','Tia Laser','Bong Bóng','Khinh Khí Cầu','Mặt Trời Nhân Tạo'],
+      util:   ['Nhà Vệ Sinh','Phòng Thay Đồ','Tủ Khoá','Vòi Sen','Trạm Cứu Hộ','Khu Sạc Pin','Wifi Miễn Phí','Trạm Nước Lọc','Sảnh VIP','Trung Tâm Y Tế'],
+      lounge: ['Ghế Nằm','Dù Che','Bể Sục','Hammock','Cabana','Bể Sủi Bọt','Khu Massage','Spa Mini','Spa Hoàng Gia','Lều Sultan'],
+      nature: ['Hoa Dại','Bụi Cây','Cọ Mini','Cây Dừa','Cây Tre','Vườn Lan','Rừng Nhỏ','Rừng Cọ','Khu Bonsai','Khu Rừng Thần'],
+      vip:    ['Sân Khấu Ngoài Trời','Bể Cá Heo','Khu Lướt Sóng','Núi Lửa Nhân Tạo','Aquarium','Cá Mập Tunnel','Tour Lặn Biển','Khu Khủng Long','Đảo VIP','Vũ Trụ Nước'],
+    };
+
+    // Vai trò: mỗi danh mục có hệ số riêng cho cost / attract / cap / income
+    // base: chi phí tier1 (đ), atk: sức hút tier1, cap: sức chứa tier1, inc: thu trực tiếp tier1 (đ/giây)
+    const ROLES = {
+      pool:   { base: 80_000,    atk: 8,   cap: 15, inc: 0     },
+      slide:  { base: 150_000,   atk: 25,  cap: 4,  inc: 0     },
+      ride:   { base: 200_000,   atk: 18,  cap: 10, inc: 0     },
+      food:   { base: 120_000,   atk: 5,   cap: 5,  inc: 500   },
+      drink:  { base: 100_000,   atk: 4,   cap: 4,  inc: 400   },
+      deco:   { base: 30_000,    atk: 12,  cap: 0,  inc: 0     },
+      util:   { base: 50_000,    atk: 2,   cap: 20, inc: 0     },
+      lounge: { base: 90_000,    atk: 10,  cap: 12, inc: 100   },
+      nature: { base: 20_000,    atk: 6,   cap: 0,  inc: 0     },
+      vip:    { base: 5_000_000, atk: 200, cap: 80, inc: 5_000 },
+    };
+
+    // Sinh 100 items
+    const ITEMS = [];
+    CATS.forEach(cat => {
+      const role = ROLES[cat.id];
+      const names = NAMES[cat.id];
+      for (let t=1; t<=10; t++) {
+        const mult = Math.pow(2.6, t-1);
+        ITEMS.push({
+          id: `${cat.id}_${t}`,
+          cat: cat.id,
+          tier: t,
+          name: names[t-1],
+          icon: cat.icon,
+          tint: cat.tint,
+          cost:   Math.round(role.base * mult),
+          attract: Math.round(role.atk  * Math.pow(2.2, t-1)),
+          cap:     Math.round(role.cap  * Math.pow(2.0, t-1)),
+          income:  Math.round(role.inc  * Math.pow(2.3, t-1)),
+        });
+      }
+    });
+
+    // 10 loại nhân viên
+    const STAFF = [
+      { id:'lifeguard', name:'Cứu Hộ',    icon:'🦺', wage:5_000,  attractBoost:30,  incomeMul:0    },
+      { id:'cleaner',   name:'Lao Công',  icon:'🧹', wage:3_000,  attractBoost:25,  incomeMul:0    },
+      { id:'chef',      name:'Đầu Bếp',   icon:'👨‍🍳',wage:8_000, attractBoost:0,   incomeMul:0.50 },
+      { id:'bartender', name:'Pha Chế',   icon:'🍹', wage:7_000,  attractBoost:0,   incomeMul:0.40 },
+      { id:'guard',     name:'Bảo Vệ',    icon:'🛡️', wage:6_000, attractBoost:15,  incomeMul:0    },
+      { id:'tech',      name:'Kỹ Thuật',  icon:'🔧', wage:10_000, attractBoost:0,   incomeMul:0.10, capBoost:50 },
+      { id:'cashier',   name:'Lễ Tân',    icon:'🎟️', wage:4_000, attractBoost:10,  incomeMul:0.05 },
+      { id:'dj',        name:'DJ',        icon:'🎧', wage:12_000, attractBoost:150, incomeMul:0    },
+      { id:'medic',     name:'Y Tế',      icon:'⚕️', wage:9_000, attractBoost:20,  incomeMul:0    },
+      { id:'manager',   name:'Quản Lý',   icon:'👔', wage:50_000, attractBoost:100, incomeMul:0.20, capBoost:100 },
+    ];
+
+    // ====== ĐỊNH DẠNG SỐ ======
+    const fmt = (n) => {
+      if (!isFinite(n)) return '∞';
+      const abs = Math.abs(n);
+      if (abs >= 1e18) return (n/1e18).toFixed(2)+' tỷ tỷ';
+      if (abs >= 1e15) return (n/1e15).toFixed(2)+' triệu tỷ';
+      if (abs >= 1e12) return (n/1e12).toFixed(2)+' nghìn tỷ';
+      if (abs >= 1e9)  return (n/1e9 ).toFixed(2)+' tỷ';
+      if (abs >= 1e6)  return (n/1e6 ).toFixed(2)+'M';
+      if (abs >= 1e3)  return (n/1e3 ).toFixed(1)+'K';
+      return Math.round(n).toLocaleString('vi-VN');
+    };
+
+    // ====== GAME ======
+    function WaterPark({ onBack }) {
+      const initial = useMemo(() => {
+        const saved = window.GameSave ? window.GameSave.load(SAVE_ID, null) : null;
+        if (saved && typeof saved === 'object') {
+          return {
+            money: saved.money ?? START_MONEY,
+            items: saved.items ?? {},
+            staff: saved.staff ?? {},
+            visitors: saved.visitors ?? 0,
+            totalEarned: saved.totalEarned ?? 0,
+            totalVisitors: saved.totalVisitors ?? 0,
+          };
+        }
+        return { money:START_MONEY, items:{}, staff:{}, visitors:0, totalEarned:0, totalVisitors:0 };
+      }, []);
+
+      const [money,    setMoney]    = useState(initial.money);
+      const [items,    setItems]    = useState(initial.items);
+      const [staff,    setStaff]    = useState(initial.staff);
+      const [visitors, setVisitors] = useState(initial.visitors);
+      const [totalEarned, setTotalEarned] = useState(initial.totalEarned);
+      const [totalVisitors, setTotalVisitors] = useState(initial.totalVisitors);
+
+      const [tab,    setTab]    = useState('build');     // build | staff | stats
+      const [catSel, setCatSel] = useState('pool');
+      const [msg,    setMsg]    = useState('');
+
+      const showMsg = (t) => { setMsg(t); clearTimeout(showMsg._tm); showMsg._tm = setTimeout(()=>setMsg(''), 1800); };
+
+      // ====== Stats tổng hợp ======
+      const stats = useMemo(() => {
+        let attract=0, cap=BASE_CAPACITY, directIncome=0, natureCount=0;
+        ITEMS.forEach(it => {
+          const n = items[it.id] || 0;
+          if (!n) return;
+          attract     += it.attract * n;
+          cap         += it.cap     * n;
+          directIncome += it.income  * n;
+          if (it.cat === 'nature') natureCount += n;
+        });
+        let wages=0, attractBoost=0, incomeMul=0, capBoost=0;
+        STAFF.forEach(s => {
+          const n = staff[s.id] || 0;
+          if (!n) return;
+          wages        += s.wage * n;
+          attractBoost += (s.attractBoost||0) * n;
+          incomeMul    += (s.incomeMul||0) * n;
+          capBoost     += (s.capBoost||0) * n;
+        });
+        const wageDiscount = Math.min(0.6, natureCount * 0.01); // tối đa giảm 60%
+        wages = wages * (1 - wageDiscount);
+        attract += attractBoost;
+        cap     += capBoost;
+        directIncome = directIncome * (1 + incomeMul);
+        return { attract, cap, directIncome, wages, wageDiscount, natureCount };
+      }, [items, staff]);
+
+      // ====== Vòng lặp game: 100ms ======
+      const tickRef = useRef(null);
+      useEffect(() => {
+        if (tickRef.current) clearInterval(tickRef.current);
+        const dt = 0.1; // giây
+        tickRef.current = setInterval(() => {
+          const target = Math.min(stats.attract, stats.cap);
+          // visitors trượt về target (5%/tick)
+          setVisitors(v => {
+            const nv = v + (target - v) * 0.05;
+            return Math.max(0, nv);
+          });
+          // doanh thu mỗi giây
+          // Vé: mỗi khách thăm 1 phút → entry rate = visitors/60 lượt/giây × 10K
+          const ticketIncome = (visitors / 60) * TICKET_PRICE;
+          const totalIncomePerSec = ticketIncome + stats.directIncome;
+          const net = (totalIncomePerSec - stats.wages) * dt;
+          if (totalIncomePerSec > 0) {
+            setTotalEarned(t => t + totalIncomePerSec * dt);
+            setTotalVisitors(t => t + (visitors / 60) * dt);
+          }
+          setMoney(m => m + net);
+        }, 100);
+        return () => clearInterval(tickRef.current);
+      }, [stats.attract, stats.cap, stats.directIncome, stats.wages, visitors]);
+
+      // ====== Auto-save ======
+      useEffect(() => {
+        if (!window.GameSave) return;
+        window.GameSave.saveThrottled(SAVE_ID, {
+          money, items, staff, visitors, totalEarned, totalVisitors,
+        }, 600);
+      }, [money, items, staff, visitors, totalEarned, totalVisitors]);
+
+      // ====== Hành động ======
+      const buyItem = (it) => {
+        if (money < it.cost) { showMsg('❌ Không đủ tiền!'); return; }
+        setMoney(m => m - it.cost);
+        setItems(p => ({...p, [it.id]: (p[it.id]||0) + 1 }));
+        showMsg(`✅ Mua ${it.name}!`);
+      };
+      const sellItem = (it) => {
+        const have = items[it.id] || 0;
+        if (!have) return;
+        const refund = Math.round(it.cost * 0.5);
+        setMoney(m => m + refund);
+        setItems(p => {
+          const np = {...p};
+          if (np[it.id] <= 1) delete np[it.id]; else np[it.id]--;
+          return np;
+        });
+        showMsg(`💸 Bán ${it.name} +${fmt(refund)}đ`);
+      };
+      const hireStaff = (s) => {
+        const cost = (s.wage || 0) * 10; // phí thuê = 10s lương
+        if (money < cost) { showMsg('❌ Không đủ tiền thuê!'); return; }
+        setMoney(m => m - cost);
+        setStaff(p => ({...p, [s.id]: (p[s.id]||0) + 1 }));
+        showMsg(`✅ Thuê ${s.name}!`);
+      };
+      const fireStaff = (s) => {
+        const have = staff[s.id] || 0;
+        if (!have) return;
+        setStaff(p => {
+          const np = {...p};
+          if (np[s.id] <= 1) delete np[s.id]; else np[s.id]--;
+          return np;
+        });
+        showMsg(`👋 Sa thải ${s.name}`);
+      };
+      const resetAll = () => {
+        if (!confirm('Xoá toàn bộ tiến trình công viên?')) return;
+        if (window.GameSave) window.GameSave.clear(SAVE_ID);
+        setMoney(START_MONEY); setItems({}); setStaff({});
+        setVisitors(0); setTotalEarned(0); setTotalVisitors(0);
+        showMsg('🔄 Đã reset!');
+      };
+
+      // ====== UI ======
+      const catItems = ITEMS.filter(i => i.cat === catSel);
+      const target = Math.min(stats.attract, stats.cap);
+      const ticketIncomePerSec = (visitors / 60) * TICKET_PRICE;
+      const netPerSec = ticketIncomePerSec + stats.directIncome - stats.wages;
+
+      return (
+        <div style={{minHeight:'100vh',padding:8,display:'flex',flexDirection:'column',gap:6}}>
+          {/* Header */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6}}>
+            <button onClick={onBack} style={btnGhost}>← Hub</button>
+            <h3 style={{margin:0,fontSize:14,fontWeight:900,color:'#fde68a'}}>🏖️ Công Viên Nước</h3>
+            <button onClick={resetAll} style={{...btnGhost, color:'#fca5a5', borderColor:'rgba(239,68,68,0.3)'}}>🔄</button>
+          </div>
+
+          {/* Money + visitor strip */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:4}}>
+            <Stat color="#fbbf24" label="💰 Tiền"    value={fmt(money)+'đ'} />
+            <Stat color="#22d3ee" label="👥 Khách"  value={Math.floor(visitors)+'/'+fmt(Math.floor(target))} />
+            <Stat color={netPerSec>=0?'#34d399':'#fca5a5'} label="📈 Thu/s" value={(netPerSec>=0?'+':'')+fmt(netPerSec)+'đ'} />
+            <Stat color="#f472b6" label="⭐ Sức hút" value={fmt(stats.attract)} />
+          </div>
+
+          {msg && <div style={{textAlign:'center',background:'rgba(253,224,71,0.15)',border:'1px solid rgba(253,224,71,0.3)',borderRadius:8,padding:'5px',color:'#fde68a',fontSize:12,fontWeight:700}}>{msg}</div>}
+
+          {/* Tabs */}
+          <div style={{display:'flex',gap:4}}>
+            {[
+              {id:'build', icon:'🏗️', name:'Xây Dựng'},
+              {id:'staff', icon:'👥', name:'Nhân Viên'},
+              {id:'stats', icon:'📊', name:'Thống Kê'},
+            ].map(t => (
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{
+                flex:1,
+                background: tab===t.id ? 'rgba(253,224,71,0.2)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${tab===t.id?'#fde68a':'rgba(255,255,255,0.1)'}`,
+                borderRadius:8, padding:'6px', color:tab===t.id?'#fde68a':'#cbd5e1',
+                fontSize:12, fontWeight:700, cursor:'pointer',
+              }}>{t.icon} {t.name}</button>
+            ))}
+          </div>
+
+          {/* BUILD TAB */}
+          {tab==='build' && (
+            <div style={{display:'flex',flexDirection:'column',gap:6,flex:1,minHeight:0}}>
+              {/* Chọn danh mục */}
+              <div style={{display:'flex',gap:4,overflowX:'auto',paddingBottom:4}}>
+                {CATS.map(cat => (
+                  <button key={cat.id} onClick={()=>setCatSel(cat.id)} style={{
+                    flexShrink:0,
+                    background: catSel===cat.id ? `${cat.tint}33` : 'rgba(255,255,255,0.04)',
+                    border: `2px solid ${catSel===cat.id ? cat.tint : 'rgba(255,255,255,0.08)'}`,
+                    borderRadius:8, padding:'4px 8px', color:cat.tint, fontSize:11, fontWeight:700, cursor:'pointer',
+                    minWidth:62, textAlign:'center',
+                  }}>
+                    <div style={{fontSize:18}}>{cat.icon}</div>
+                    <div>{cat.name}</div>
+                  </button>
+                ))}
+              </div>
+              {/* Danh sách 10 món của category */}
+              <div style={{flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:4}}>
+                {catItems.map(it => {
+                  const have = items[it.id] || 0;
+                  const afford = money >= it.cost;
+                  return (
+                    <div key={it.id} style={{
+                      display:'grid', gridTemplateColumns:'auto 1fr auto auto', gap:6, alignItems:'center',
+                      background:'rgba(255,255,255,0.04)', border:`1px solid ${it.tint}33`,
+                      borderRadius:8, padding:'6px 8px',
+                    }}>
+                      <div style={{fontSize:22}}>{it.icon}</div>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontSize:12,fontWeight:700,color:it.tint}}>
+                          T{it.tier} · {it.name} <span style={{color:'#94a3b8',fontWeight:400}}>×{have}</span>
+                        </div>
+                        <div style={{fontSize:9,color:'#cbd5e1'}}>
+                          {it.attract>0 && <span>⭐{fmt(it.attract)} </span>}
+                          {it.cap>0     && <span>👥{fmt(it.cap)} </span>}
+                          {it.income>0  && <span>💰{fmt(it.income)}/s </span>}
+                        </div>
+                      </div>
+                      <button onClick={()=>sellItem(it)} disabled={!have} style={{
+                        ...btnAct, background:'rgba(239,68,68,0.15)', borderColor:'rgba(239,68,68,0.3)', color:'#fca5a5',
+                        opacity: have?1:0.3, cursor:have?'pointer':'not-allowed',
+                      }}>Bán</button>
+                      <button onClick={()=>buyItem(it)} disabled={!afford} style={{
+                        ...btnAct, background:afford?`${it.tint}22`:'rgba(100,116,139,0.15)',
+                        borderColor:afford?`${it.tint}55`:'rgba(100,116,139,0.3)',
+                        color:afford?it.tint:'#64748b',
+                        cursor:afford?'pointer':'not-allowed',
+                      }}>
+                        Mua<br/><span style={{fontSize:9}}>{fmt(it.cost)}đ</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* STAFF TAB */}
+          {tab==='staff' && (
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:4}}>
+              <div style={{fontSize:10,color:'#cbd5e1',textAlign:'center',padding:'2px'}}>
+                Phí thuê = 10 giây lương. Tổng lương hiện tại: {fmt(stats.wages)}đ/s
+                {stats.wageDiscount>0 && <span style={{color:'#34d399'}}> (−{Math.round(stats.wageDiscount*100)}% nhờ {stats.natureCount} cây)</span>}
+              </div>
+              {STAFF.map(s => {
+                const have = staff[s.id] || 0;
+                const hireCost = s.wage * 10;
+                const afford = money >= hireCost;
+                return (
+                  <div key={s.id} style={{
+                    display:'grid', gridTemplateColumns:'auto 1fr auto auto', gap:6, alignItems:'center',
+                    background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)',
+                    borderRadius:8, padding:'6px 8px',
+                  }}>
+                    <div style={{fontSize:22}}>{s.icon}</div>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:12,fontWeight:700,color:'#fde68a'}}>
+                        {s.name} <span style={{color:'#94a3b8',fontWeight:400}}>×{have}</span>
+                      </div>
+                      <div style={{fontSize:9,color:'#cbd5e1'}}>
+                        💸{fmt(s.wage)}đ/s
+                        {s.attractBoost>0 && <span> · +⭐{s.attractBoost}</span>}
+                        {s.incomeMul>0   && <span> · +{Math.round(s.incomeMul*100)}% thu</span>}
+                        {s.capBoost>0    && <span> · +👥{s.capBoost}</span>}
+                      </div>
+                    </div>
+                    <button onClick={()=>fireStaff(s)} disabled={!have} style={{
+                      ...btnAct, background:'rgba(239,68,68,0.15)', borderColor:'rgba(239,68,68,0.3)', color:'#fca5a5',
+                      opacity: have?1:0.3, cursor:have?'pointer':'not-allowed',
+                    }}>Sa thải</button>
+                    <button onClick={()=>hireStaff(s)} disabled={!afford} style={{
+                      ...btnAct, background: afford?'rgba(52,211,153,0.18)':'rgba(100,116,139,0.15)',
+                      borderColor: afford?'rgba(52,211,153,0.45)':'rgba(100,116,139,0.3)',
+                      color: afford?'#6ee7b7':'#64748b',
+                      cursor: afford?'pointer':'not-allowed',
+                    }}>
+                      Thuê<br/><span style={{fontSize:9}}>{fmt(hireCost)}đ</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* STATS TAB */}
+          {tab==='stats' && (
+            <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:6}}>
+              <Section title="💰 Tài Chính">
+                <Row label="Tiền hiện có"     value={fmt(money)+'đ'} />
+                <Row label="Tổng thu trọn đời"value={fmt(totalEarned)+'đ'} />
+                <Row label="Thu vé / giây"    value={fmt(ticketIncomePerSec)+'đ'} />
+                <Row label="Thu quầy / giây"  value={fmt(stats.directIncome)+'đ'} />
+                <Row label="Lương / giây"     value={'-'+fmt(stats.wages)+'đ'} />
+                <Row label="Lãi ròng / giây"  value={(netPerSec>=0?'+':'')+fmt(netPerSec)+'đ'} highlight={netPerSec>=0?'#34d399':'#fca5a5'} />
+              </Section>
+              <Section title="👥 Khách & Sức Chứa">
+                <Row label="Khách đang ở"    value={Math.floor(visitors)} />
+                <Row label="Sức chứa tối đa" value={fmt(stats.cap)} />
+                <Row label="Sức hút"         value={fmt(stats.attract)} />
+                <Row label="Tổng khách đã đến" value={fmt(Math.floor(totalVisitors))} />
+              </Section>
+              <Section title="🏗️ Công Viên">
+                <Row label="Số công trình" value={Object.values(items).reduce((a,b)=>a+b,0)+' / 100 loại'} />
+                <Row label="Loại đã mua"   value={Object.keys(items).length+' / 100'} />
+                <Row label="Nhân viên"     value={Object.values(staff).reduce((a,b)=>a+b,0)+' người'} />
+                <Row label="Loại nhân viên" value={Object.keys(staff).length+' / 10'} />
+              </Section>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ====== Sub-component ======
+    function Stat({color, label, value}) {
+      return (
+        <div style={{background:'rgba(0,0,0,0.25)',border:`1px solid ${color}44`,borderRadius:8,padding:'4px 6px',textAlign:'center'}}>
+          <div style={{fontSize:9,color:'#94a3b8'}}>{label}</div>
+          <div style={{fontSize:13,fontWeight:900,color}}>{value}</div>
+        </div>
+      );
+    }
+    function Section({title, children}) {
+      return (
+        <div style={{background:'rgba(0,0,0,0.25)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:8}}>
+          <div style={{fontSize:12,fontWeight:900,color:'#fde68a',marginBottom:4}}>{title}</div>
+          <div style={{display:'flex',flexDirection:'column',gap:2}}>{children}</div>
+        </div>
+      );
+    }
+    function Row({label, value, highlight}) {
+      return (
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#cbd5e1'}}>
+          <span>{label}</span>
+          <span style={{fontWeight:700, color: highlight || '#e0f2fe'}}>{value}</span>
+        </div>
+      );
+    }
+
+    const btnGhost = {
+      background:'rgba(255,255,255,0.06)',
+      border:'1px solid rgba(255,255,255,0.15)',
+      borderRadius:8, padding:'4px 10px', color:'#cbd5e1',
+      cursor:'pointer', fontSize:12, fontWeight:700,
+    };
+    const btnAct = {
+      border:'1px solid', borderRadius:8, padding:'4px 10px',
+      fontSize:11, fontWeight:700, minWidth:54, textAlign:'center',
+    };
+
+    // ====== App ======
+    function App() {
+      const handleBack = () => {
+        if (window.GameSave) window.GameSave.flush(SAVE_ID);
+        window.location.href = '../index.html';
+      };
+      return <WaterPark onBack={handleBack} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

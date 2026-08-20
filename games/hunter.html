@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🦖 Săn Khủng Long — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #1a0a00, #3d1a05);
+      min-height: 100vh;
+      color: #fef3c7;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #root { min-height: 100vh; }
+    button { font-family: inherit; cursor: pointer; transition: transform 0.1s, filter 0.15s; }
+    button:active:not(:disabled) { transform: scale(0.95); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(-8px, 4px); }
+      50% { transform: translate(8px, -4px); }
+      75% { transform: translate(-4px, -4px); }
+    }
+    @keyframes pop {
+      0% { transform: translate(-50%, 0) scale(0.6); opacity: 1; }
+      100% { transform: translate(-50%, -80px) scale(1.4); opacity: 0; }
+    }
+    @keyframes flash {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(2) hue-rotate(-20deg); }
+    }
+    @keyframes coinPop {
+      0% { transform: scale(0.5); opacity: 0; }
+      40% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes secretPulse {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+      50%      { transform: scale(1.06); filter: drop-shadow(0 0 12px rgba(253,224,71,0.5)); }
+    }
+  </style>
+  <script src="../js/theme.js"></script>
+  <script src="../js/analytics.js"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ============================
+    // DỮ LIỆU GAME
+    // ============================
+    const STORAGE_KEY = 'hunterGame_v1';
+
+    const MAPS = [
+      { id: 1,  name: 'Rừng Nhỏ',           dino: '🦎', dinoName: 'Compsognathus',     hp: 30,           bg: 'linear-gradient(180deg,#14532d,#365314)' },
+      { id: 2,  name: 'Đầm Lầy',            dino: '🐊', dinoName: 'Velociraptor',      hp: 50,           bg: 'linear-gradient(180deg,#1e3a2e,#3f6212)' },
+      { id: 3,  name: 'Đồng Cỏ',            dino: '🦕', dinoName: 'Stegosaurus',       hp: 90,           bg: 'linear-gradient(180deg,#365314,#84cc16)' },
+      { id: 4,  name: 'Sa Mạc',             dino: '🦏', dinoName: 'Triceratops',       hp: 120,          bg: 'linear-gradient(180deg,#78350f,#f59e0b)' },
+      { id: 5,  name: 'Núi Lửa',            dino: '🐉', dinoName: 'Allosaurus',        hp: 300,          bg: 'linear-gradient(180deg,#7f1d1d,#ea580c)' },
+      { id: 6,  name: 'Sông Lớn',           dino: '🐲', dinoName: 'Spinosaurus',       hp: 350,          bg: 'linear-gradient(180deg,#0c4a6e,#0369a1)' },
+      { id: 7,  name: 'Rừng Cổ',            dino: '🦒', dinoName: 'Brachiosaurus',     hp: 450,          bg: 'linear-gradient(180deg,#064e3b,#15803d)' },
+      { id: 8,  name: 'Hẻm Núi',            dino: '🦖', dinoName: 'Giganotosaurus',    hp: 670,          bg: 'linear-gradient(180deg,#3f3f46,#71717a)' },
+      { id: 9,  name: 'Hang Vua',           dino: '👑', dinoName: 'T-Rex Bạo Chúa',    hp: 900,          bg: 'linear-gradient(180deg,#450a0a,#991b1b)' },
+      { id: 10, name: 'Đảo Cấm',            dino: '🦴', dinoName: 'Indominus Rex',     hp: 1000,         bg: 'linear-gradient(180deg,#1c1917,#57534e)' },
+      { id: 11, name: 'Phòng Thí Nghiệm',   dino: '🧬', dinoName: 'Indoraptor',        hp: 1200,         bg: 'linear-gradient(180deg,#1e1b4b,#4338ca)' },
+      { id: 12, name: 'Vực Đại Dương',      dino: '🐋', dinoName: 'Mosasaurus Vương',  hp: 156000,       bg: 'linear-gradient(180deg,#082f49,#0e7490)' },
+      { id: 13, name: 'Hành Tinh Lạ',       dino: '👽', dinoName: 'Khủng Long Vũ Trụ', hp: 505055,       bg: 'linear-gradient(180deg,#2e1065,#7e22ce)' },
+      { id: 14, name: 'Cõi Âm',             dino: '💀', dinoName: 'Vua Cổ Đại',        hp: 999999,       bg: 'linear-gradient(180deg,#0a0a0a,#451a03)' },
+      { id: 15, name: 'Tận Cùng Vũ Trụ',    dino: '⚡', dinoName: 'Khủng Long Thần',   hp: 100000000000, bg: 'linear-gradient(180deg,#020617,#7c3aed)' },
+    ];
+
+    const GUNS = [
+      { id: 'pistol',  name: 'Súng Lục',       icon: '🔫', baseDmg: 5,            cost: 0     },
+      { id: 'rifle',   name: 'Súng Trường',    icon: '🪖', baseDmg: 18,           cost: 500   },
+      { id: 'shotgun', name: 'Súng Săn',       icon: '💥', baseDmg: 40,           cost: 2500  },
+      { id: 'sniper',  name: 'Súng Bắn Tỉa',   icon: '🎯', baseDmg: 90,           cost: 10000 },
+      { id: 'rocket',  name: 'Súng Phóng Lựu', icon: '🚀', baseDmg: 200,          cost: 40000 },
+      { id: 'secret',  name: 'Súng Vô Cực',    icon: '💫', baseDmg: 100000000,    cost: 1,  realCoin: true, secret: true },
+      { id: 'scp',     name: 'Súng S.C.P',     icon: '☢️', baseDmg: 1000000000,   cost: 10, realCoin: true, secret: true },
+      { id: 'reaper',  name: 'Súng Thật',      icon: '💀', baseDmg: 100000000000, cost: 1,      tyrantCoin: true, tyrant: true },
+      { id: 'choi',    name: 'Súng Chối',      icon: '🌀', baseDmg: 6700000000000, cost: 100000, choi: true },
+    ];
+
+    const SECRET_PASSWORD     = '1234';        // mở 2 súng bí mật (Shop)
+    const TYRANT_PASSWORD     = '123456789';   // mở chế độ Tử Thần (Shop)
+    const CHOI_PASSWORD       = 'hang';        // mở chế độ Chối (Shop)
+    const TYRANT_COIN_PASSWORD = '1234567';    // +1 viên bạo chúa mỗi lần (Shop)
+    const PRO_PASSWORD = 'pro';                // +1 xu thật mỗi lần (menu 🦖)
+    const HARRY_PASSWORD = 'harry potter';     // mở khóa toàn bộ (menu 🦖, 1 lần)
+
+    // ============================
+    // LƯU / TẢI
+    // ============================
+    const defaultState = () => ({
+      coins: 0,
+      realCoins: 0,
+      tyrantCoins: 0,
+      currentGun: 'pistol',
+      ownedGuns: { pistol: true },
+      gunBonus: { pistol: 0, rifle: 0, shotgun: 0, sniper: 0, rocket: 0, secret: 0, scp: 0, reaper: 0, choi: 0 },
+      unlockedMap: 1,
+      kills: 0,
+      tamed: {},     // { mapId: combatLevel } — khủng long đã thuần dưỡng
+      nursery: [],   // [{ id, species, hunger, growth }] — khủng long con cần chăm sóc
+      tickCount: 0,  // số giây đã chạy (để biết khi nào đẻ trứng)
+      secretUnlocked: false,
+      tyrantMode: false,
+      choiMode: false,
+      proMode: false,
+    });
+
+    // ============================
+    // ĐÀN KHỦNG LONG (RANCH)
+    // ============================
+    const TAME_COST = (mapId) => mapId * 100;
+    const UPGRADE_COST = (currentLevel) => (currentLevel + 1) * 200;
+    const TAMED_POWER = (mapId, level) => level * mapId * 5;
+    const MAX_TAMED_LEVEL = 20;
+
+    function getTotalTamedPower(tamed) {
+      if (!tamed) return 0;
+      return Object.entries(tamed).reduce(
+        (sum, [id, lvl]) => sum + TAMED_POWER(+id, lvl), 0
+      );
+    }
+
+    // ============================
+    // PHÒNG ẤP / CHĂM SÓC CON
+    // ============================
+    const MAX_NURSERY      = 15;     // tối đa 15 con trong phòng ấp
+    const MAX_HUNGER       = 100;
+    const MAX_GROWTH       = 100;
+    const HUNGER_DECAY_SEC = 5;      // -1 đói mỗi 5 giây
+    const EGG_INTERVAL_SEC = 60;     // mỗi 60s, mỗi loài đã tame đẻ 1 con
+    const FEED_COST        = 100;    // xu vàng mỗi lần cho ăn
+    const FEED_HUNGER      = 25;
+    const FEED_GROWTH      = 10;
+
+    const loadState = () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return defaultState();
+        const parsed = JSON.parse(raw);
+        const def = defaultState();
+        // Merge nông object lồng để save game cũ vẫn có field mới (gunBonus.scp, ...)
+        return {
+          ...def,
+          ...parsed,
+          gunBonus:  { ...def.gunBonus,  ...(parsed.gunBonus  || {}) },
+          ownedGuns: { ...def.ownedGuns, ...(parsed.ownedGuns || {}) },
+          tamed:     { ...(parsed.tamed || {}) },
+          nursery:   Array.isArray(parsed.nursery) ? parsed.nursery : [],
+        };
+      } catch { return defaultState(); }
+    };
+
+    const saveState = (s) => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
+    };
+
+    // ============================
+    // COMPONENT CHÍNH
+    // ============================
+    function HunterGame() {
+      const [state, setState] = useState(loadState);
+      const [screen, setScreen] = useState('menu'); // menu | hunt | train | shop | ranch
+      const [activeMap, setActiveMap] = useState(null);
+
+      useEffect(() => { saveState(state); }, [state]);
+
+      // Tick mỗi giây: đẻ trứng / đói / lớn / tốt nghiệp
+      useEffect(() => {
+        const id = setInterval(() => {
+          setState(prev => {
+            const nextTick = (prev.tickCount || 0) + 1;
+            let nursery = [...(prev.nursery || [])];
+            const tamed = { ...prev.tamed };
+
+            // Tốt nghiệp con đủ growth ≥ 100 → +1 cấp cho loài
+            const remaining = [];
+            nursery.forEach(b => {
+              if (b.growth >= MAX_GROWTH) {
+                tamed[b.species] = Math.min(MAX_TAMED_LEVEL, (tamed[b.species] || 0) + 1);
+              } else {
+                remaining.push(b);
+              }
+            });
+            nursery = remaining;
+
+            // Mỗi HUNGER_DECAY_SEC giây: -1 đói, xóa con chết (đói = 0)
+            if (nextTick % HUNGER_DECAY_SEC === 0) {
+              nursery = nursery
+                .map(b => ({ ...b, hunger: Math.max(0, b.hunger - 1) }))
+                .filter(b => b.hunger > 0);
+            }
+
+            // Mỗi EGG_INTERVAL_SEC: mỗi loài đã tame đẻ 1 con (nếu còn chỗ)
+            if (nextTick % EGG_INTERVAL_SEC === 0) {
+              Object.entries(prev.tamed).forEach(([mapId, lvl]) => {
+                if (lvl > 0 && nursery.length < MAX_NURSERY) {
+                  nursery.push({
+                    id: Date.now() + Math.random(),
+                    species: +mapId,
+                    hunger: MAX_HUNGER,
+                    growth: 0,
+                  });
+                }
+              });
+            }
+
+            return { ...prev, tickCount: nextTick, nursery, tamed };
+          });
+        }, 1000);
+        return () => clearInterval(id);
+      }, []);
+
+      const currentGunData = GUNS.find(g => g.id === state.currentGun);
+      const tamedPower = getTotalTamedPower(state.tamed);
+      const currentDamage = currentGunData.baseDmg + state.gunBonus[state.currentGun] + tamedPower;
+
+      const onBack = () => { window.location.href = '../index.html'; };
+
+      // Cập nhật state helper (hỗ trợ functional patch để không mất click khi bấm liên tục)
+      const update = (patch) => setState(prev => ({
+        ...prev,
+        ...(typeof patch === 'function' ? patch(prev) : patch),
+      }));
+
+      // Reset toàn bộ
+      const resetGame = () => {
+        if (confirm('Bạn có chắc muốn xóa toàn bộ tiến trình?')) {
+          const s = defaultState();
+          setState(s);
+          saveState(s);
+          setScreen('menu');
+        }
+      };
+
+      // Mật khẩu "pro" → +1 xu thật (có thể dùng nhiều lần)
+      const giveRealCoin = () => {
+        update(prev => ({ realCoins: prev.realCoins + 1 }));
+      };
+
+      // Mật khẩu "harry potter" → mở khóa toàn bộ (chỉ 1 lần)
+      const activateHarry = () => {
+        const allGuns = {};
+        GUNS.forEach(g => { allGuns[g.id] = true; });
+        update(prev => ({
+          coins: prev.coins + 1000000,
+          realCoins: prev.realCoins + 100,
+          unlockedMap: 15,
+          ownedGuns: { ...prev.ownedGuns, ...allGuns },
+          secretUnlocked: true,
+          proMode: true,
+        }));
+      };
+
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          {/* Thanh đầu */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 16px', background: 'rgba(0,0,0,0.4)',
+            borderBottom: '1px solid rgba(254,243,199,0.15)'
+          }}>
+            <button onClick={screen === 'menu' ? onBack : () => setScreen('menu')} style={btnStyle('#78350f')}>
+              ← {screen === 'menu' ? 'Hub' : 'Menu'}
+            </button>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>
+                💰 <span style={{ color: '#fde047' }}>{state.coins.toLocaleString('vi-VN')}</span>
+              </div>
+              {(state.realCoins > 0 || state.secretUnlocked) && (
+                <div style={{ fontSize: 16, fontWeight: 700 }}>
+                  💎 <span style={{ color: '#22d3ee' }}>{state.realCoins.toLocaleString('vi-VN')}</span>
+                </div>
+              )}
+              {(state.tyrantCoins > 0 || state.tyrantMode) && (
+                <div style={{ fontSize: 16, fontWeight: 700 }}>
+                  💀 <span style={{ color: '#f87171' }}>{state.tyrantCoins.toLocaleString('vi-VN')}</span>
+                </div>
+              )}
+              <div style={{ fontSize: 13, opacity: 0.8 }}>
+                {currentGunData.icon} {currentDamage.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} dmg
+              </div>
+            </div>
+          </div>
+
+          {screen === 'menu'  && <MenuScreen state={state} setScreen={setScreen} setActiveMap={setActiveMap} onReset={resetGame} onGiveRealCoin={giveRealCoin} onHarryUnlock={activateHarry} />}
+          {screen === 'hunt'  && <HuntScreen state={state} update={update} activeMap={activeMap} setActiveMap={setActiveMap} damage={currentDamage} />}
+          {screen === 'train' && <TrainScreen state={state} update={update} />}
+          {screen === 'shop'  && <ShopScreen state={state} update={update} />}
+          {screen === 'ranch' && <RanchScreen state={state} update={update} />}
+        </div>
+      );
+    }
+
+    const btnStyle = (color) => ({
+      padding: '8px 14px', borderRadius: 10, border: 'none',
+      background: color, color: '#fff', fontWeight: 700, fontSize: 14,
+    });
+
+    // ============================
+    // MÀN HÌNH MENU
+    // ============================
+    function MenuScreen({ state, setScreen, setActiveMap, onReset, onGiveRealCoin, onHarryUnlock }) {
+      const [showPro, setShowPro] = useState(false);
+      const [flash, setFlash] = useState(null); // { kind: 'pro' | 'harry', text: '...' }
+
+      return (
+        <div style={{ flex: 1, padding: 24, maxWidth: 720, margin: '0 auto', width: '100%' }}>
+          <div style={{ textAlign: 'center', marginTop: 12, marginBottom: 28 }}>
+            <div
+              onClick={() => setShowPro(true)}
+              style={{
+                fontSize: 72, cursor: 'pointer', display: 'inline-block',
+                animation: state.proMode ? 'none' : 'secretPulse 2.4s infinite',
+                filter: state.proMode ? 'drop-shadow(0 0 12px #fde047)' : 'none',
+              }}
+              title="Bí mật..."
+            >🦖</div>
+            <h1 style={{ fontSize: 32, marginTop: 4 }}>
+              SĂN KHỦNG LONG
+              {state.proMode && <span style={{ fontSize: 14, color: '#fde047', marginLeft: 8 }}>⚡ HARRY</span>}
+            </h1>
+            <p style={{ opacity: 0.7, marginTop: 6 }}>
+              Đã giết <strong style={{ color: '#fde047' }}>{state.kills}</strong> khủng long • Mở khóa map <strong>{state.unlockedMap}/15</strong>
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
+            <MenuButton
+              icon="🗺️" title="Chọn Map Săn"
+              desc="9 map, 9 loài khủng long khác nhau"
+              color="#dc2626"
+              onClick={() => setScreen('hunt')}
+            />
+            <MenuButton
+              icon="🎯" title="Khu Tập Luyện"
+              desc="Bấm súng để +0.5 sát thương vĩnh viễn"
+              color="#0891b2"
+              onClick={() => setScreen('train')}
+            />
+            <MenuButton
+              icon="🛒" title="Cửa Hàng Súng"
+              desc="Mua súng mạnh hơn bằng xu"
+              color="#7c3aed"
+              onClick={() => setScreen('shop')}
+            />
+            <MenuButton
+              icon="🏠" title="Khu Nuôi Khủng Long"
+              desc="Làm quen + nâng cấp khủng long giúp bạn đánh"
+              color="#16a34a"
+              onClick={() => setScreen('ranch')}
+            />
+          </div>
+
+          <div style={{ marginTop: 32, textAlign: 'center' }}>
+            <button onClick={onReset} style={{ ...btnStyle('rgba(0,0,0,0.4)'), fontSize: 12, opacity: 0.6 }}>
+              🔄 Reset tiến trình
+            </button>
+          </div>
+
+          {showPro && (
+            <ProPasswordModal
+              alreadyPro={state.proMode}
+              onClose={() => setShowPro(false)}
+              onPro={() => {
+                onGiveRealCoin();
+                setShowPro(false);
+                setFlash({ kind: 'pro', text: '💎 +1 XU THẬT!' });
+                setTimeout(() => setFlash(null), 1800);
+              }}
+              onHarry={() => {
+                onHarryUnlock();
+                setShowPro(false);
+                setFlash({ kind: 'harry', text: '⚡ HARRY POTTER — MỞ KHÓA TOÀN BỘ!' });
+                setTimeout(() => setFlash(null), 3000);
+              }}
+            />
+          )}
+          {flash && (
+            <div style={{
+              position: 'fixed', top: 70, left: '50%', transform: 'translateX(-50%)',
+              padding: '14px 24px', borderRadius: 14, zIndex: 200,
+              background: flash.kind === 'harry'
+                ? 'linear-gradient(135deg,#a78bfa,#7c3aed)'
+                : 'linear-gradient(135deg,#22d3ee,#0891b2)',
+              color: '#fff', fontWeight: 800, fontSize: 16,
+              boxShadow: '0 6px 24px rgba(0,0,0,0.4)', animation: 'coinPop 0.4s',
+              textAlign: 'center', maxWidth: '90vw',
+            }}>{flash.text}</div>
+          )}
+        </div>
+      );
+    }
+
+    // ============================
+    // MODAL MẬT KHẨU BÍ MẬT
+    // ============================
+    function ProPasswordModal({ alreadyPro, onClose, onPro, onHarry }) {
+      const [pwd, setPwd] = useState('');
+      const [err, setErr] = useState('');
+
+      const submit = () => {
+        const p = pwd.toLowerCase().trim();
+        if (p === PRO_PASSWORD) {
+          onPro();
+        } else if (p === HARRY_PASSWORD) {
+          if (alreadyPro) {
+            setErr('Đã kích hoạt Harry Potter rồi!');
+            setTimeout(() => setErr(''), 1800);
+          } else {
+            onHarry();
+          }
+        } else {
+          setErr('❌ Sai mật khẩu!');
+          setTimeout(() => setErr(''), 1500);
+        }
+      };
+
+      return (
+        <div
+          onClick={onClose}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20, zIndex: 150,
+          }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: 'linear-gradient(160deg,#1e1b4b,#4c1d95)', padding: 28, borderRadius: 20,
+            maxWidth: 360, width: '100%', border: '2px solid #fde047',
+            boxShadow: '0 0 32px rgba(253,224,71,0.4)',
+          }}>
+            <div style={{ textAlign: 'center', fontSize: 56 }}>🦖</div>
+            <h2 style={{ textAlign: 'center', marginTop: 8 }}>Mật Khẩu Bí Mật</h2>
+            <p style={{ textAlign: 'center', marginTop: 6, opacity: 0.8, fontSize: 13 }}>
+              Có nhiều mật khẩu khác nhau...
+            </p>
+            <input
+              type="text"
+              autoFocus
+              value={pwd}
+              onChange={(e) => setPwd(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submit()}
+              placeholder="Nhập mật khẩu..."
+              style={{
+                width: '100%', padding: '12px 14px', borderRadius: 10,
+                border: `2px solid ${err ? '#ef4444' : 'rgba(254,243,199,0.25)'}`,
+                background: 'rgba(0,0,0,0.4)', color: '#fff',
+                fontSize: 16, textAlign: 'center',
+                outline: 'none', fontFamily: 'inherit', marginTop: 16,
+              }}
+            />
+            {err && <div style={{ marginTop: 8, fontSize: 12, color: '#fca5a5', textAlign: 'center' }}>{err}</div>}
+            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+              <button onClick={onClose} style={{ ...btnStyle('rgba(0,0,0,0.5)'), flex: 1, padding: '12px' }}>Đóng</button>
+              <button onClick={submit} style={{ ...btnStyle('#fde047'), flex: 1, padding: '12px', color: '#451a03' }}>Mở khóa</button>
+            </div>
+            {alreadyPro && (
+              <p style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: '#a78bfa' }}>
+                👑 Đã kích hoạt: Harry Potter
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function MenuButton({ icon, title, desc, color, onClick }) {
+      return (
+        <button onClick={onClick} style={{
+          padding: 20, borderRadius: 16, border: 'none',
+          background: color, color: '#fff', textAlign: 'left',
+          display: 'flex', alignItems: 'center', gap: 16,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+        }}>
+          <div style={{ fontSize: 42 }}>{icon}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>{title}</div>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>{desc}</div>
+          </div>
+          <div style={{ fontSize: 24 }}>→</div>
+        </button>
+      );
+    }
+
+    // ============================
+    // MÀN HÌNH SĂN — CHỌN MAP
+    // ============================
+    function HuntScreen({ state, update, activeMap, setActiveMap, damage }) {
+      if (activeMap) {
+        return <BattleScreen state={state} update={update} mapData={activeMap} setActiveMap={setActiveMap} damage={damage} />;
+      }
+
+      return (
+        <div style={{ flex: 1, padding: 20, maxWidth: 720, margin: '0 auto', width: '100%' }}>
+          <h2 style={{ textAlign: 'center', marginBottom: 16 }}>🗺️ Chọn Map Săn</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
+            {MAPS.map(m => {
+              const locked = m.id > state.unlockedMap;
+              return (
+                <button
+                  key={m.id}
+                  disabled={locked}
+                  onClick={() => setActiveMap(m)}
+                  style={{
+                    padding: 14, borderRadius: 14, border: '2px solid rgba(254,243,199,0.2)',
+                    background: locked ? 'rgba(0,0,0,0.5)' : m.bg, color: '#fff',
+                    textAlign: 'center', minHeight: 140,
+                    display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                  }}>
+                  <div style={{ fontSize: 11, opacity: 0.8 }}>MAP {m.id}</div>
+                  <div style={{ fontSize: 42 }}>{locked ? '🔒' : m.dino}</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{m.name}</div>
+                    <div style={{ fontSize: 11, opacity: 0.85 }}>{locked ? 'Khóa' : m.dinoName}</div>
+                    <div style={{ fontSize: 12, color: '#fca5a5', marginTop: 4 }}>❤️ {m.hp.toLocaleString('vi-VN')} HP</div>
+                    {m.id === 9 && !locked && (
+                      <div style={{ fontSize: 10, color: '#22d3ee', marginTop: 2 }}>💎 +1 / bấm</div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ============================
+    // MÀN HÌNH ĐÁNH NHAU
+    // ============================
+    function BattleScreen({ state, update, mapData, setActiveMap, damage }) {
+      const [hp, setHp] = useState(mapData.hp);
+      const [popups, setPopups] = useState([]);
+      const [shaking, setShaking] = useState(false);
+      const [dead, setDead] = useState(false);
+      const [rewardShown, setRewardShown] = useState(false);
+      const popIdRef = useRef(0);
+
+      const shoot = () => {
+        if (dead) return;
+        const dealt = damage;
+        const newHp = Math.max(0, hp - dealt);
+        setHp(newHp);
+
+        // Hiệu ứng số sát thương bay lên
+        const id = popIdRef.current++;
+        const x = 40 + Math.random() * 20;
+        const isTRex = mapData.id === 9;
+        setPopups(prev => [...prev, { id, dmg: dealt, x, real: isTRex }]);
+        setTimeout(() => setPopups(prev => prev.filter(p => p.id !== id)), 800);
+
+        // Bấm T-Rex (map 9) → +1 xu thật
+        if (isTRex) {
+          update(prev => ({ realCoins: prev.realCoins + 1 }));
+        }
+
+        // Rung
+        setShaking(true);
+        setTimeout(() => setShaking(false), 120);
+
+        // Chết
+        if (newHp === 0 && !dead) {
+          setDead(true);
+          setTimeout(() => {
+            const reward = mapData.hp;
+            const tyrantDrop = mapData.id >= 9 ? 1 : 0;
+            update(prev => ({
+              coins: prev.coins + reward,
+              kills: prev.kills + 1,
+              tyrantCoins: prev.tyrantCoins + tyrantDrop,
+              unlockedMap: Math.max(prev.unlockedMap, Math.min(15, mapData.id + 1)),
+            }));
+            setRewardShown(true);
+          }, 600);
+        }
+      };
+
+      const hpPct = (hp / mapData.hp) * 100;
+
+      return (
+        <div style={{ flex: 1, background: mapData.bg, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+          <div style={{ padding: 16, textAlign: 'center' }}>
+            <button onClick={() => setActiveMap(null)} style={btnStyle('rgba(0,0,0,0.5)')}>← Đổi map</button>
+            <h2 style={{ marginTop: 12, fontSize: 22 }}>MAP {mapData.id} — {mapData.name}</h2>
+            <p style={{ opacity: 0.85 }}>{mapData.dinoName}</p>
+          </div>
+
+          {/* Khủng long */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <div style={{ position: 'relative', textAlign: 'center' }}>
+              {!dead ? (
+                <button
+                  onClick={shoot}
+                  style={{
+                    fontSize: 140, background: 'transparent', border: 'none', cursor: 'crosshair',
+                    animation: shaking ? 'shake 0.12s' : 'none',
+                    filter: hp < mapData.hp * 0.3 ? 'hue-rotate(-30deg) brightness(0.85)' : 'none',
+                  }}>
+                  {mapData.dino}
+                </button>
+              ) : (
+                <div style={{ fontSize: 140, opacity: 0.3, animation: 'flash 0.6s' }}>💀</div>
+              )}
+
+              {/* Số sát thương */}
+              {popups.map(p => (
+                <React.Fragment key={p.id}>
+                  <div style={{
+                    position: 'absolute', top: 40, left: `${p.x}%`,
+                    fontSize: 28, fontWeight: 900, color: '#fde047',
+                    textShadow: '0 2px 8px rgba(0,0,0,0.8)',
+                    animation: 'pop 0.8s forwards',
+                    pointerEvents: 'none',
+                  }}>-{p.dmg.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</div>
+                  {p.real && (
+                    <div style={{
+                      position: 'absolute', top: 80, left: `${p.x + 12}%`,
+                      fontSize: 22, fontWeight: 900, color: '#22d3ee',
+                      textShadow: '0 2px 8px rgba(0,0,0,0.8)',
+                      animation: 'pop 0.8s forwards',
+                      pointerEvents: 'none',
+                    }}>+1 💎</div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          {/* Thanh máu */}
+          <div style={{ padding: '0 24px 12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13 }}>
+              <span>❤️ HP</span>
+              <span>{Math.ceil(hp)} / {mapData.hp}</span>
+            </div>
+            <div style={{
+              height: 18, background: 'rgba(0,0,0,0.5)', borderRadius: 9,
+              overflow: 'hidden', border: '1px solid rgba(254,243,199,0.2)',
+            }}>
+              <div style={{
+                width: `${hpPct}%`, height: '100%',
+                background: hpPct > 50 ? 'linear-gradient(90deg,#22c55e,#16a34a)'
+                          : hpPct > 20 ? 'linear-gradient(90deg,#f59e0b,#d97706)'
+                          :              'linear-gradient(90deg,#ef4444,#b91c1c)',
+                transition: 'width 0.15s, background 0.3s',
+              }} />
+            </div>
+          </div>
+
+          {/* Nút bắn lớn */}
+          <div style={{ padding: '0 16px 24px' }}>
+            <button
+              onClick={shoot}
+              disabled={dead}
+              style={{
+                width: '100%', padding: '18px', borderRadius: 16, border: 'none',
+                background: 'linear-gradient(180deg,#dc2626,#991b1b)', color: '#fff',
+                fontSize: 22, fontWeight: 800,
+                boxShadow: '0 6px 20px rgba(220,38,38,0.5)',
+              }}>
+              🔫 BẮN ({damage.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} dmg)
+            </button>
+            {getTotalTamedPower(state.tamed) > 0 && (
+              <div style={{ marginTop: 6, fontSize: 11, opacity: 0.7, textAlign: 'center' }}>
+                🐲 Có +{getTotalTamedPower(state.tamed).toLocaleString('vi-VN')} dame từ đàn khủng long
+              </div>
+            )}
+          </div>
+
+          {/* Modal thưởng */}
+          {rewardShown && (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 100,
+            }}>
+              <div style={{
+                background: 'linear-gradient(160deg,#78350f,#451a03)', padding: 28, borderRadius: 20,
+                textAlign: 'center', maxWidth: 360, width: '100%',
+                animation: 'coinPop 0.4s',
+                border: '2px solid #fde047',
+              }}>
+                <div style={{ fontSize: 72 }}>🏆</div>
+                <h2 style={{ marginTop: 8 }}>HẠ GỤC!</h2>
+                <p style={{ opacity: 0.85, marginTop: 4 }}>{mapData.dinoName} đã bị hạ</p>
+                <div style={{ fontSize: 32, color: '#fde047', fontWeight: 900, marginTop: 16 }}>
+                  +{mapData.hp.toLocaleString('vi-VN')} 💰
+                </div>
+                {mapData.id >= 9 && (
+                  <div style={{ marginTop: 4, color: '#f87171', fontWeight: 700 }}>
+                    💀 +1 viên bạo chúa!
+                  </div>
+                )}
+                {mapData.id < 15 && state.unlockedMap > mapData.id && (
+                  <div style={{ marginTop: 8, color: '#86efac' }}>🔓 Mở khóa Map {mapData.id + 1}!</div>
+                )}
+                <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                  <button onClick={() => { setHp(mapData.hp); setDead(false); setRewardShown(false); }}
+                    style={{ ...btnStyle('#dc2626'), flex: 1, padding: '12px' }}>
+                    🔁 Săn nữa
+                  </button>
+                  <button onClick={() => setActiveMap(null)}
+                    style={{ ...btnStyle('#78350f'), flex: 1, padding: '12px' }}>
+                    🗺️ Đổi map
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ============================
+    // KHU TẬP LUYỆN
+    // ============================
+    function TrainScreen({ state, update }) {
+      const [popups, setPopups] = useState([]);
+      const popIdRef = useRef(0);
+      const gun = GUNS.find(g => g.id === state.currentGun);
+      const bonus = state.gunBonus[state.currentGun];
+      const total = gun.baseDmg + bonus;
+
+      const train = () => {
+        const id = popIdRef.current++;
+        const x = 30 + Math.random() * 40;
+        setPopups(prev => [...prev, { id, x }]);
+        setTimeout(() => setPopups(prev => prev.filter(p => p.id !== id)), 700);
+
+        update({
+          gunBonus: { ...state.gunBonus, [state.currentGun]: +(bonus + 0.5).toFixed(1) },
+        });
+      };
+
+      return (
+        <div style={{ flex: 1, padding: 20, maxWidth: 600, margin: '0 auto', width: '100%' }}>
+          <h2 style={{ textAlign: 'center', marginBottom: 8 }}>🎯 Khu Tập Luyện</h2>
+          <p style={{ textAlign: 'center', opacity: 0.7, marginBottom: 20, fontSize: 14 }}>
+            Bấm vào súng để tăng <strong style={{ color: '#fde047' }}>+0.5 sát thương</strong>
+          </p>
+
+          {/* Chọn súng đang huấn luyện */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {GUNS.filter(g => state.ownedGuns[g.id]).map(g => (
+              <button key={g.id}
+                onClick={() => update({ currentGun: g.id })}
+                style={{
+                  padding: '8px 14px', borderRadius: 10, border: '2px solid',
+                  borderColor: state.currentGun === g.id ? '#fde047' : 'rgba(254,243,199,0.2)',
+                  background: state.currentGun === g.id ? '#78350f' : 'rgba(0,0,0,0.4)',
+                  color: '#fff', fontSize: 14,
+                }}>
+                {g.icon} {g.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Hiển thị thông số */}
+          <div style={{
+            background: 'rgba(0,0,0,0.4)', borderRadius: 16, padding: 20,
+            textAlign: 'center', marginBottom: 24,
+            border: '1px solid rgba(254,243,199,0.15)',
+          }}>
+            <div style={{ fontSize: 14, opacity: 0.7 }}>Súng hiện tại</div>
+            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>{gun.icon} {gun.name}</div>
+            <div style={{ marginTop: 12, fontSize: 14 }}>
+              <span style={{ opacity: 0.7 }}>Gốc: {gun.baseDmg}</span>
+              <span style={{ margin: '0 8px' }}>+</span>
+              <span style={{ color: '#86efac' }}>Bonus: {bonus.toFixed(1)}</span>
+              <span style={{ margin: '0 8px' }}>=</span>
+              <span style={{ color: '#fde047', fontWeight: 800, fontSize: 18 }}>{total.toFixed(1)} dmg</span>
+            </div>
+          </div>
+
+          {/* Khu bấm */}
+          <div style={{ position: 'relative', textAlign: 'center', padding: '20px 0' }}>
+            <button onClick={train}
+              style={{
+                fontSize: 160, background: 'transparent', border: 'none',
+                cursor: 'pointer',
+              }}>
+              {gun.icon}
+            </button>
+            {popups.map(p => (
+              <div key={p.id} style={{
+                position: 'absolute', top: 60, left: `${p.x}%`,
+                fontSize: 22, fontWeight: 900, color: '#86efac',
+                textShadow: '0 2px 8px rgba(0,0,0,0.8)',
+                animation: 'pop 0.7s forwards',
+                pointerEvents: 'none',
+              }}>+0.5</div>
+            ))}
+            <div style={{ marginTop: 12, fontSize: 16, opacity: 0.8 }}>
+              👆 Bấm liên tục để luyện súng!
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ============================
+    // CỬA HÀNG
+    // ============================
+    function ShopScreen({ state, update }) {
+      const [pwd, setPwd] = useState('');
+      const [pwdMsg, setPwdMsg] = useState({ text: '', ok: false });
+
+      const buy = (gun) => {
+        if (gun.tyrantCoin) {
+          if (state.tyrantCoins < gun.cost) return;
+          update({
+            tyrantCoins: state.tyrantCoins - gun.cost,
+            ownedGuns: { ...state.ownedGuns, [gun.id]: true },
+            currentGun: gun.id,
+          });
+        } else if (gun.realCoin) {
+          if (state.realCoins < gun.cost) return;
+          update({
+            realCoins: state.realCoins - gun.cost,
+            ownedGuns: { ...state.ownedGuns, [gun.id]: true },
+            currentGun: gun.id,
+          });
+        } else {
+          if (state.coins < gun.cost) return;
+          update({
+            coins: state.coins - gun.cost,
+            ownedGuns: { ...state.ownedGuns, [gun.id]: true },
+            currentGun: gun.id,
+          });
+        }
+      };
+
+      const tryPassword = () => {
+        const p = pwd.trim().toLowerCase();
+        const flash = (text, ok) => { setPwdMsg({ text, ok }); setTimeout(() => setPwdMsg({ text: '', ok: false }), 2000); };
+        if (p === SECRET_PASSWORD) {
+          if (state.secretUnlocked) { flash('Súng bí mật đã mở rồi!', false); return; }
+          update({ secretUnlocked: true });
+          setPwd('');
+          flash('✓ Mở khóa súng bí mật!', true);
+        } else if (p === TYRANT_PASSWORD) {
+          if (state.tyrantMode) { flash('Chế độ Tử Thần đã mở rồi!', false); return; }
+          update({ tyrantMode: true });
+          setPwd('');
+          flash('💀 KÍCH HOẠT CHẾ ĐỘ TỬ THẦN!', true);
+        } else if (p === CHOI_PASSWORD) {
+          if (state.choiMode) { flash('Chế độ Chối đã mở rồi!', false); return; }
+          update({ choiMode: true });
+          setPwd('');
+          flash('🌀 KÍCH HOẠT CHẾ ĐỘ CHỐI!', true);
+        } else if (p === TYRANT_COIN_PASSWORD) {
+          update(prev => ({ tyrantCoins: prev.tyrantCoins + 1 }));
+          setPwd('');
+          flash('💀 +1 viên bạo chúa!', true);
+        } else {
+          flash('❌ Sai mật khẩu!', false);
+        }
+      };
+
+      // Lọc súng hiển thị: bí mật cần secretUnlocked, tử thần cần tyrantMode, chối cần choiMode
+      const visibleGuns = GUNS.filter(g => {
+        if (g.tyrant) return state.tyrantMode;
+        if (g.choi)   return state.choiMode;
+        if (g.secret) return state.secretUnlocked;
+        return true;
+      });
+      // Luôn hiển thị ô password vì 1234567 cho viên bạo chúa có thể gõ nhiều lần
+      const showPasswordInput = true;
+
+      return (
+        <div style={{ flex: 1, padding: 20, maxWidth: 600, margin: '0 auto', width: '100%' }}>
+          <h2 style={{ textAlign: 'center', marginBottom: 20 }}>🛒 Cửa Hàng Súng</h2>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {visibleGuns.map(g => {
+              const owned = state.ownedGuns[g.id];
+              const equipped = state.currentGun === g.id;
+              const canBuy = g.realCoin ? state.realCoins >= g.cost : state.coins >= g.cost;
+              const total = g.baseDmg + (state.gunBonus[g.id] || 0);
+
+              const currencyIcon = g.tyrantCoin ? '💀' : g.realCoin ? '💎' : '💰';
+              const currencyLabel = g.tyrantCoin ? 'viên bạo chúa' : g.realCoin ? 'xu thật' : '';
+              return (
+                <div key={g.id} style={{
+                  padding: 16, borderRadius: 14,
+                  background: g.tyrant
+                    ? 'linear-gradient(135deg,#450a0a,#7f1d1d)'
+                    : g.choi
+                      ? 'linear-gradient(135deg,#064e3b,#0f766e)'
+                      : g.secret
+                        ? 'linear-gradient(135deg,#1e1b4b,#4c1d95)'
+                        : equipped ? 'linear-gradient(135deg,#78350f,#451a03)' : 'rgba(0,0,0,0.4)',
+                  border: `2px solid ${
+                    g.tyrant ? '#f87171'
+                    : g.choi   ? '#2dd4bf'
+                    : g.secret ? '#22d3ee'
+                    : equipped ? '#fde047' : 'rgba(254,243,199,0.15)'
+                  }`,
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  boxShadow: g.tyrant ? '0 0 24px rgba(248,113,113,0.5)'
+                           : g.choi   ? '0 0 22px rgba(45,212,191,0.45)'
+                           : g.secret ? '0 0 20px rgba(34,211,238,0.4)' : 'none',
+                }}>
+                  <div style={{ fontSize: 48 }}>{g.icon}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 18, fontWeight: 800 }}>
+                      {g.name}
+                      {g.tyrant  && <span style={{ fontSize: 11, color: '#f87171', marginLeft: 6 }}>☠ TỬ THẦN</span>}
+                      {g.choi    && <span style={{ fontSize: 11, color: '#2dd4bf', marginLeft: 6 }}>🌀 CHỐI</span>}
+                      {g.secret  && <span style={{ fontSize: 11, color: '#22d3ee', marginLeft: 6 }}>★ BÍ MẬT</span>}
+                    </div>
+                    <div style={{ fontSize: 13, opacity: 0.85, wordBreak: 'break-word' }}>
+                      Sát thương: <strong style={{ color: '#fde047' }}>{total.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</strong>
+                      {state.gunBonus[g.id] > 0 && <span style={{ color: '#86efac' }}> (+{state.gunBonus[g.id].toFixed(1)})</span>}
+                    </div>
+                    {!owned && (
+                      <div style={{ fontSize: 13, color: canBuy ? '#86efac' : '#fca5a5', marginTop: 2 }}>
+                        {currencyIcon} {g.cost.toLocaleString('vi-VN')} {currencyLabel}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    {owned ? (
+                      equipped ? (
+                        <div style={{ padding: '8px 14px', background: '#fde047', color: '#451a03', borderRadius: 10, fontWeight: 800, fontSize: 13 }}>
+                          ✓ Đang dùng
+                        </div>
+                      ) : (
+                        <button onClick={() => update({ currentGun: g.id })} style={btnStyle('#0891b2')}>
+                          Dùng
+                        </button>
+                      )
+                    ) : (
+                      <button onClick={() => buy(g)} disabled={!canBuy} style={btnStyle('#16a34a')}>
+                        🛒 Mua
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Nhập mật khẩu — 1 ô cho nhiều password (1234, bí mật, ...) */}
+          {showPasswordInput && (
+            <div style={{
+              marginTop: 24, padding: 16, borderRadius: 14,
+              background: 'rgba(0,0,0,0.4)', border: '1px dashed rgba(254,243,199,0.25)',
+            }}>
+              <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8, textAlign: 'center' }}>
+                🔑 Nhập mật khẩu bí mật...
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  value={pwd}
+                  onChange={(e) => setPwd(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && tryPassword()}
+                  placeholder="..."
+                  maxLength={30}
+                  style={{
+                    flex: 1, padding: '10px 14px', borderRadius: 10,
+                    border: `2px solid ${pwdMsg.text && !pwdMsg.ok ? '#ef4444' : 'rgba(254,243,199,0.2)'}`,
+                    background: 'rgba(0,0,0,0.4)', color: '#fff',
+                    fontSize: 16, textAlign: 'center',
+                    outline: 'none', fontFamily: 'inherit',
+                  }}
+                />
+                <button onClick={tryPassword} style={btnStyle('#7c3aed')}>Mở</button>
+              </div>
+              {pwdMsg.text && (
+                <div style={{
+                  marginTop: 6, fontSize: 12, textAlign: 'center',
+                  color: pwdMsg.ok ? '#86efac' : '#fca5a5', fontWeight: 700,
+                }}>{pwdMsg.text}</div>
+              )}
+            </div>
+          )}
+
+          <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, opacity: 0.6 }}>
+            💡 Mỗi súng có chỉ số tập luyện riêng biệt
+          </p>
+        </div>
+      );
+    }
+
+    // ============================
+    // KHU NUÔI KHỦNG LONG
+    // ============================
+    function RanchScreen({ state, update }) {
+      const tame = (mapId) => {
+        const cost = TAME_COST(mapId);
+        if (state.coins < cost) return;
+        update(prev => ({
+          coins: prev.coins - cost,
+          tamed: { ...prev.tamed, [mapId]: 1 },
+        }));
+      };
+
+      const upgrade = (mapId) => {
+        const lvl = state.tamed[mapId] || 0;
+        if (lvl >= MAX_TAMED_LEVEL) return;
+        const cost = UPGRADE_COST(lvl);
+        if (state.coins < cost) return;
+        update(prev => ({
+          coins: prev.coins - cost,
+          tamed: { ...prev.tamed, [mapId]: (prev.tamed[mapId] || 0) + 1 },
+        }));
+      };
+
+      const feed = (babyId) => {
+        if (state.coins < FEED_COST) return;
+        update(prev => ({
+          coins: prev.coins - FEED_COST,
+          nursery: prev.nursery.map(b =>
+            b.id === babyId
+              ? {
+                  ...b,
+                  hunger: Math.min(MAX_HUNGER, b.hunger + FEED_HUNGER),
+                  growth: Math.min(MAX_GROWTH, b.growth + FEED_GROWTH),
+                }
+              : b
+          ),
+        }));
+      };
+
+      const totalPower = getTotalTamedPower(state.tamed);
+      const killedMaps = MAPS.filter(m => m.id < state.unlockedMap);
+      const tamedCount = Object.values(state.tamed).filter(l => l > 0).length;
+      const nextEggIn = EGG_INTERVAL_SEC - ((state.tickCount || 0) % EGG_INTERVAL_SEC);
+
+      return (
+        <div style={{ flex: 1, padding: 20, maxWidth: 760, margin: '0 auto', width: '100%' }}>
+          <h2 style={{ textAlign: 'center', marginBottom: 6 }}>🏠 Khu Nuôi Khủng Long</h2>
+          <p style={{ textAlign: 'center', opacity: 0.7, marginBottom: 14, fontSize: 13 }}>
+            Làm quen + nâng cấp + chăm sóc khủng long con!
+          </p>
+
+          <div style={{
+            textAlign: 'center', marginBottom: 16, padding: 14, borderRadius: 14,
+            background: 'linear-gradient(135deg,#064e3b,#15803d)',
+            border: '2px solid #4ade80',
+          }}>
+            <div style={{ fontSize: 13, opacity: 0.9 }}>🐲 Tổng sức mạnh đàn</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: '#fde047' }}>
+              +{totalPower.toLocaleString('vi-VN')} dame / phát bắn
+            </div>
+            <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>
+              Áp dụng tự động khi bạn bắn trong Hunt
+            </div>
+          </div>
+
+          {/* ===== PHÒNG ẤP ===== */}
+          <div style={{ marginBottom: 22 }}>
+            <h3 style={{ fontSize: 16, marginBottom: 6 }}>
+              🍼 Phòng Ấp ({state.nursery.length}/{MAX_NURSERY})
+              {tamedCount > 0 && (
+                <span style={{ fontSize: 11, opacity: 0.65, marginLeft: 8, fontWeight: 400 }}>
+                  Trứng tiếp theo: {nextEggIn}s
+                </span>
+              )}
+            </h3>
+            {state.nursery.length === 0 ? (
+              <div style={{
+                padding: 16, borderRadius: 12, fontSize: 13, opacity: 0.7,
+                background: 'rgba(0,0,0,0.3)', border: '1px dashed rgba(254,243,199,0.2)',
+                textAlign: 'center',
+              }}>
+                {tamedCount === 0
+                  ? '🤝 Hãy tame ít nhất 1 khủng long để nó đẻ con'
+                  : `⏳ Khủng long đã tame sẽ tự đẻ con mỗi ${EGG_INTERVAL_SEC} giây...`}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
+                {state.nursery.map(b => {
+                  const m = MAPS.find(x => x.id === b.species);
+                  if (!m) return null;
+                  const canFeed = state.coins >= FEED_COST;
+                  const starving = b.hunger < 20;
+                  return (
+                    <div key={b.id} style={{
+                      padding: 10, borderRadius: 12,
+                      background: 'rgba(0,0,0,0.4)',
+                      border: `2px solid ${starving ? '#ef4444' : 'rgba(254,243,199,0.15)'}`,
+                      display: 'flex', flexDirection: 'column', gap: 6,
+                    }}>
+                      <div style={{ textAlign: 'center', fontSize: 32 }}>{m.dino}<span style={{ fontSize: 14 }}>🍼</span></div>
+                      <div style={{ textAlign: 'center', fontSize: 11, fontWeight: 700 }}>
+                        Con {m.dinoName}
+                      </div>
+                      {/* Đói */}
+                      <div>
+                        <div style={{ fontSize: 10, display: 'flex', justifyContent: 'space-between' }}>
+                          <span>🍖 Đói</span><span>{b.hunger}/100</span>
+                        </div>
+                        <div style={{ height: 6, background: 'rgba(0,0,0,0.5)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{
+                            width: `${b.hunger}%`, height: '100%',
+                            background: b.hunger > 50 ? '#22c55e' : b.hunger > 20 ? '#f59e0b' : '#ef4444',
+                            transition: 'width 0.3s',
+                          }} />
+                        </div>
+                      </div>
+                      {/* Lớn */}
+                      <div>
+                        <div style={{ fontSize: 10, display: 'flex', justifyContent: 'space-between' }}>
+                          <span>🌱 Lớn</span><span>{b.growth}/100</span>
+                        </div>
+                        <div style={{ height: 6, background: 'rgba(0,0,0,0.5)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{
+                            width: `${b.growth}%`, height: '100%',
+                            background: 'linear-gradient(90deg,#86efac,#22c55e)',
+                            transition: 'width 0.3s',
+                          }} />
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => feed(b.id)}
+                        disabled={!canFeed}
+                        style={{ ...btnStyle('#f59e0b'), width: '100%', fontSize: 11, padding: '6px' }}
+                      >
+                        🍖 Cho ăn ({FEED_COST}💰)
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div style={{ marginTop: 8, fontSize: 11, opacity: 0.6, textAlign: 'center' }}>
+              💡 Đói = 0 → con chết &nbsp;•&nbsp; Lớn = 100 → +1 cấp cho loài bố mẹ
+            </div>
+          </div>
+
+          {killedMaps.length === 0 ? (
+            <div style={{
+              textAlign: 'center', padding: 30, borderRadius: 14,
+              background: 'rgba(0,0,0,0.4)', border: '1px dashed rgba(254,243,199,0.2)',
+            }}>
+              <div style={{ fontSize: 48 }}>🦴</div>
+              <p style={{ marginTop: 10, opacity: 0.85 }}>Hãy hạ khủng long ở Hunt trước!</p>
+              <p style={{ opacity: 0.6, fontSize: 12, marginTop: 4 }}>Mỗi loài đã giết mới làm quen được</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 10 }}>
+              {killedMaps.map(m => {
+                const lvl = state.tamed[m.id] || 0;
+                const isTamed = lvl > 0;
+                const power = TAMED_POWER(m.id, lvl);
+                const tameCost = TAME_COST(m.id);
+                const upCost = UPGRADE_COST(lvl);
+                const canTame = !isTamed && state.coins >= tameCost;
+                const canUpgrade = isTamed && lvl < MAX_TAMED_LEVEL && state.coins >= upCost;
+
+                return (
+                  <div key={m.id} style={{
+                    padding: 12, borderRadius: 12,
+                    background: isTamed ? m.bg : 'rgba(0,0,0,0.4)',
+                    border: `2px solid ${isTamed ? '#fde047' : 'rgba(254,243,199,0.15)'}`,
+                    display: 'flex', flexDirection: 'column', gap: 6,
+                  }}>
+                    <div style={{ textAlign: 'center', fontSize: 36 }}>{m.dino}</div>
+                    <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 700 }}>
+                      {m.dinoName}
+                    </div>
+                    {isTamed ? (
+                      <React.Fragment>
+                        <div style={{ textAlign: 'center', fontSize: 11 }}>
+                          Cấp <strong style={{ color: '#fde047' }}>{lvl}</strong> / {MAX_TAMED_LEVEL}
+                          <span style={{ marginLeft: 6, color: '#86efac' }}>+{power.toLocaleString('vi-VN')} dame</span>
+                        </div>
+                        <button
+                          onClick={() => upgrade(m.id)}
+                          disabled={!canUpgrade}
+                          style={{ ...btnStyle(lvl >= MAX_TAMED_LEVEL ? '#3f3f46' : '#16a34a'), width: '100%', fontSize: 12, padding: '8px' }}
+                        >
+                          {lvl >= MAX_TAMED_LEVEL ? '⭐ MAX' : `⬆ ${upCost.toLocaleString('vi-VN')} 💰`}
+                        </button>
+                      </React.Fragment>
+                    ) : (
+                      <React.Fragment>
+                        <div style={{ textAlign: 'center', fontSize: 11, opacity: 0.85 }}>
+                          ❤️ {m.hp.toLocaleString('vi-VN')}
+                        </div>
+                        <button
+                          onClick={() => tame(m.id)}
+                          disabled={!canTame}
+                          style={{ ...btnStyle('#7c3aed'), width: '100%', fontSize: 12, padding: '8px' }}
+                        >
+                          🤝 {tameCost.toLocaleString('vi-VN')} 💰
+                        </button>
+                      </React.Fragment>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div style={{ marginTop: 18, fontSize: 12, opacity: 0.7, textAlign: 'center', lineHeight: 1.5 }}>
+            💡 Công thức: Sức mạnh = Cấp × ID map × 5 &nbsp;•&nbsp; Tame = ID × 100 xu &nbsp;•&nbsp; Nâng cấp = (Cấp+1) × 200 xu
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<HunterGame />);
+  </script>
+</body>
+</html>

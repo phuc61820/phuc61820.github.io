@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🌷 Vườn Hoa Triệu Phú — Game Hub</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(180deg, #1a0b2e, #2d1b4e 60%, #0f3024);
+      min-height: 100vh; color: #f5e6ff;
+      user-select: none; -webkit-user-select: none;
+    }
+    #root { min-height: 100vh; padding: 14px; max-width: 1100px; margin: 0 auto; }
+    button { font-family: inherit; cursor: pointer; }
+    @keyframes grow {
+      0%   { transform: scale(0.6) rotate(-8deg); opacity: 0.7; }
+      50%  { transform: scale(1.15) rotate(4deg); }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+    @keyframes coinFloat {
+      0%   { transform: translate(-50%, 0) scale(0.8); opacity: 1; }
+      100% { transform: translate(-50%, -40px) scale(1.2); opacity: 0; }
+    }
+    @keyframes shine {
+      0%, 100% { box-shadow: 0 0 12px rgba(250,204,21,0.4); }
+      50%      { box-shadow: 0 0 24px rgba(250,204,21,0.9); }
+    }
+    @keyframes visitor {
+      0%   { transform: translateX(-30px); opacity: 0; }
+      30%  { opacity: 1; }
+      100% { transform: translateX(30px); opacity: 0; }
+    }
+  </style>
+  <script src="../js/theme.js"></script>
+  <script src="../js/analytics.js"></script>
+  <script src="../js/save.js?v=1"></script>
+</head>
+<body>
+  <button id="themeToggle" onclick="toggleMode()">☀️</button>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    // ============================
+    // CẤU HÌNH
+    // ============================
+    const SAVE_ID         = 'flower-garden';
+    const TICKET_BASE     = 50;       // vé cơ bản $50
+    const VISITOR_MS      = 3000;     // 1 khách mỗi 3s
+    const PLOT_BASE_PRICE = 800;
+    const VASE_BASE_PRICE = 1500;
+    const MAX_PLOTS       = 30;
+    const MAX_VASES       = 16;
+    const START_PLOTS     = 6;
+    const START_VASES     = 4;
+    const START_MONEY     = 200;
+
+    // 25 loại hoa — tên + emoji + màu
+    const FLOWER_DEFS = [
+      { n: 'Mười Giờ',       e: '🌼', c: '#fde68a' },
+      { n: 'Cúc Vạn Thọ',    e: '🌻', c: '#fbbf24' },
+      { n: 'Bồ Công Anh',    e: '🌾', c: '#facc15' },
+      { n: 'Hoa Bướm',       e: '🦋', c: '#a78bfa' },
+      { n: 'Hoa Tulip',      e: '🌷', c: '#f472b6' },
+      { n: 'Hoa Hồng Đỏ',    e: '🌹', c: '#ef4444' },
+      { n: 'Hoa Sen Hồng',   e: '🪷', c: '#fb7185' },
+      { n: 'Hoa Lavender',   e: '💜', c: '#a855f7' },
+      { n: 'Hoa Mai Vàng',   e: '🌼', c: '#eab308' },
+      { n: 'Hoa Đào Phai',   e: '🌸', c: '#fbcfe8' },
+      { n: 'Anh Đào Nhật',   e: '🌸', c: '#f9a8d4' },
+      { n: 'Hoa Lan Tím',    e: '💐', c: '#c084fc' },
+      { n: 'Mẫu Đơn',        e: '🌺', c: '#e11d48' },
+      { n: 'Cẩm Tú Cầu',     e: '💠', c: '#60a5fa' },
+      { n: 'Tử Đằng Rủ',     e: '🟣', c: '#9333ea' },
+      { n: 'Bỉ Ngạn Đỏ',     e: '🔴', c: '#dc2626' },
+      { n: 'Hoa Quỳnh Đêm',  e: '🤍', c: '#f1f5f9' },
+      { n: 'Phượng Hoàng',   e: '🔥', c: '#f97316' },
+      { n: 'Đỗ Quyên Núi',   e: '🌺', c: '#be185d' },
+      { n: 'Trà Tuyết',      e: '❄️', c: '#bae6fd' },
+      { n: 'Diên Vĩ Xanh',   e: '💙', c: '#3b82f6' },
+      { n: 'Nhị Bích Pha Lê',e: '💎', c: '#22d3ee' },
+      { n: 'Hoa Tiên',       e: '✨', c: '#f0abfc' },
+      { n: 'Hoa Thiên Đường',e: '🌟', c: '#fde047' },
+      { n: 'Vĩnh Cửu Vàng',  e: '👑', c: '#fcd34d' },
+    ];
+
+    // Sinh chỉ số cho từng cấp hoa (1..25)
+    function flowerStats(tier) {
+      const mult = Math.pow(1.95, tier - 1);
+      const seed = Math.round(10 * mult);
+      const sell = Math.round(seed * 3.2);
+      // thời gian lớn: 5s → ~70s cho hoa đắt
+      const grow = Math.round(5 + Math.sqrt(tier - 1) * 13);
+      // giá trị trưng bày = 8% giá bán → vé khách tăng dần
+      const display = Math.max(1, Math.round(sell * 0.08));
+      return { seed, sell, grow, display };
+    }
+
+    const FLOWERS = FLOWER_DEFS.map((d, i) => ({
+      tier: i + 1,
+      ...d,
+      ...flowerStats(i + 1),
+    }));
+
+    function fmt(n) {
+      if (n == null || isNaN(n)) return '0';
+      const a = Math.abs(n);
+      if (a >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+      if (a >= 1e9)  return (n / 1e9).toFixed(2)  + 'B';
+      if (a >= 1e6)  return (n / 1e6).toFixed(2)  + 'M';
+      if (a >= 1e3)  return (n / 1e3).toFixed(1)  + 'K';
+      return Math.round(n).toString();
+    }
+
+    function plotPrice(count) {
+      return Math.round(PLOT_BASE_PRICE * Math.pow(1.85, count - START_PLOTS));
+    }
+    function vasePrice(count) {
+      return Math.round(VASE_BASE_PRICE * Math.pow(2.1, count - START_VASES));
+    }
+
+    function defaultState() {
+      return {
+        money: START_MONEY,
+        plotCount: START_PLOTS,
+        vaseCount: START_VASES,
+        plots: Array(START_PLOTS).fill(null),   // null | {tier, plantedAt}
+        vases: [],                              // [{tier}] tối đa vaseCount
+        visitors: 0,
+        unlockedTier: 1,                        // mở dần khi đủ tiền hạt giống
+      };
+    }
+
+    // ============================
+    // GAME
+    // ============================
+    function FlowerGarden() {
+      const [s, setS] = useState(() => {
+        const def = defaultState();
+        const saved = window.GameSave && GameSave.load(SAVE_ID);
+        if (!saved) return def;
+        return {
+          ...def,
+          ...saved,
+          plots: (saved.plots && saved.plots.length === saved.plotCount)
+            ? saved.plots : Array(saved.plotCount || START_PLOTS).fill(null),
+          vases: Array.isArray(saved.vases) ? saved.vases : [],
+        };
+      });
+
+      const [now, setNow] = useState(Date.now());
+      const [shopFor, setShopFor] = useState(null);  // index chậu đang chọn hạt
+      const [popups, setPopups] = useState([]);
+      const popIdRef = useRef(0);
+      const [visitor, setVisitor] = useState(null);
+
+      // Vé hiện tại
+      const ticket = useMemo(() => {
+        let v = TICKET_BASE;
+        for (const f of s.vases) v += FLOWERS[f.tier - 1].display;
+        return v;
+      }, [s.vases]);
+
+      // Tự mở khóa hoa cao hơn khi có đủ tiền mua hạt
+      useEffect(() => {
+        let t = s.unlockedTier;
+        while (t < 25 && s.money >= FLOWERS[t].seed * 0.6) t++;
+        if (t !== s.unlockedTier) setS(p => ({ ...p, unlockedTier: t }));
+      }, [s.money]);
+
+      // Lưu (throttle 1s vì khách trả tiền mỗi 3s)
+      useEffect(() => {
+        if (!window.GameSave) return;
+        GameSave.saveThrottled(SAVE_ID, {
+          money: s.money,
+          plotCount: s.plotCount,
+          vaseCount: s.vaseCount,
+          plots: s.plots,
+          vases: s.vases,
+          visitors: s.visitors,
+          unlockedTier: s.unlockedTier,
+        }, 1000);
+      }, [s]);
+
+      // Tick — cập nhật đồng hồ để vẽ tiến trình lớn
+      useEffect(() => {
+        const id = setInterval(() => setNow(Date.now()), 250);
+        return () => clearInterval(id);
+      }, []);
+
+      // Khách đến → thu tiền vé
+      useEffect(() => {
+        const id = setInterval(() => {
+          setS(p => ({ ...p, money: p.money + ticket, visitors: p.visitors + 1 }));
+          setVisitor({ id: Date.now(), amount: ticket });
+        }, VISITOR_MS);
+        return () => clearInterval(id);
+      }, [ticket]);
+
+      function pop(text, color) {
+        const id = ++popIdRef.current;
+        setPopups(p => [...p, { id, text, color }]);
+        setTimeout(() => setPopups(p => p.filter(x => x.id !== id)), 900);
+      }
+
+      function plantSeed(plotIdx, tier) {
+        const f = FLOWERS[tier - 1];
+        if (s.money < f.seed) return;
+        setS(p => {
+          const plots = p.plots.slice();
+          plots[plotIdx] = { tier, plantedAt: Date.now() };
+          return { ...p, money: p.money - f.seed, plots };
+        });
+        setShopFor(null);
+        pop('-$' + fmt(f.seed), '#fb7185');
+      }
+
+      function harvestSell(plotIdx) {
+        const plot = s.plots[plotIdx];
+        if (!plot) return;
+        const f = FLOWERS[plot.tier - 1];
+        const elapsed = (Date.now() - plot.plantedAt) / 1000;
+        if (elapsed < f.grow) return;
+        setS(p => {
+          const plots = p.plots.slice();
+          plots[plotIdx] = null;
+          return { ...p, money: p.money + f.sell, plots };
+        });
+        pop('+$' + fmt(f.sell), '#34d399');
+      }
+
+      function moveToVase(plotIdx) {
+        const plot = s.plots[plotIdx];
+        if (!plot) return;
+        const f = FLOWERS[plot.tier - 1];
+        const elapsed = (Date.now() - plot.plantedAt) / 1000;
+        if (elapsed < f.grow) return;
+        if (s.vases.length >= s.vaseCount) {
+          pop('Hết chỗ trưng bày!', '#fbbf24');
+          return;
+        }
+        setS(p => {
+          const plots = p.plots.slice();
+          plots[plotIdx] = null;
+          return { ...p, plots, vases: [...p.vases, { tier: plot.tier }] };
+        });
+        pop('+$' + fmt(f.display) + '/vé', '#facc15');
+      }
+
+      function sellFromVase(vaseIdx) {
+        const v = s.vases[vaseIdx];
+        if (!v) return;
+        const f = FLOWERS[v.tier - 1];
+        setS(p => ({
+          ...p,
+          money: p.money + f.sell,
+          vases: p.vases.filter((_, i) => i !== vaseIdx),
+        }));
+        pop('+$' + fmt(f.sell), '#34d399');
+      }
+
+      function buyPlot() {
+        if (s.plotCount >= MAX_PLOTS) return;
+        const cost = plotPrice(s.plotCount + 1);
+        if (s.money < cost) return;
+        setS(p => ({
+          ...p,
+          money: p.money - cost,
+          plotCount: p.plotCount + 1,
+          plots: [...p.plots, null],
+        }));
+        pop('+1 Chậu', '#86efac');
+      }
+
+      function buyVase() {
+        if (s.vaseCount >= MAX_VASES) return;
+        const cost = vasePrice(s.vaseCount + 1);
+        if (s.money < cost) return;
+        setS(p => ({ ...p, money: p.money - cost, vaseCount: p.vaseCount + 1 }));
+        pop('+1 Bình', '#fde047');
+      }
+
+      function resetGame() {
+        if (!confirm('Xoá toàn bộ vườn hoa và bắt đầu lại?')) return;
+        if (window.GameSave) GameSave.clear(SAVE_ID);
+        setS(defaultState());
+      }
+
+      // ============================
+      // RENDER
+      // ============================
+      const sty = {
+        wrap: { paddingTop: 60, position: 'relative' },
+        hdr: {
+          background: 'rgba(0,0,0,0.35)', borderRadius: 14, padding: '12px 16px',
+          marginBottom: 14, display: 'flex', gap: 18, flexWrap: 'wrap',
+          alignItems: 'center', justifyContent: 'space-between',
+          border: '1px solid rgba(244,114,182,0.3)',
+        },
+        stat: { fontSize: 14, opacity: 0.85 },
+        statBig: { fontSize: 22, fontWeight: 800, marginTop: 2 },
+        section: {
+          background: 'rgba(255,255,255,0.04)', borderRadius: 14,
+          padding: 14, marginBottom: 14,
+          border: '1px solid rgba(255,255,255,0.08)',
+        },
+        secTitle: {
+          fontSize: 15, fontWeight: 700, marginBottom: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        },
+        grid: {
+          display: 'grid', gap: 10,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+        },
+        plot: {
+          background: 'linear-gradient(180deg, #3d2817, #2a1810)',
+          borderRadius: 12, padding: 10, minHeight: 130,
+          border: '2px solid #5d3a1f', position: 'relative',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', textAlign: 'center',
+        },
+        vase: {
+          background: 'linear-gradient(180deg, #1e3a8a, #1e1b4b)',
+          borderRadius: 12, padding: 10, minHeight: 130,
+          border: '2px solid #6366f1', textAlign: 'center',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center',
+        },
+        btn: (color, extra = {}) => ({
+          background: color, color: '#fff', border: 'none',
+          padding: '6px 10px', borderRadius: 8, fontWeight: 700,
+          fontSize: 12, marginTop: 4, ...extra,
+        }),
+        modal: {
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 100, padding: 12,
+        },
+        modalBox: {
+          background: '#1e1b3a', borderRadius: 16, padding: 16,
+          maxWidth: 720, width: '100%', maxHeight: '85vh', overflowY: 'auto',
+          border: '2px solid #a78bfa',
+        },
+        flowerCard: (locked, afford) => ({
+          background: locked ? '#1f1830' : (afford ? '#2d1b4e' : '#3a1f2e'),
+          opacity: locked ? 0.35 : 1,
+          padding: 10, borderRadius: 10, cursor: locked || !afford ? 'not-allowed' : 'pointer',
+          border: '1px solid ' + (locked ? '#2a2440' : (afford ? '#a78bfa' : '#7f1d1d')),
+          textAlign: 'center', position: 'relative',
+        }),
+      };
+
+      return (
+        <div style={sty.wrap}>
+          {/* HEADER */}
+          <div style={sty.hdr}>
+            <div>
+              <div style={sty.stat}>💰 Tiền</div>
+              <div style={{ ...sty.statBig, color: '#fde047' }}>${fmt(s.money)}</div>
+            </div>
+            <div>
+              <div style={sty.stat}>🎟️ Giá vé hiện tại</div>
+              <div style={{ ...sty.statBig, color: '#f0abfc' }}>${fmt(ticket)}</div>
+            </div>
+            <div>
+              <div style={sty.stat}>👥 Khách đã đón</div>
+              <div style={sty.statBig}>{fmt(s.visitors)}</div>
+            </div>
+            <div>
+              <div style={sty.stat}>🌷 Mở khóa</div>
+              <div style={sty.statBig}>{s.unlockedTier}/25</div>
+            </div>
+            <div style={{ position: 'relative', minWidth: 70, height: 44 }}>
+              {visitor && (
+                <div key={visitor.id} style={{
+                  position: 'absolute', right: 0, top: 0,
+                  animation: 'visitor 1.4s ease-out forwards',
+                  fontSize: 26,
+                }}>🚶</div>
+              )}
+            </div>
+          </div>
+
+          {/* CHẬU TRỒNG */}
+          <div style={sty.section}>
+            <div style={sty.secTitle}>
+              <span>🌱 Vườn trồng ({s.plotCount}/{MAX_PLOTS})</span>
+              <button
+                disabled={s.plotCount >= MAX_PLOTS || s.money < plotPrice(s.plotCount + 1)}
+                onClick={buyPlot}
+                style={sty.btn(s.plotCount >= MAX_PLOTS ? '#475569' : '#16a34a', {
+                  opacity: s.money < plotPrice(s.plotCount + 1) ? 0.5 : 1,
+                })}
+              >
+                {s.plotCount >= MAX_PLOTS ? 'Đã tối đa' : '+ Chậu mới $' + fmt(plotPrice(s.plotCount + 1))}
+              </button>
+            </div>
+            <div style={sty.grid}>
+              {s.plots.map((plot, i) => {
+                if (!plot) {
+                  return (
+                    <div key={i} style={sty.plot}>
+                      <div style={{ fontSize: 38, opacity: 0.25 }}>🪴</div>
+                      <button onClick={() => setShopFor(i)} style={sty.btn('#a855f7')}>
+                        + Trồng hạt
+                      </button>
+                    </div>
+                  );
+                }
+                const f = FLOWERS[plot.tier - 1];
+                const elapsed = (now - plot.plantedAt) / 1000;
+                const pct = Math.min(1, elapsed / f.grow);
+                const ready = pct >= 1;
+                return (
+                  <div key={i} style={{
+                    ...sty.plot,
+                    borderColor: ready ? '#fde047' : '#5d3a1f',
+                    animation: ready ? 'shine 1.6s ease-in-out infinite' : 'none',
+                  }}>
+                    <div style={{
+                      fontSize: ready ? 44 : 28 + pct * 16,
+                      filter: ready ? 'none' : 'grayscale(' + (1 - pct) * 0.6 + ')',
+                      animation: ready ? 'grow 0.6s ease-out' : 'none',
+                    }}>{ready ? f.e : '🌱'}</div>
+                    <div style={{ fontSize: 11, marginTop: 4, color: f.c }}>{f.n}</div>
+                    {!ready && (
+                      <div style={{
+                        height: 5, background: '#1a0f08', width: '100%',
+                        borderRadius: 3, marginTop: 6, overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          height: '100%', width: (pct * 100) + '%',
+                          background: 'linear-gradient(90deg, #84cc16, #facc15)',
+                          transition: 'width 0.25s',
+                        }} />
+                      </div>
+                    )}
+                    {!ready && (
+                      <div style={{ fontSize: 10, opacity: 0.7, marginTop: 3 }}>
+                        {Math.ceil(f.grow - elapsed)}s
+                      </div>
+                    )}
+                    {ready && (
+                      <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                        <button onClick={() => harvestSell(i)} style={sty.btn('#16a34a')}>
+                          💰 ${fmt(f.sell)}
+                        </button>
+                        <button onClick={() => moveToVase(i)} style={sty.btn('#ca8a04')}>
+                          🌟 Trưng
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* BÌNH TRƯNG BÀY */}
+          <div style={sty.section}>
+            <div style={sty.secTitle}>
+              <span>🌟 Trưng bày — kéo khách ({s.vases.length}/{s.vaseCount})</span>
+              <button
+                disabled={s.vaseCount >= MAX_VASES || s.money < vasePrice(s.vaseCount + 1)}
+                onClick={buyVase}
+                style={sty.btn(s.vaseCount >= MAX_VASES ? '#475569' : '#0891b2', {
+                  opacity: s.money < vasePrice(s.vaseCount + 1) ? 0.5 : 1,
+                })}
+              >
+                {s.vaseCount >= MAX_VASES ? 'Đã tối đa' : '+ Bình mới $' + fmt(vasePrice(s.vaseCount + 1))}
+              </button>
+            </div>
+            <div style={sty.grid}>
+              {Array.from({ length: s.vaseCount }).map((_, i) => {
+                const v = s.vases[i];
+                if (!v) {
+                  return (
+                    <div key={i} style={{ ...sty.vase, opacity: 0.4 }}>
+                      <div style={{ fontSize: 38, opacity: 0.4 }}>🏺</div>
+                      <div style={{ fontSize: 10, marginTop: 6, opacity: 0.7 }}>Trống</div>
+                    </div>
+                  );
+                }
+                const f = FLOWERS[v.tier - 1];
+                return (
+                  <div key={i} style={sty.vase}>
+                    <div style={{ fontSize: 44 }}>{f.e}</div>
+                    <div style={{ fontSize: 11, marginTop: 4, color: f.c, fontWeight: 700 }}>
+                      {f.n}
+                    </div>
+                    <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2 }}>
+                      +${fmt(f.display)}/vé
+                    </div>
+                    <button onClick={() => sellFromVase(i)} style={sty.btn('#dc2626')}>
+                      🗑️ Bán ${fmt(f.sell)}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* RESET */}
+          <div style={{ textAlign: 'center', margin: '10px 0 20px' }}>
+            <button onClick={resetGame} style={{
+              background: 'transparent', color: '#94a3b8',
+              border: '1px solid #475569', padding: '6px 14px',
+              borderRadius: 8, fontSize: 12,
+            }}>
+              ♻️ Bắt đầu lại
+            </button>
+          </div>
+
+          {/* SHOP HẠT */}
+          {shopFor !== null && (
+            <div style={sty.modal} onClick={() => setShopFor(null)}>
+              <div style={sty.modalBox} onClick={e => e.stopPropagation()}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  alignItems: 'center', marginBottom: 12,
+                }}>
+                  <h2 style={{ fontSize: 18 }}>🌱 Chọn hạt giống — Chậu #{shopFor + 1}</h2>
+                  <button onClick={() => setShopFor(null)} style={sty.btn('#475569')}>
+                    ✕ Đóng
+                  </button>
+                </div>
+                <div style={{
+                  display: 'grid', gap: 8,
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                }}>
+                  {FLOWERS.map(f => {
+                    const locked = f.tier > s.unlockedTier;
+                    const afford = s.money >= f.seed;
+                    return (
+                      <div
+                        key={f.tier}
+                        style={sty.flowerCard(locked, afford)}
+                        onClick={() => !locked && afford && plantSeed(shopFor, f.tier)}
+                      >
+                        <div style={{ fontSize: 32 }}>{locked ? '🔒' : f.e}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: f.c, marginTop: 4 }}>
+                          #{f.tier} {f.n}
+                        </div>
+                        {!locked && (
+                          <div style={{ fontSize: 10, marginTop: 6, lineHeight: 1.4 }}>
+                            <div>🌱 ${fmt(f.seed)} · ⏱️ {f.grow}s</div>
+                            <div style={{ color: '#86efac' }}>💰 Bán ${fmt(f.sell)}</div>
+                            <div style={{ color: '#fde047' }}>🎟️ +${fmt(f.display)}/vé</div>
+                          </div>
+                        )}
+                        {locked && (
+                          <div style={{ fontSize: 10, marginTop: 6, opacity: 0.6 }}>
+                            Cần đạt cấp {f.tier}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* POPUP */}
+          {popups.map(p => (
+            <div key={p.id} style={{
+              position: 'fixed', left: '50%', top: 120,
+              transform: 'translate(-50%, 0)',
+              animation: 'coinFloat 0.9s ease-out forwards',
+              color: p.color, fontWeight: 800, fontSize: 22,
+              textShadow: '0 2px 8px rgba(0,0,0,0.7)',
+              pointerEvents: 'none', zIndex: 200,
+            }}>{p.text}</div>
+          ))}
+
+          {/* HƯỚNG DẪN */}
+          <div style={{
+            ...sty.section, fontSize: 12, opacity: 0.85, lineHeight: 1.6,
+          }}>
+            <strong>🌷 Cách chơi:</strong> Trồng hạt vào chậu, đợi hoa lớn rồi chọn
+            <span style={{ color: '#86efac' }}> 💰 Bán</span> lấy tiền liền,
+            hoặc <span style={{ color: '#fde047' }}>🌟 Trưng bày</span> để tăng giá vé.
+            Cứ {VISITOR_MS / 1000}s sẽ có 1 khách đến trả tiền vé (vé cơ bản $50).
+            Có 25 loại hoa — càng đắt càng nhiều tiền & tăng vé khủng.
+            Mở khóa hoa cấp cao khi đủ tiền mua hạt.
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<FlowerGarden />);
+  </script>
+</body>
+</html>

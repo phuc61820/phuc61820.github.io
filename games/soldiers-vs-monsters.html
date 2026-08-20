@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Binh Linh Chong Quai Vat</title>
+<script src="../js/theme.js"></script>
+<script src="../js/analytics.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; background:#0d0f1a; color:#e8eaf2;
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif; overflow:hidden; }
+  #wrap { position:fixed; inset:0; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:10px; padding:8px 12px;
+    background:linear-gradient(135deg,#141830,#26213f); border-bottom:2px solid #4a3d7a; }
+  header h1 { font-size:15px; font-weight:800; letter-spacing:.3px;
+    background:linear-gradient(90deg,#ffd54a,#ff9f6b); -webkit-background-clip:text; background-clip:text; color:transparent; white-space:nowrap; }
+  .stat { display:flex; flex-direction:column; line-height:1.1; min-width:34px; }
+  .stat b { font-size:15px; } .stat span { font-size:9px; opacity:.6; }
+  .stat.coin b { color:#ffd54a; } .stat.wave b { color:#ff9f6b; }
+  .stat.kill b { color:#7fdfff; } .stat.hp b { color:#8bef7a; }
+  .spacer { flex:1; }
+  #themeToggle { background:#2a2748; border:1px solid #4a3d7a; color:#e8eaf2;
+    padding:0 12px; height:36px; border-radius:9px; font-size:13px; font-weight:700; cursor:pointer; }
+  #board { flex:1; position:relative; overflow:hidden; }
+  canvas { display:block; width:100%; height:100%; touch-action:none; }
+  #shop { display:flex; gap:8px; padding:8px 10px; overflow-x:auto;
+    background:linear-gradient(180deg,#141830,#0d0f1a); border-top:2px solid #4a3d7a; }
+  .card { flex:0 0 auto; width:88px; border-radius:12px; padding:8px 6px;
+    background:#1c2038; border:2px solid #33305a; cursor:pointer; text-align:center;
+    transition:transform .08s, border-color .12s; user-select:none; }
+  .card:active { transform:scale(.94); }
+  .card.sel { border-color:#ffd54a; box-shadow:0 0 0 2px rgba(255,213,74,.35) inset; }
+  .card.poor { opacity:.42; }
+  .card .ic { width:30px; height:30px; margin:2px auto 0; border-radius:8px; }
+  .card .nm { font-size:11px; font-weight:700; margin-top:3px; }
+  .card .pr { font-size:11px; color:#ffd54a; margin-top:2px; }
+  .card .st { font-size:9px; opacity:.6; }
+  #overlay { position:absolute; inset:0; display:none; flex-direction:column;
+    align-items:center; justify-content:center; gap:14px; background:rgba(8,9,18,.86);
+    z-index:5; text-align:center; padding:24px; }
+  #overlay h2 { font-size:26px; color:#ff9f6b; }
+  #overlay p { opacity:.85; max-width:340px; line-height:1.45; font-size:14px; }
+  #overlay button { margin-top:6px; padding:12px 30px; font-size:16px; font-weight:800;
+    border:none; border-radius:12px; cursor:pointer; color:#1a1030;
+    background:linear-gradient(135deg,#ffd54a,#ff9f6b); }
+  .hint { position:absolute; bottom:8px; left:0; right:0; text-align:center;
+    font-size:11px; opacity:.55; pointer-events:none; }
+  body.light-mode { background:#eef1fb; color:#1a1d2e; }
+  body.light-mode #wrap { background:#eef1fb; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <header>
+    <h1>Binh Linh vs Quai</h1>
+    <div class="spacer"></div>
+    <div class="stat coin"><b id="uiCoin">100</b><span>Vang</span></div>
+    <div class="stat kill"><b id="uiKill">0</b><span>Diet</span></div>
+    <div class="stat wave"><b id="uiWave">1</b><span>Dot</span></div>
+    <div class="stat hp"><b id="uiHp">100</b><span>Thanh</span></div>
+    <button id="themeToggle" onclick="toggleMode()">Nen</button>
+  </header>
+  <div id="board">
+    <canvas id="cv"></canvas>
+    <div class="hint">Chon linh ben duoi roi cham vao 1 hang de dat &middot; +10000 vang moi giay</div>
+    <div id="overlay">
+      <h2 id="ovTitle">Thanh da that thu!</h2>
+      <p id="ovText"></p>
+      <button onclick="restart()">Choi lai</button>
+    </div>
+  </div>
+  <div id="shop"></div>
+</div>
+<script>
+"use strict";
+// ============================================================================
+//  AM THANH (WebAudio, khong dung file)
+// ============================================================================
+const Audio2 = (()=>{ let ctx, muted=false;
+  const ac=()=>ctx||(ctx=new (window.AudioContext||window.webkitAudioContext)());
+  function tone(f,d,type='square',vol=.12,f2){ if(muted)return; try{ const c=ac();
+    const o=c.createOscillator(), g=c.createGain(); o.type=type;
+    o.frequency.setValueAtTime(f,c.currentTime);
+    if(f2)o.frequency.exponentialRampToValueAtTime(f2,c.currentTime+d);
+    g.gain.setValueAtTime(vol,c.currentTime); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d);
+    o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+d);}catch(e){} }
+  return { shoot(){tone(680,.06,'square',.05,320);}, hit(){tone(220,.05,'triangle',.08);},
+    kill(){tone(160,.16,'sawtooth',.1,60);}, place(){tone(520,.08,'sine',.12);},
+    coin(){tone(880,.05,'sine',.06,1200);}, hurt(){tone(120,.2,'square',.15,70);},
+    lose(){[440,392,349,262].forEach((f,i)=>setTimeout(()=>tone(f,.4,'sawtooth',.2),i*170));} };
+})();
+
+// ============================================================================
+//  DINH NGHIA LINH
+// ============================================================================
+const UNITS = [
+  { id:'recruit', shape:'sword', name:'Tan Binh', cost:50,  hp:120, dmg:8,  rate:0.7, range:120, color:'#9fe0ff' },
+  { id:'archer',  shape:'bow',   name:'Cung Thu', cost:120, hp:90,  dmg:14, rate:0.55,range:320, color:'#c4f47c' },
+  { id:'knight',  shape:'shield',name:'Hiep Si',  cost:220, hp:420, dmg:16, rate:0.8, range:110, color:'#ffd54a' },
+  { id:'mage',    shape:'orb',   name:'Phap Su',  cost:320, hp:110, dmg:34, rate:1.1, range:300, splash:60, color:'#c8a4ff' },
+  { id:'cannon',  shape:'cannon',name:'Phao Dai', cost:480, hp:260, dmg:70, rate:1.6, range:360, splash:80, color:'#ff9f6b' },
+];
+
+// ============================================================================
+//  TRANG THAI
+// ============================================================================
+const ROWS = 5;
+let cv, ctx, W, H, laneH, dpr;
+let S, sel, last, running, flashT=0;
+
+function reset(){
+  S = { coin:100, kill:0, wave:1, baseHp:100, time:0,
+    units:[], monsters:[], shots:[], fx:[], nextSpawn:1.2 };
+  sel = UNITS[0].id; running=true;
+}
+
+function resize(){
+  dpr = Math.min(window.devicePixelRatio||1, 2);
+  const b = document.getElementById('board').getBoundingClientRect();
+  W=b.width; H=b.height;
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.width=W+'px'; cv.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  laneH = H/ROWS;
+}
+
+// ============================================================================
+//  DO KHO: cang diet nhieu quai cang manh, nhanh va dong
+// ============================================================================
+function diff(){
+  const k=S.kill;
+  return {
+    hp: 40 + k*3.2 + S.wave*14,
+    dmg: 6 + k*0.18 + S.wave*1.2,
+    speed: 10 + Math.min(28, k*0.14) + S.wave*0.6,
+    spawnGap: Math.max(0.42, 1.5 - k*0.012 - S.wave*0.03),
+    reward: 12 + Math.floor(k*0.15),
+  };
+}
+
+function spawnMonster(){
+  const d=diff();
+  const row = Math.floor(Math.random()*ROWS);
+  const boss = S.kill>0 && S.kill%25===0 && Math.random()<0.5;
+  const hp = boss ? d.hp*6 : d.hp;
+  const hue = 340 + Math.random()*40;
+  S.monsters.push({
+    row, x:W+30, hp, maxHp:hp, dmg:d.dmg*(boss?1.6:1), speed:d.speed*(boss?0.7:1),
+    r: boss?24:15, boss, atk:0, hitFlash:0, wob:Math.random()*6,
+    color: boss? '#ff5bd0' : `hsl(${hue|0},70%,58%)`
+  });
+}
+
+// ============================================================================
+//  DAT LINH
+// ============================================================================
+function placeAt(px,py){
+  const u = UNITS.find(u=>u.id===sel);
+  if(!u) return;
+  if(S.coin < u.cost){ Audio2.hurt(); flashT=0.3; return; }
+  const row = Math.max(0, Math.min(ROWS-1, Math.floor(py/laneH)));
+  const x = Math.max(70, Math.min(W*0.55, px));
+  if(S.units.some(un=>un.row===row && Math.abs(un.x-x)<34)){ Audio2.hurt(); return; }
+  S.coin -= u.cost;
+  S.units.push({ ...u, row, x, hp:u.hp, maxHp:u.hp, cd:0, muzzle:0, hitFlash:0 });
+  Audio2.place();
+}
+
+// ============================================================================
+//  VONG LAP LOGIC
+// ============================================================================
+function step(dt){
+  S.time += dt;
+  S.coin += 10000*dt; // thu vang thu dong: 10000 vang moi giay
+
+  S.nextSpawn -= dt;
+  if(S.nextSpawn<=0){ spawnMonster(); S.nextSpawn = diff().spawnGap * (0.7+Math.random()*0.6); }
+  if(S.time > S.wave*18){ S.wave++; }
+
+  for(const un of S.units){
+    un.cd-=dt; if(un.muzzle>0)un.muzzle-=dt; if(un.hitFlash>0)un.hitFlash-=dt;
+    let tgt=null, best=1e9;
+    for(const m of S.monsters){
+      if(m.row!==un.row) continue;
+      const d=m.x-un.x;
+      if(d>=-10 && d<un.range && d<best){ best=d; tgt=m; }
+    }
+    if(tgt && un.cd<=0){
+      un.cd = un.rate; un.muzzle=0.12;
+      if(un.range>160){
+        S.shots.push({ x:un.x+18, y:un.row*laneH+laneH/2, row:un.row, dmg:un.dmg,
+          splash:un.splash||0, color:un.color, vx:520 });
+        Audio2.shoot();
+      } else { dmgMonster(tgt, un.dmg); Audio2.hit(); }
+    }
+  }
+
+  for(const s of S.shots){ s.x += s.vx*dt;
+    for(const m of S.monsters){
+      if(m.row!==s.row) continue;
+      if(Math.abs(m.x-s.x) < m.r+8){
+        dmgMonster(m, s.dmg);
+        if(s.splash){ for(const o of S.monsters){ if(o!==m && o.row===s.row && Math.abs(o.x-m.x)<70) dmgMonster(o, s.dmg*0.5); } addFx(s.x,s.y,s.color); }
+        Audio2.hit(); s.dead=true; break;
+      }
+    }
+    if(s.x>W+20) s.dead=true;
+  }
+  S.shots = S.shots.filter(s=>!s.dead);
+
+  for(const m of S.monsters){
+    if(m.hitFlash>0)m.hitFlash-=dt;
+    let block=null, bd=1e9;
+    for(const un of S.units){ if(un.row!==m.row)continue; const d=m.x-un.x;
+      if(d>-4 && d<m.r+22 && d<bd){ bd=d; block=un; } }
+    if(block){ m.atk-=dt; if(m.atk<=0){ m.atk=0.8; block.hp-=m.dmg; block.hitFlash=0.12; Audio2.hit();
+        if(block.hp<=0){ block.dead=true; addFx(block.x, m.row*laneH+laneH/2, '#ff6b6b'); } } }
+    else { m.x -= m.speed*dt; }
+    if(m.x < 60){ S.baseHp -= m.boss?18:8; m.dead=true; Audio2.hurt();
+      S.fx.push({x:36,y:m.row*laneH+laneH/2,t:0,life:.4,base:true});
+      if(S.baseHp<=0){ S.baseHp=0; gameOver(); } }
+  }
+  S.units = S.units.filter(u=>!u.dead);
+  S.monsters = S.monsters.filter(m=>!m.dead);
+
+  for(const f of S.fx){ f.t+=dt; } S.fx = S.fx.filter(f=>f.t<f.life);
+}
+
+function dmgMonster(m,d){
+  m.hp-=d; m.hitFlash=0.1;
+  if(m.hp<=0 && !m.dead){
+    m.dead=true; S.kill++; S.coin += diff().reward;
+    addFx(m.x, m.row*laneH+laneH/2, '#ffd54a'); Audio2.kill();
+  }
+}
+function addFx(x,y,c){ for(let i=0;i<8;i++){ S.fx.push({x,y,
+  vx:(Math.random()-.5)*180, vy:(Math.random()-.5)*180, t:0, life:.4, c}); } }
+
+// ============================================================================
+//  VE SPRITE (100% bang code)
+// ============================================================================
+function drawUnit(un){
+  const x=un.x, y=un.row*laneH+laneH/2;
+  ctx.save(); ctx.translate(x,y);
+  if(un.hitFlash>0){ ctx.fillStyle='rgba(255,80,80,.5)'; circle(0,0,20); }
+  // than
+  ctx.fillStyle=un.color; roundRect(-9,-6,18,20,5); ctx.fill();
+  // dau
+  ctx.fillStyle='#fbe3c8'; circle(0,-12,7);
+  // vu khi theo loai
+  ctx.strokeStyle='#e9edf5'; ctx.lineWidth=3; ctx.lineCap='round';
+  ctx.fillStyle=un.color;
+  if(un.shape==='sword'){ ctx.beginPath(); ctx.moveTo(10,10); ctx.lineTo(18,-8); ctx.stroke(); }
+  else if(un.shape==='bow'){ ctx.beginPath(); ctx.arc(13,0,10,-1.2,1.2); ctx.stroke(); }
+  else if(un.shape==='shield'){ ctx.fillStyle='#d9b23a'; roundRect(9,-8,9,16,4); ctx.fill(); }
+  else if(un.shape==='orb'){ ctx.fillStyle=un.color; circle(14,-6,6); ctx.fillStyle='rgba(255,255,255,.6)'; circle(12,-8,2); }
+  else if(un.shape==='cannon'){ ctx.fillStyle='#5a5f74'; roundRect(6,-4,16,10,3); ctx.fill(); }
+  if(un.muzzle>0){ ctx.fillStyle=un.color; ctx.globalAlpha=.7; circle(20,-2,5); ctx.globalAlpha=1; }
+  ctx.restore();
+  bar(x-15,y-24,30,un.hp/un.maxHp,'#8bef7a');
+}
+function drawMonster(m){
+  const x=m.x, y=m.row*laneH+laneH/2 + Math.sin(S.time*6+m.wob)*2;
+  ctx.save(); ctx.translate(x,y);
+  if(m.hitFlash>0){ ctx.fillStyle='rgba(255,255,255,.7)'; circle(0,0,m.r+4); }
+  ctx.fillStyle=m.color; circle(0,0,m.r);
+  if(m.boss){ ctx.fillStyle=m.color; for(let i=0;i<8;i++){ const a=i/8*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(Math.cos(a)*m.r,Math.sin(a)*m.r);
+    ctx.lineTo(Math.cos(a)*(m.r+7),Math.sin(a)*(m.r+7)); ctx.lineTo(Math.cos(a+.3)*m.r,Math.sin(a+.3)*m.r); ctx.fill(); } }
+  // mat
+  ctx.fillStyle='#fff'; circle(-m.r*0.35,-m.r*0.2,m.r*0.28); circle(m.r*0.35,-m.r*0.2,m.r*0.28);
+  ctx.fillStyle='#1a1030'; circle(-m.r*0.3,-m.r*0.15,m.r*0.13); circle(m.r*0.4,-m.r*0.15,m.r*0.13);
+  // mieng rang cua
+  ctx.strokeStyle='#1a1030'; ctx.lineWidth=2; ctx.beginPath();
+  ctx.moveTo(-m.r*0.4,m.r*0.35); ctx.lineTo(-m.r*0.15,m.r*0.5); ctx.lineTo(0,m.r*0.35);
+  ctx.lineTo(m.r*0.15,m.r*0.5); ctx.lineTo(m.r*0.4,m.r*0.35); ctx.stroke();
+  ctx.restore();
+  bar(x-m.r,y-m.r-8,m.r*2,m.hp/m.maxHp,m.boss?'#ff5bd0':'#ff6b6b');
+}
+
+function draw(){
+  const light = document.body.classList.contains('light-mode');
+  ctx.clearRect(0,0,W,H);
+  for(let r=0;r<ROWS;r++){
+    ctx.fillStyle = (r%2? (light?'#e3e7f7':'#151a30') : (light?'#dfe4f5':'#121730'));
+    ctx.fillRect(0,r*laneH,W,laneH);
+  }
+  // thanh (trai) — tuong co lo chau mai
+  ctx.fillStyle='#4a3d7a'; ctx.fillRect(0,0,50,H);
+  ctx.fillStyle='#5c4d95';
+  for(let yy=6; yy<H; yy+=26){ ctx.fillRect(50,yy,8,14); }
+  for(let yy=0; yy<H; yy+=13){ ctx.fillRect(38,yy,6,8); }
+
+  for(const s of S.shots){ ctx.fillStyle=s.color; circle(s.x,s.y,s.splash?7:4); }
+  for(const un of S.units) drawUnit(un);
+  for(const m of S.monsters) drawMonster(m);
+
+  for(const f of S.fx){ const a=1-f.t/f.life;
+    if(f.base){ ctx.strokeStyle=`rgba(255,90,90,${a})`; ctx.lineWidth=3; ctx.strokeRect(2,f.y-laneH/2+3,50,laneH-6); continue; }
+    ctx.fillStyle=`rgba(${hex(f.c)},${a})`; circle(f.x+(f.vx||0)*f.t, f.y+(f.vy||0)*f.t, 3*a+1);
+  }
+}
+function circle(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill(); }
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function bar(x,y,w,pct,col){ pct=Math.max(0,Math.min(1,pct));
+  ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(x,y,w,4);
+  ctx.fillStyle=col; ctx.fillRect(x,y,w*pct,4); }
+function hex(c){ if(c[0]!=='#')return '255,213,74'; const n=parseInt(c.slice(1),16); return `${n>>16&255},${n>>8&255},${n&255}`; }
+
+// ============================================================================
+//  UI
+// ============================================================================
+function iconCss(u){
+  if(u.shape==='sword') return `linear-gradient(135deg,${u.color},#5a7a9a)`;
+  if(u.shape==='bow')   return `radial-gradient(circle at 30% 30%,${u.color},#3a6a2a)`;
+  if(u.shape==='shield')return `linear-gradient(135deg,${u.color},#a67c1a)`;
+  if(u.shape==='orb')   return `radial-gradient(circle at 35% 30%,#fff,${u.color})`;
+  return `linear-gradient(135deg,${u.color},#7a3a1a)`;
+}
+function buildShop(){
+  const el=document.getElementById('shop'); el.innerHTML='';
+  for(const u of UNITS){
+    const d=document.createElement('div'); d.className='card'; d.dataset.id=u.id;
+    d.innerHTML=`<div class="ic" style="background:${iconCss(u)}"></div>
+      <div class="nm">${u.name}</div><div class="pr">${u.cost} vang</div>
+      <div class="st">HP ${u.hp} · ST ${u.dmg}</div>`;
+    d.onclick=()=>{ sel=u.id; syncShop(); Audio2.coin(); };
+    el.appendChild(d);
+  }
+  syncShop();
+}
+function syncShop(){
+  document.querySelectorAll('.card').forEach(c=>{
+    const u=UNITS.find(x=>x.id===c.dataset.id);
+    c.classList.toggle('sel', c.dataset.id===sel);
+    c.classList.toggle('poor', S.coin < u.cost);
+  });
+}
+function syncHud(){
+  document.getElementById('uiCoin').textContent=Math.floor(S.coin);
+  document.getElementById('uiKill').textContent=S.kill;
+  document.getElementById('uiWave').textContent=S.wave;
+  document.getElementById('uiHp').textContent=Math.ceil(S.baseHp);
+}
+function gameOver(){
+  running=false; Audio2.lose();
+  document.getElementById('ovText').textContent=
+    `Ban da tieu diet ${S.kill} quai vat qua ${S.wave} dot tan cong. Cang diet nhieu, chung cang manh va dong hon!`;
+  document.getElementById('overlay').style.display='flex';
+}
+function restart(){ document.getElementById('overlay').style.display='none'; reset(); buildShop(); }
+
+// ============================================================================
+//  KHOI TAO
+// ============================================================================
+cv=document.getElementById('cv'); ctx=cv.getContext('2d');
+reset();
+window.addEventListener('resize', resize);
+function tap(e){ if(!running)return; e.preventDefault();
+  const r=cv.getBoundingClientRect();
+  const t=e.touches?e.touches[0]:e;
+  placeAt(t.clientX-r.left, t.clientY-r.top);
+}
+cv.addEventListener('mousedown', tap);
+cv.addEventListener('touchstart', tap, {passive:false});
+resize(); buildShop();
+
+last=performance.now();
+function loop(now){
+  let dt=(now-last)/1000; last=now; if(dt>0.05)dt=0.05;
+  if(running){ step(dt); }
+  draw(); syncHud(); syncShop();
+  if(flashT>0){ flashT-=dt; document.getElementById('shop').style.filter=`brightness(${1+Math.sin(flashT*40)*0.3})`; }
+  else document.getElementById('shop').style.filter='';
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
